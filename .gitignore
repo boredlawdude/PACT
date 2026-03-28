@@ -1,0 +1,53 @@
+# -------------------------
+# ENVIRONMENT / SECRETS
+# -------------------------
+.env
+.env.*
+config/local.php
+
+# -------------------------
+# DEPENDENCIES
+# -------------------------
+vendor/
+node_modules/
+
+# -------------------------
+# STORAGE / GENERATED FILES
+# -------------------------
+storage/*
+!storage/.gitkeep
+
+# temp document generation
+storage/__tmp/*
+storage/generated/*
+storage/uploads/*
+
+# logs
+*.log
+logs/
+
+# -------------------------
+# CACHE
+# -------------------------
+cache/*
+tmp/*
+*.cache
+
+# -------------------------
+# SYSTEM FILES
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# IDE FILES
+# -------------------------
+.vscode/
+.idea/
+
+# -------------------------
+# OS / MISC
+# -------------------------
+*.swp
+*.swo
+*~

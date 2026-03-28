@@ -1,0 +1,19 @@
+<?php
+
+require_once __DIR__ . '/../includes/init.php';
+
+$page = $_GET['page'] ?? 'home';
+
+switch ($page) {
+
+    case 'contracts':
+        require APP_ROOT . '/controllers/contracts_controller.php';
+        break;
+
+    case 'admin':
+        require APP_ROOT . '/controllers/admin_controller.php';
+        break;
+
+    default:
+        require APP_ROOT . '/templates/home.php';
+}

@@ -1,0 +1,21 @@
+<?php
+
+require __DIR__ . '/../app/bootstrap.php';
+
+/*
+|-------------------------------------------
+| Simple router (temporary)
+|-------------------------------------------
+*/
+
+$page = $_GET['page'] ?? 'home';
+
+switch ($page) {
+
+    case 'contracts':
+        require APP_ROOT . '/public/contracts.php';
+        break;
+
+    default:
+        echo "Home page";
+}

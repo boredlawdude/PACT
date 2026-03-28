@@ -1,0 +1,218 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../includes/init.php';
+require_login();
+require_superuser(); // must exist in auth.php (or change to require_admin())
+
+$pdo = pdo();
+function h($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
+
+$errors = [];
+$ok = null;
+
+// ---------- Handle Create / Update ----------
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $action = (string)($_POST['action'] ?? '');
+
+  if ($action === 'create') {
+    $role_key = strtoupper(trim((string)($_POST['role_key'] ?? '')));
+    $role_name = trim((string)($_POST['role_name'] ?? ''));
+    $description = trim((string)($_POST['description'] ?? ''));
+
+    if ($role_key === '' || !preg_match('/^[A-Z0-9_]{3,50}$/', $role_key)) {
+      $errors[] = "Role Key must be 3–50 chars and only A–Z, 0–9, underscore.";
+    }
+    if ($role_name === '') $errors[] = "Role Name is required.";
+
+    if (!$errors) {
+      $ins = $pdo->prepare("
+        INSERT INTO roles (role_key, role_name, description, is_active)
+        VALUES (?, ?, ?, 1)
+      ");
+      try {
+        $ins->execute([$role_key, $role_name, $description !== '' ? $description : null]);
+        $ok = "Role created.";
+      } catch (PDOException $e) {
+        if (str_contains($e->getMessage(), 'Duplicate')) {
+          $errors[] = "That role_key already exists.";
+        } else {
+          throw $e;
+        }
+      }
+    }
+  }
+
+  if ($action === 'update') {
+    $role_id = (int)($_POST['role_id'] ?? 0);
+    $role_key = strtoupper(trim((string)($_POST['role_key'] ?? '')));
+    $role_name = trim((string)($_POST['role_name'] ?? ''));
+    $description = trim((string)($_POST['description'] ?? ''));
+    $is_active = isset($_POST['is_active']) ? 1 : 0;
+
+    if ($role_id <= 0) $errors[] = "Invalid role_id.";
+    if ($role_key === '' || !preg_match('/^[A-Z0-9_]{3,50}$/', $role_key)) {
+      $errors[] = "Role Key must be 3–50 chars and only A–Z, 0–9, underscore.";
+    }
+    if ($role_name === '') $errors[] = "Role Name is required.";
+
+    if (!$errors) {
+      $up = $pdo->prepare("
+        UPDATE roles
+        SET role_key = ?, role_name = ?, description = ?, is_active = ?
+        WHERE role_id = ?
+      ");
+      $up->execute([
+        $role_key,
+        $role_name,
+        $description !== '' ? $description : null,
+        $is_active,
+        $role_id
+      ]);
+      $ok = "Role updated.";
+    }
+  }
+
+  if ($action === 'delete') {
+    // safer: soft-delete by setting is_active=0
+    $role_id = (int)($_POST['role_id'] ?? 0);
+    if ($role_id <= 0) $errors[] = "Invalid role_id.";
+    if (!$errors) {
+      $pdo->prepare("UPDATE roles SET is_active = 0 WHERE role_id = ?")->execute([$role_id]);
+      $ok = "Role deactivated.";
+    }
+  }
+}
+
+// ---------- Load roles ----------
+$roles = $pdo->query("
+  SELECT role_id, role_key, role_name, description, is_active, created_at
+  FROM roles
+  ORDER BY role_key
+")->fetchAll(PDO::FETCH_ASSOC);
+
+include __DIR__ . '/header.php';
+?>
+
+<h1 class="h4 mb-3">Roles</h1>
+
+<?php if ($ok): ?>
+  <div class="alert alert-success"><?= h($ok) ?></div>
+<?php endif; ?>
+
+<?php if ($errors): ?>
+  <div class="alert alert-danger"><ul class="mb-0">
+    <?php foreach ($errors as $e): ?><li><?= h($e) ?></li><?php endforeach; ?>
+  </ul></div>
+<?php endif; ?>
+
+<div class="row g-4">
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold">Create Role</div>
+      <div class="card-body">
+        <form method="post">
+          <input type="hidden" name="action" value="create">
+
+          <label class="form-label">Role Key (e.g., SUPERUSER, ADMIN, DEPT_CONTRACT_ADMIN)</label>
+          <input class="form-control" name="role_key" required>
+
+          <label class="form-label mt-3">Role Name</label>
+          <input class="form-control" name="role_name" required>
+
+          <label class="form-label mt-3">Description</label>
+          <textarea class="form-control" name="description" rows="3"></textarea>
+
+          <button class="btn btn-primary mt-3">Create Role</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold">Existing Roles</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Active</th>
+                <th style="width: 260px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($roles as $r): ?>
+              <tr>
+                <td><code><?= h($r['role_key']) ?></code></td>
+                <td><?= h($r['role_name']) ?></td>
+                <td class="small text-muted"><?= h($r['description'] ?? '') ?></td>
+                <td><?= ((int)$r['is_active'] === 1) ? 'Yes' : 'No' ?></td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary" type="button"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#editRole<?= (int)$r['role_id'] ?>">
+                    Edit
+                  </button>
+
+                  <form method="post" class="d-inline" onsubmit="return confirm('Deactivate this role?');">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="role_id" value="<?= (int)$r['role_id'] ?>">
+                    <button class="btn btn-sm btn-outline-danger">Deactivate</button>
+                  </form>
+                </td>
+              </tr>
+
+              <tr class="collapse" id="editRole<?= (int)$r['role_id'] ?>">
+                <td colspan="5">
+                  <form method="post" class="p-3 border rounded bg-light">
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="role_id" value="<?= (int)$r['role_id'] ?>">
+
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label class="form-label">Role Key</label>
+                        <input class="form-control" name="role_key" value="<?= h($r['role_key']) ?>" required>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Role Name</label>
+                        <input class="form-control" name="role_name" value="<?= h($r['role_name']) ?>" required>
+                      </div>
+
+                      <div class="col-md-4">
+                        <label class="form-label">Active</label>
+                        <div class="form-check mt-2">
+                          <input class="form-check-input" type="checkbox" name="is_active"
+                                 <?= ((int)$r['is_active'] === 1) ? 'checked' : '' ?>>
+                          <label class="form-check-label">Active</label>
+                        </div>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3"><?= h($r['description'] ?? '') ?></textarea>
+                      </div>
+                    </div>
+
+                    <button class="btn btn-primary mt-3">Save Changes</button>
+                  </form>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<?php include __DIR__ . '/footer.php'; ?>
