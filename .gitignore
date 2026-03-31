@@ -46,6 +46,12 @@ Thumbs.db
 .idea/
 
 # -------------------------
+# DEPLOYMENT
+# -------------------------
+# Never commit the DB dump (contains real data)
+deploy_db_export.sql
+
+# -------------------------
 # OS / MISC
 # -------------------------
 *.swp
