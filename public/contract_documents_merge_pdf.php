@@ -94,6 +94,7 @@ function findChromeBinary(): ?string
         '/usr/bin/google-chrome-stable',                                 // Linux alt
         '/usr/bin/chromium-browser',                                     // Linux Chromium
         '/usr/bin/chromium',                                             // Linux Chromium alt
+        '/snap/bin/chromium',                                            // Linux snap
         'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',      // Windows
         'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', // Windows x86
     ];
@@ -121,7 +122,8 @@ function chromePrintToPdf(string $htmlFilePath): ?string
 
     $tmpPdf = tempnam(sys_get_temp_dir(), 'merge_pdf_') . '.pdf';
     $cmd = escapeshellarg($chrome)
-         . ' --headless --disable-gpu --no-sandbox'
+         . ' --headless --disable-gpu --no-sandbox --disable-setuid-sandbox'
+         . ' --disable-dev-shm-usage'
          . ' --print-to-pdf=' . escapeshellarg($tmpPdf)
          . ' --print-to-pdf-no-header'
          . ' ' . escapeshellarg('file://' . $htmlFilePath)
@@ -133,6 +135,30 @@ function chromePrintToPdf(string $htmlFilePath): ?string
         return $tmpPdf;
     }
     @unlink($tmpPdf);
+    return null;
+}
+
+// Convert DOCX to PDF via LibreOffice (most reliable on Linux servers)
+function docxToPdfViaLibreOffice(string $docxPath): ?string
+{
+    $lo = trim(shell_exec('which libreoffice 2>/dev/null || which soffice 2>/dev/null') ?? '');
+    if ($lo === '' || !is_file($lo)) {
+        return null;
+    }
+    $tmpDir = sys_get_temp_dir() . '/lo_' . uniqid();
+    mkdir($tmpDir, 0755, true);
+    $cmd = escapeshellarg($lo)
+         . ' --headless --convert-to pdf'
+         . ' --outdir ' . escapeshellarg($tmpDir)
+         . ' ' . escapeshellarg(realpath($docxPath))
+         . ' 2>&1';
+    exec($cmd, $out, $exit);
+    $base    = pathinfo($docxPath, PATHINFO_FILENAME);
+    $outFile = $tmpDir . '/' . $base . '.pdf';
+    if ($exit === 0 && is_file($outFile) && filesize($outFile) > 0) {
+        return $outFile;
+    }
+    error_log('LibreOffice DOCX→PDF failed (exit=' . $exit . '): ' . implode("\n", $out));
     return null;
 }
 
@@ -255,7 +281,8 @@ foreach ($documents as $doc) {
         if ($ext === 'pdf') {
             $pdfFiles[] = ['path' => $filePath, 'docIndex' => $docIndex];
         } elseif ($ext === 'docx') {
-            $converted = docxToPdf($filePath);
+            // Try LibreOffice first (most reliable on Linux), then Pandoc+Chrome
+            $converted = docxToPdfViaLibreOffice($filePath) ?? docxToPdf($filePath);
             if ($converted) {
                 $pdfFiles[] = ['path' => $converted, 'docIndex' => $docIndex];
                 $tempFiles[] = $converted;
