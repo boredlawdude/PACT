@@ -39,6 +39,12 @@ $contractId = (int)($contractId ?? $_GET['contract_id'] ?? 0);
             </div>
         </div>
 
+        <!-- PDF stamp label -->
+        <div class="mb-3">
+            <label for="exhibit_label" class="form-label">PDF Stamp Label <small class="text-muted">(leave blank for no stamp)</small></label>
+            <input type="text" class="form-control" id="exhibit_label" name="exhibit_label" maxlength="50" placeholder="e.g. Exhibit A, Contract">
+        </div>
+
         <!-- File upload -->
         <div class="mb-3">
             <label for="file_upload" class="form-label">Select File</label>

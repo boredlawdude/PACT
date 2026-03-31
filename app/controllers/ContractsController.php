@@ -547,11 +547,20 @@ class ContractsController
 
         $contractId = (int)($_POST['contract_id'] ?? 0);
         $order = $_POST['order'] ?? [];
+        $labels = $_POST['exhibit_label'] ?? [];
 
         if ($contractId > 0 && is_array($order)) {
-            $stmt = $this->db->prepare("UPDATE contract_documents SET sort_order = ? WHERE contract_document_id = ? AND contract_id = ?");
+            $orderStmt = $this->db->prepare("UPDATE contract_documents SET sort_order = ? WHERE contract_document_id = ? AND contract_id = ?");
             foreach ($order as $docId => $sortVal) {
-                $stmt->execute([(int)$sortVal, (int)$docId, $contractId]);
+                $orderStmt->execute([(int)$sortVal, (int)$docId, $contractId]);
+            }
+        }
+
+        if ($contractId > 0 && is_array($labels)) {
+            $labelStmt = $this->db->prepare("UPDATE contract_documents SET exhibit_label = ? WHERE contract_document_id = ? AND contract_id = ?");
+            foreach ($labels as $docId => $labelVal) {
+                $label = trim($labelVal) ?: null;
+                $labelStmt->execute([$label, (int)$docId, $contractId]);
             }
         }
 
@@ -626,12 +635,14 @@ class ContractsController
 
         $createdBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
 
+        $exhibitLabel = trim($_POST['exhibit_label'] ?? '') ?: null;
+
         // Insert row first to get the doc ID for file naming
         $stmt = $this->db->prepare(
-            "INSERT INTO contract_documents (contract_id, doc_type, description, file_name, file_path, mime_type, created_by_person_id, created_at)
-             VALUES (?, ?, ?, '', '', ?, ?, NOW())"
+            "INSERT INTO contract_documents (contract_id, doc_type, exhibit_label, description, file_name, file_path, mime_type, created_by_person_id, created_at)
+             VALUES (?, ?, ?, ?, '', '', ?, ?, NOW())"
         );
-        $stmt->execute([$contractId, $docType, $description ?: null, $mimeType, $createdBy]);
+        $stmt->execute([$contractId, $docType, $exhibitLabel, $description ?: null, $mimeType, $createdBy]);
         $docId = $this->db->lastInsertId();
 
         $fileName = $contractId . '_' . $safeDocType . '_v' . $docId . ($ext ? '.' . $ext : '');

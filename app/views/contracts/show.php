@@ -224,6 +224,7 @@ $status         = trim((string)($contract['status_name'] ?? ''));
                     <th style="width:60px">#</th>
                     <th>Draft</th>
                     <th>Type</th>
+                    <th>PDF Stamp</th>
                     <th>Description</th>
                     <th>File</th>
                     <th>Created</th>
@@ -239,6 +240,9 @@ $status         = trim((string)($contract['status_name'] ?? ''));
                       </td>
                       <td><?= !empty($doc['file_name']) ? h($doc['file_name']) : '—' ?></td>
                       <td><?= !empty($doc['doc_type']) ? h($doc['doc_type']) : '—' ?></td>
+                      <td>
+                        <input type="text" name="exhibit_label[<?= (int)$doc['contract_document_id'] ?>]" value="<?= h($doc['exhibit_label'] ?? '') ?>" class="form-control form-control-sm" style="width:110px" maxlength="50" placeholder="no stamp">
+                      </td>
                       <td><?= !empty($doc['description']) ? h($doc['description']) : '—' ?></td>
                       <td>
                         <?php

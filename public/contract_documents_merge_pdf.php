@@ -31,7 +31,7 @@ if (!$contract) {
 }
 
 $docsStmt = $db->prepare(
-    "SELECT contract_document_id, file_path, file_name, mime_type
+    "SELECT contract_document_id, file_path, file_name, mime_type, exhibit_label
      FROM contract_documents
      WHERE contract_id = ?
      ORDER BY sort_order ASC, created_at ASC"
@@ -275,7 +275,7 @@ function getExhibitLabel(int $index): string
 }
 
 // Collect PDF files to merge
-$pdfFiles = [];  // each entry: ['path' => string, 'docIndex' => int]
+$pdfFiles = [];  // each entry: ['path' => string, 'exhibit_label' => string|null]
 $tempFiles = [];
 $errors = [];
 
@@ -287,16 +287,16 @@ foreach ($documents as $doc) {
     }
 
     $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-    $docIndex = count($pdfFiles);
+    $docLabel = ($doc['exhibit_label'] !== null && $doc['exhibit_label'] !== '') ? $doc['exhibit_label'] : null;
 
     try {
         if ($ext === 'pdf') {
-            $pdfFiles[] = ['path' => $filePath, 'docIndex' => $docIndex];
+            $pdfFiles[] = ['path' => $filePath, 'exhibit_label' => $docLabel];
         } elseif ($ext === 'docx') {
             // Try LibreOffice first (most reliable on Linux), then Pandoc+Chrome
             $converted = docxToPdfViaLibreOffice($filePath) ?? docxToPdf($filePath);
             if ($converted) {
-                $pdfFiles[] = ['path' => $converted, 'docIndex' => $docIndex];
+                $pdfFiles[] = ['path' => $converted, 'exhibit_label' => $docLabel];
                 $tempFiles[] = $converted;
             } else {
                 $errors[] = 'Could not convert: ' . $doc['file_name'];
@@ -304,7 +304,7 @@ foreach ($documents as $doc) {
         } elseif (in_array($ext, ['html', 'htm'], true)) {
             $converted = htmlFileToPdf($filePath);
             if ($converted) {
-                $pdfFiles[] = ['path' => $converted, 'docIndex' => $docIndex];
+                $pdfFiles[] = ['path' => $converted, 'exhibit_label' => $docLabel];
                 $tempFiles[] = $converted;
             } else {
                 $errors[] = 'Could not convert: ' . $doc['file_name'];
@@ -312,7 +312,7 @@ foreach ($documents as $doc) {
         } elseif ($ext === 'txt') {
             $converted = textToPdf($filePath);
             if ($converted) {
-                $pdfFiles[] = ['path' => $converted, 'docIndex' => $docIndex];
+                $pdfFiles[] = ['path' => $converted, 'exhibit_label' => $docLabel];
                 $tempFiles[] = $converted;
             } else {
                 $errors[] = 'Could not convert: ' . $doc['file_name'];
@@ -340,8 +340,8 @@ try {
     $merger = new Fpdi();
 
     foreach ($pdfFiles as $pdfEntry) {
-        $pdfFile    = $pdfEntry['path'];
-        $exhibitLabel = getExhibitLabel($pdfEntry['docIndex']);
+        $pdfFile      = $pdfEntry['path'];
+        $exhibitLabel = $pdfEntry['exhibit_label'];
 
         $pageCount = $merger->setSourceFile($pdfFile);
         for ($i = 1; $i <= $pageCount; $i++) {
@@ -352,11 +352,13 @@ try {
             // Import the page content first, then stamp text on top
             $merger->useTemplate($tplId, 0, 0, (float)$size['width'], (float)$size['height']);
 
-            // Stamp exhibit label centred at the top of every page
-            $merger->SetFont('Helvetica', 'B', 11);
-            $merger->SetTextColor(0, 0, 0);
-            $merger->SetXY(0, 4);
-            $merger->Cell((float)$size['width'], 8, $exhibitLabel, 0, 0, 'C');
+            // Stamp exhibit label centred at the top of every page (only if set)
+            if ($exhibitLabel !== null && $exhibitLabel !== '') {
+                $merger->SetFont('Helvetica', 'B', 11);
+                $merger->SetTextColor(0, 0, 0);
+                $merger->SetXY(0, 4);
+                $merger->Cell((float)$size['width'], 8, $exhibitLabel, 0, 0, 'C');
+            }
         }
     }
 

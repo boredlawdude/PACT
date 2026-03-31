@@ -151,6 +151,7 @@ CREATE TABLE `contract_documents` (
   `contract_document_id` int NOT NULL AUTO_INCREMENT,
   `contract_id` int NOT NULL,
   `doc_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'generated_contract',
+  `exhibit_label` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `file_path` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `mime_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
