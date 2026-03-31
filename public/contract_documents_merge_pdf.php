@@ -147,7 +147,8 @@ function docxToPdfViaLibreOffice(string $docxPath): ?string
     }
     $tmpDir = sys_get_temp_dir() . '/lo_' . uniqid();
     mkdir($tmpDir, 0755, true);
-    $cmd = escapeshellarg($lo)
+    // Set HOME so LibreOffice can write its user profile when running as www-data
+    $cmd = 'HOME=/var/www ' . escapeshellarg($lo)
          . ' --headless --convert-to pdf'
          . ' --outdir ' . escapeshellarg($tmpDir)
          . ' ' . escapeshellarg(realpath($docxPath))
