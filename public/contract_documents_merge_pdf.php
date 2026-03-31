@@ -308,8 +308,10 @@ try {
         for ($i = 1; $i <= $pageCount; $i++) {
             $tplId = $merger->importPage($i);
             $size  = $merger->getTemplateSize($tplId);
-            $merger->AddPage($size['orientation'], [$size['width'], $size['height']]);
-            $merger->useTemplate($tplId);
+            $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
+            $merger->AddPage($orientation, [$size['width'], $size['height']]);
+            // Import the page content first, then stamp text on top
+            $merger->useTemplate($tplId, 0, 0, (float)$size['width'], (float)$size['height']);
 
             // Stamp exhibit label centred at the top of every page
             $merger->SetFont('Helvetica', 'B', 11);
