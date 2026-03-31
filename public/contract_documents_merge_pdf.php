@@ -224,8 +224,20 @@ function textToPdf(string $textPath): ?string
     return $result;
 }
 
+// Generate exhibit label: 0→A, 1→B, … 25→Z, 26→AA, etc.
+function getExhibitLabel(int $index): string
+{
+    $label = '';
+    $n = $index;
+    do {
+        $label = chr(65 + ($n % 26)) . $label;
+        $n = intdiv($n, 26) - 1;
+    } while ($n >= 0);
+    return 'Exhibit ' . $label;
+}
+
 // Collect PDF files to merge
-$pdfFiles = [];
+$pdfFiles = [];  // each entry: ['path' => string, 'docIndex' => int]
 $tempFiles = [];
 $errors = [];
 
@@ -237,14 +249,15 @@ foreach ($documents as $doc) {
     }
 
     $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+    $docIndex = count($pdfFiles);
 
     try {
         if ($ext === 'pdf') {
-            $pdfFiles[] = $filePath;
+            $pdfFiles[] = ['path' => $filePath, 'docIndex' => $docIndex];
         } elseif ($ext === 'docx') {
             $converted = docxToPdf($filePath);
             if ($converted) {
-                $pdfFiles[] = $converted;
+                $pdfFiles[] = ['path' => $converted, 'docIndex' => $docIndex];
                 $tempFiles[] = $converted;
             } else {
                 $errors[] = 'Could not convert: ' . $doc['file_name'];
@@ -252,7 +265,7 @@ foreach ($documents as $doc) {
         } elseif (in_array($ext, ['html', 'htm'], true)) {
             $converted = htmlFileToPdf($filePath);
             if ($converted) {
-                $pdfFiles[] = $converted;
+                $pdfFiles[] = ['path' => $converted, 'docIndex' => $docIndex];
                 $tempFiles[] = $converted;
             } else {
                 $errors[] = 'Could not convert: ' . $doc['file_name'];
@@ -260,7 +273,7 @@ foreach ($documents as $doc) {
         } elseif ($ext === 'txt') {
             $converted = textToPdf($filePath);
             if ($converted) {
-                $pdfFiles[] = $converted;
+                $pdfFiles[] = ['path' => $converted, 'docIndex' => $docIndex];
                 $tempFiles[] = $converted;
             } else {
                 $errors[] = 'Could not convert: ' . $doc['file_name'];
@@ -287,13 +300,22 @@ if (empty($pdfFiles)) {
 try {
     $merger = new Fpdi();
 
-    foreach ($pdfFiles as $pdfFile) {
+    foreach ($pdfFiles as $pdfEntry) {
+        $pdfFile    = $pdfEntry['path'];
+        $exhibitLabel = getExhibitLabel($pdfEntry['docIndex']);
+
         $pageCount = $merger->setSourceFile($pdfFile);
         for ($i = 1; $i <= $pageCount; $i++) {
             $tplId = $merger->importPage($i);
-            $size = $merger->getTemplateSize($tplId);
+            $size  = $merger->getTemplateSize($tplId);
             $merger->AddPage($size['orientation'], [$size['width'], $size['height']]);
             $merger->useTemplate($tplId);
+
+            // Stamp exhibit label centred at the top of every page
+            $merger->SetFont('Helvetica', 'B', 11);
+            $merger->SetTextColor(0, 0, 0);
+            $merger->SetXY(0, 4);
+            $merger->Cell((float)$size['width'], 8, $exhibitLabel, 0, 0, 'C');
         }
     }
 
