@@ -241,7 +241,16 @@ $status         = trim((string)($contract['status_name'] ?? ''));
                       <td><?= !empty($doc['file_name']) ? h($doc['file_name']) : '—' ?></td>
                       <td><?= !empty($doc['doc_type']) ? h($doc['doc_type']) : '—' ?></td>
                       <td>
-                        <input type="text" name="exhibit_label[<?= (int)$doc['contract_document_id'] ?>]" value="<?= h($doc['exhibit_label'] ?? '') ?>" class="form-control form-control-sm" style="width:110px" maxlength="50" placeholder="no stamp">
+                        <?php
+                          $defaultLabel = $doc['exhibit_label'] ?? null;
+                          if ($defaultLabel === null || $defaultLabel === '') {
+                            $defaultLabel = $doc['doc_type'] ?? '';
+                            if (!empty($doc['description'])) {
+                              $defaultLabel .= ' - ' . $doc['description'];
+                            }
+                          }
+                        ?>
+                        <input type="text" name="exhibit_label[<?= (int)$doc['contract_document_id'] ?>]" value="<?= h($defaultLabel) ?>" class="form-control form-control-sm" style="width:140px" maxlength="50" placeholder="no stamp">
                       </td>
                       <td><?= !empty($doc['description']) ? h($doc['description']) : '—' ?></td>
                       <td>

@@ -31,7 +31,7 @@ if (!$contract) {
 }
 
 $docsStmt = $db->prepare(
-    "SELECT contract_document_id, file_path, file_name, mime_type, exhibit_label
+    "SELECT contract_document_id, file_path, file_name, mime_type, exhibit_label, doc_type, description
      FROM contract_documents
      WHERE contract_id = ?
      ORDER BY sort_order ASC, created_at ASC"
@@ -287,7 +287,17 @@ foreach ($documents as $doc) {
     }
 
     $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-    $docLabel = ($doc['exhibit_label'] !== null && $doc['exhibit_label'] !== '') ? $doc['exhibit_label'] : null;
+    if ($doc['exhibit_label'] !== null && $doc['exhibit_label'] !== '') {
+        $docLabel = $doc['exhibit_label'];
+    } else {
+        $docLabel = $doc['doc_type'] ?? null;
+        if (!empty($doc['description'])) {
+            $docLabel .= ' - ' . $doc['description'];
+        }
+        if ($docLabel === '' || $docLabel === null) {
+            $docLabel = null;
+        }
+    }
 
     try {
         if ($ext === 'pdf') {
