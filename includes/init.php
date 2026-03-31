@@ -8,10 +8,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_name($sessionName);
 
     $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    $domain = $_SERVER['HTTP_HOST'] ?? '';
 
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
+        'domain' => $domain,
         'httponly' => true,
         'secure' => $secure,
         'samesite' => 'Lax',
