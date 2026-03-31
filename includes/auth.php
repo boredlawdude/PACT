@@ -80,6 +80,10 @@ function require_login(): void {
     header('Location: /login.php?next=' . urlencode($next));
     exit;
   }
+  // Prevent browsers from caching authenticated pages
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  header('Pragma: no-cache');
+  header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
 }
 
 function logout_person(): void {
