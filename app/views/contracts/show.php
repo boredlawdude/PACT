@@ -193,6 +193,12 @@ $status         = trim((string)($contract['status_name'] ?? ''));
               <div class="font-monospace small"><?= h($contract['bid_documents_path']) ?></div>
             </div>
             <?php endif; ?>
+            <?php if (!empty($contract['date_approved_by_procurement'])): ?>
+            <div class="col-md-4">
+              <div class="small text-muted">Date Approved by Procurement</div>
+              <div><?= date('m/d/Y', strtotime($contract['date_approved_by_procurement'])) ?></div>
+            </div>
+            <?php endif; ?>
             <?php $procNotes = trim((string)($contract['procurement_notes'] ?? '')); ?>
             <div class="col-12">
               <div class="small text-muted">Compliance Explanation</div>
