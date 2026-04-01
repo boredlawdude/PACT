@@ -257,6 +257,7 @@ if (!function_exists('h')) {
                         'Cooperative / Piggyback Purchase',
                         'Small / Informal Purchase (below threshold)',
                         'Professional Services (QBS)',
+                        'Service (non QBS)',
                         'Not Required',
                       ];
                       $currentMethod = $contract['procurement_method'] ?? '';
