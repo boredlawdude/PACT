@@ -157,35 +157,6 @@ $status         = trim((string)($contract['status_name'] ?? ''));
 
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-white">
-          <h2 class="h6 mb-0">Quick Info</h2>
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <div class="small text-muted">Town Primary Contact</div>
-            <div><?= h($contract['owner_primary_contact_name'] ?? '') ?: '—'  ?></div>
-            <?php if (!empty($contract['owner_primary_contact_email'])): ?>
-                ( <a href="mailto:<?= h($contract['owner_primary_contact_email']) ?>">
-                    <?= h($contract['owner_primary_contact_email']) ?>
-                </a> )
-            <?php endif; ?>
-          </div>
-          <div class="mb-3">
-            <div class="small text-muted">Department Code</div>
-            <div><?= h($contract['department_code'] ?? '') ?: '—' ?></div>
-          </div>
-          <div class="mb-3">
-            <div class="small text-muted">Documents Path</div>
-            <div><?= h($contract['documents_path'] ?? '') ?: '—' ?></div>
-          </div>
-          <div class="mb-0">
-            <div class="small text-muted">Contract Body HTML</div>
-            <div><?= !empty($contract['contract_body_html']) ? 'Present' : '—' ?></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
           <h2 class="h6 mb-0">Description</h2>
         </div>
         <div class="card-body">
