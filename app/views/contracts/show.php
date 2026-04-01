@@ -198,6 +198,43 @@ $status         = trim((string)($contract['status_name'] ?? ''));
         </div>
       </div>
 
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h2 class="h6 mb-0">Procurement &amp; Public Bidding Compliance</h2>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <?php if (!empty($contract['procurement_method'])): ?>
+            <div class="col-md-4">
+              <div class="small text-muted">Procurement Method</div>
+              <div><?= h($contract['procurement_method']) ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($contract['bid_rfp_number'])): ?>
+            <div class="col-md-3">
+              <div class="small text-muted">Bid / RFP Number</div>
+              <div><?= h($contract['bid_rfp_number']) ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($contract['bid_documents_path'])): ?>
+            <div class="col-md-5">
+              <div class="small text-muted">Bid Documents Path</div>
+              <div class="font-monospace small"><?= h($contract['bid_documents_path']) ?></div>
+            </div>
+            <?php endif; ?>
+            <?php $procNotes = trim((string)($contract['procurement_notes'] ?? '')); ?>
+            <div class="col-12">
+              <div class="small text-muted">Compliance Explanation</div>
+              <?php if ($procNotes !== ''): ?>
+                <div style="white-space: pre-wrap;"><?= h($procNotes) ?></div>
+              <?php else: ?>
+                <div class="text-muted fst-italic">No compliance notes entered.</div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>

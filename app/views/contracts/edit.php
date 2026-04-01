@@ -239,6 +239,57 @@ if (!function_exists('h')) {
                        value="<?= h($contract['date_approved_by_council'] ?? '') ?>">
             </div>
 
+            <div class="col-12">
+              <hr class="my-2">
+              <h6 class="text-muted mb-3">Procurement &amp; Public Bidding Compliance</h6>
+              <div class="row g-3">
+
+                <div class="col-md-4">
+                  <label class="form-label" for="procurement_method">Procurement Method</label>
+                  <select class="form-select" id="procurement_method" name="procurement_method">
+                    <option value="">— Select —</option>
+                    <?php
+                      $procMethods = [
+                        'Competitive Bid (IFB)',
+                        'Request for Proposals (RFP)',
+                        'Sole Source / Single Source',
+                        'Emergency Purchase',
+                        'Cooperative / Piggyback Purchase',
+                        'Small / Informal Purchase (below threshold)',
+                        'Professional Services (QBS)',
+                        'Not Required',
+                      ];
+                      $currentMethod = $contract['procurement_method'] ?? '';
+                      foreach ($procMethods as $m):
+                    ?>
+                      <option value="<?= h($m) ?>" <?= $currentMethod === $m ? 'selected' : '' ?>><?= h($m) ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="bid_rfp_number">Bid / RFP Number</label>
+                  <input class="form-control" type="text" id="bid_rfp_number" name="bid_rfp_number" maxlength="100"
+                         placeholder="e.g. IFB-2025-012"
+                         value="<?= h($contract['bid_rfp_number'] ?? '') ?>">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label" for="bid_documents_path">Bid Documents Path</label>
+                  <input class="form-control" type="text" id="bid_documents_path" name="bid_documents_path" maxlength="500"
+                         placeholder="e.g. \\server\procurement\2025\IFB-2025-012"
+                         value="<?= h($contract['bid_documents_path'] ?? '') ?>">
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label" for="procurement_notes">Explain Compliance with Public Bidding / Procurement Laws</label>
+                  <textarea class="form-control" id="procurement_notes" name="procurement_notes" rows="5"
+                            placeholder="Describe how this contract complies with public bidding and procurement requirements, any exemptions that apply, or why competitive bidding was not required."><?= h($contract['procurement_notes'] ?? '') ?></textarea>
+                </div>
+
+              </div>
+            </div>
+
             <div class="col-12 d-flex gap-2 mt-3">
                 <button type="submit" class="btn btn-primary">
                     <?= $isEdit ? 'Update Contract' : 'Create Contract' ?>
