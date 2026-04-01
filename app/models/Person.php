@@ -52,7 +52,7 @@ final class Person
         $stmt->execute([
             'first_name'    => $data['first_name'],
             'last_name'     => $data['last_name'],
-            'email'         => $data['email'],
+            'email'         => $data['email'] !== '' ? $data['email'] : null,
             'officephone'  => $data['officephone'],
             'cellphone'    => $data['cellphone'],
             'title'         => $data['title'],
@@ -86,7 +86,7 @@ final class Person
             'id'            => $id,
             'first_name'    => $data['first_name'],
             'last_name'     => $data['last_name'],
-            'email'         => $data['email'],
+            'email'         => $data['email'] !== '' ? $data['email'] : null,
             'officephone'  => $data['officephone'],
             'cellphone'    => $data['cellphone'],
             'title'         => $data['title'],
