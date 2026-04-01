@@ -244,6 +244,13 @@ class ContractsController
         return $this->people->allDepartments();
     }
 
+    private function getSystemSetting(string $key): string
+    {
+        $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1");
+        $stmt->execute([$key]);
+        return (string)($stmt->fetchColumn() ?: '');
+    }
+
     public function index(): void
     {
         $contracts = $this->contracts->search([]);
@@ -320,6 +327,7 @@ class ContractsController
         }
 
         $counterpartyPeople = $this->getCounterpartyPrimaryContacts();
+        $complianceInfoLink = $this->getSystemSetting('compliance_info_link');
 
         require APP_ROOT . '/app/views/contracts/edit.php';
     }
@@ -389,6 +397,7 @@ class ContractsController
             $ownerPeople = $this->getPeopleByCompany((int)$contract['owner_company_id']);
         }
         $counterpartyPeople = $this->getCounterpartyPrimaryContacts();
+        $complianceInfoLink = $this->getSystemSetting('compliance_info_link');
         require APP_ROOT . '/app/views/contracts/edit.php';
     }
 

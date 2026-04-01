@@ -241,7 +241,13 @@ if (!function_exists('h')) {
 
             <div class="col-12">
               <hr class="my-2">
-              <h6 class="text-muted mb-3">Procurement &amp; Public Bidding Compliance</h6>
+              <h6 class="text-muted mb-3">
+                <?php if (!empty($complianceInfoLink)): ?>
+                  <a href="<?= h($complianceInfoLink) ?>" target="_blank" rel="noopener noreferrer">Procurement &amp; Public Bidding Compliance</a>
+                <?php else: ?>
+                  Procurement &amp; Public Bidding Compliance
+                <?php endif; ?>
+              </h6>
               <div class="row g-3">
 
                 <div class="col-md-4">
