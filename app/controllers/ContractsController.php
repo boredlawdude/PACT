@@ -297,6 +297,18 @@ class ContractsController
         $historyStmt->execute([$id]);
         $history = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $complianceStmt = $this->db->prepare(
+            "SELECT bc.*, COALESCE(p.full_name, p.display_name) AS created_by_name,
+                    cd.file_name AS doc_file_name, cd.file_path AS doc_file_path
+             FROM bidding_compliance bc
+             LEFT JOIN people p ON bc.created_by_person_id = p.person_id
+             LEFT JOIN contract_documents cd ON bc.contract_document_id = cd.contract_document_id
+             WHERE bc.contract_id = ?
+             ORDER BY bc.event_date ASC, bc.created_at ASC"
+        );
+        $complianceStmt->execute([$id]);
+        $complianceRecords = $complianceStmt->fetchAll(PDO::FETCH_ASSOC);
+
         require APP_ROOT . '/app/views/contracts/show.php';
     }
 

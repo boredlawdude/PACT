@@ -311,6 +311,102 @@ $status         = trim((string)($contract['status_name'] ?? ''));
         </div>
       </div>
 
+  <!-- Bidding Compliance Log -->
+  <div class="row mt-4" id="bidding-compliance">
+    <div class="col-12">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h2 class="h6 mb-0">Bidding Compliance Log</h2>
+          <span class="badge bg-secondary"><?= count($complianceRecords ?? []) ?></span>
+        </div>
+
+        <!-- Add entry form -->
+        <div class="card-body border-bottom">
+          <?php if (!empty($_SESSION['flash_success'])): ?>
+            <div class="alert alert-success py-2 mb-3"><?= h($_SESSION['flash_success']) ?></div>
+            <?php unset($_SESSION['flash_success']); ?>
+          <?php endif; ?>
+          <form method="post" action="/index.php?page=bidding_compliance_store" enctype="multipart/form-data">
+            <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label form-label-sm mb-1">Date</label>
+                <input type="date" name="event_date" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label form-label-sm mb-1">Event</label>
+                <select name="event_type" class="form-select form-select-sm" required>
+                  <option value="">— Select —</option>
+                  <?php foreach (\BiddingComplianceController::EVENT_TYPES as $et): ?>
+                    <option value="<?= h($et) ?>"><?= h($et) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm mb-1">Comment</label>
+                <textarea name="comment" class="form-control form-control-sm" rows="2" placeholder="Optional notes…"></textarea>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label form-label-sm mb-1">File (optional)</label>
+                <input type="file" name="compliance_file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg">
+              </div>
+              <div class="col-md-1">
+                <button type="submit" class="btn btn-sm btn-primary w-100">Add</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Records table -->
+        <?php if (!empty($complianceRecords)): ?>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Event</th>
+                  <th>Comment</th>
+                  <th>Document</th>
+                  <th>By</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($complianceRecords as $rec): ?>
+                  <tr>
+                    <td class="text-nowrap"><?= date('m/d/Y', strtotime($rec['event_date'])) ?></td>
+                    <td class="text-nowrap"><span class="badge bg-info text-dark"><?= h($rec['event_type']) ?></span></td>
+                    <td style="white-space:pre-wrap"><?= h($rec['comment'] ?? '') ?></td>
+                    <td>
+                      <?php if (!empty($rec['doc_file_path'])): ?>
+                        <?php
+                          $docWeb = '/' . ltrim($rec['doc_file_path'], '/');
+                        ?>
+                        <a href="<?= h($docWeb) ?>" target="_blank" class="btn btn-outline-secondary btn-sm">📄 <?= h($rec['doc_file_name']) ?></a>
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-nowrap"><?= h($rec['created_by_name'] ?? '—') ?></td>
+                    <td>
+                      <form method="post" action="/index.php?page=bidding_compliance_delete" onsubmit="return confirm('Delete this record?')">
+                        <input type="hidden" name="compliance_id" value="<?= (int)$rec['compliance_id'] ?>">
+                        <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php else: ?>
+          <div class="p-3 text-muted">No compliance records yet.</div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
   <!-- Contract History -->
   <div class="row mt-4">
     <div class="col-12">

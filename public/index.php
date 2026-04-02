@@ -12,6 +12,8 @@ require_once APP_ROOT . '/app/controllers/AdminSettingsController.php';
 require_once APP_ROOT . '/app/controllers/ContractStatusController.php';
 require_once APP_ROOT . '/app/controllers/PaymentTermController.php';
 
+require_once APP_ROOT . '/app/controllers/BiddingComplianceController.php';
+
 $companiesController = new CompaniesController();
 $PeopleController = new PeopleController();
 $ContractsController = new ContractsController();
@@ -19,6 +21,7 @@ $ContractTypesController = new ContractTypesController();
 $AdminSettingsController = new AdminSettingsController();
 $ContractStatusController = new ContractStatusController();
 $PaymentTermController = new PaymentTermController();
+$BiddingComplianceController = new BiddingComplianceController();
 $page = $_GET['page'] ?? 'home';
 
 switch ($page) {
@@ -36,6 +39,15 @@ switch ($page) {
         case 'contract_documents_save_order':
             $ContractsController->saveDocumentOrder();
             break;
+
+    case 'bidding_compliance_store':
+        $BiddingComplianceController->store();
+        break;
+
+    case 'bidding_compliance_delete':
+        $BiddingComplianceController->delete();
+        break;
+
     case 'contracts':
         $ContractsController->index();
         break;
