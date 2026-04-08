@@ -11,8 +11,8 @@ require_once APP_ROOT . '/app/controllers/ContractTypesController.php';
 require_once APP_ROOT . '/app/controllers/AdminSettingsController.php';
 require_once APP_ROOT . '/app/controllers/ContractStatusController.php';
 require_once APP_ROOT . '/app/controllers/PaymentTermController.php';
-
 require_once APP_ROOT . '/app/controllers/BiddingComplianceController.php';
+require_once APP_ROOT . '/app/controllers/DocuSignController.php';
 
 $companiesController = new CompaniesController();
 $PeopleController = new PeopleController();
@@ -262,6 +262,39 @@ case 'departments_store':
     case 'admin_payment_terms_delete':
         require_once APP_ROOT . '/app/controllers/PaymentTermController.php';
         (new PaymentTermController())->delete();
+        break;
+
+    // ── DocuSign ──────────────────────────────────────────────────────────────
+
+    case 'docusign_auth':
+        // Initiate OAuth flow (or skip to send form if already authenticated)
+        (new DocuSignController())->initiateAuth();
+        break;
+
+    case 'docusign_callback':
+        // OAuth redirect-back handler; exchanges code for token
+        (new DocuSignController())->handleCallback();
+        break;
+
+    case 'docusign_send':
+        // Renders the signer configuration form
+        (new DocuSignController())->showSendForm();
+        break;
+
+    case 'docusign_send_envelope':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            (new DocuSignController())->sendEnvelope();
+        } else {
+            http_response_code(405);
+        }
+        break;
+
+    case 'docusign_void':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            (new DocuSignController())->voidEnvelope();
+        } else {
+            http_response_code(405);
+        }
         break;
 
     default:

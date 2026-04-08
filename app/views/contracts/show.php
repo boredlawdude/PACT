@@ -228,6 +228,14 @@ $status         = trim((string)($contract['status_name'] ?? ''));
           </div>
         </div>
         <div class="card-body p-0">
+          <?php if (!empty($_SESSION['docusign_flash_success'])): ?>
+            <div class="alert alert-success m-2"><?= h($_SESSION['docusign_flash_success']) ?></div>
+            <?php unset($_SESSION['docusign_flash_success']); ?>
+          <?php endif; ?>
+          <?php if (!empty($_SESSION['docusign_flash_error'])): ?>
+            <div class="alert alert-danger m-2"><?= h($_SESSION['docusign_flash_error']) ?></div>
+            <?php unset($_SESSION['docusign_flash_error']); ?>
+          <?php endif; ?>
           <?php if (!empty($documents)): ?>
             <form method="post" action="/index.php?page=contract_documents_save_order">
               <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
@@ -243,6 +251,7 @@ $status         = trim((string)($contract['status_name'] ?? ''));
                     <th>File</th>
                     <th>Created</th>
                     <th>Created By</th>
+                    <th>Signature</th>
                     <th class="text-end">Actions</th>
                   </tr>
                 </thead>
@@ -288,6 +297,41 @@ $status         = trim((string)($contract['status_name'] ?? ''));
                       </td>
                       <td><?= !empty($doc['created_at']) ? date('m/d/y H:i', strtotime($doc['created_at'])) : '—' ?></td>
                       <td><?= !empty($doc['created_by_name']) ? h($doc['created_by_name']) : '—' ?></td>
+                      <td style="white-space:nowrap">
+                        <?php
+                          $dsStatus = $doc['docusign_status'] ?? null;
+                          $dsDocId  = (int)$doc['contract_document_id'];
+                          $dsCtrId  = (int)$contract['contract_id'];
+                          $canSend  = $dsStatus === null || in_array($dsStatus, ['voided', 'declined'], true);
+                          $canVoid  = $dsStatus !== null && in_array($dsStatus, ['sent', 'delivered', 'created', 'correct'], true);
+                          $dsBadgeMap = [
+                            'sent'      => 'warning',
+                            'delivered' => 'info',
+                            'completed' => 'success',
+                            'declined'  => 'danger',
+                            'voided'    => 'secondary',
+                            'created'   => 'secondary',
+                            'correct'   => 'info',
+                          ];
+                          $dsBadge = $dsStatus !== null ? ($dsBadgeMap[$dsStatus] ?? 'light') : null;
+                        ?>
+                        <?php if ($dsStatus !== null): ?>
+                          <span class="badge text-bg-<?= h($dsBadge) ?> me-1"><?= h(ucfirst($dsStatus)) ?></span>
+                        <?php endif; ?>
+                        <?php if ($canSend && $dsDocId > 0): ?>
+                          <a href="/index.php?page=docusign_auth&doc_id=<?= $dsDocId ?>&contract_id=<?= $dsCtrId ?>"
+                             class="btn btn-outline-secondary btn-sm">
+                            <?= $dsStatus !== null ? 'Re-send' : 'Send for Signature' ?>
+                          </a>
+                        <?php endif; ?>
+                        <?php if ($canVoid && $dsDocId > 0): ?>
+                          <button type="button" class="btn btn-outline-warning btn-sm ms-1"
+                                  onclick="if(confirm('Void this envelope? Signers will no longer be able to sign.')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=docusign_void';let i1=document.createElement('input');i1.type='hidden';i1.name='doc_id';i1.value='<?= $dsDocId ?>';let i2=document.createElement('input');i2.type='hidden';i2.name='contract_id';i2.value='<?= $dsCtrId ?>';f.appendChild(i1);f.appendChild(i2);document.body.appendChild(f);f.submit();}">Void</button>
+                        <?php endif; ?>
+                        <?php if ($dsStatus === null && $dsDocId <= 0): ?>
+                          <span class="text-muted">—</span>
+                        <?php endif; ?>
+                      </td>
                       <td class="text-end">
                         <?php if (!empty($doc['contract_document_id']) && (int)$doc['contract_document_id'] > 0): ?>
                           <a href="/index.php?page=contract_document_email&id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-primary btn-sm">Email Doc</a>
