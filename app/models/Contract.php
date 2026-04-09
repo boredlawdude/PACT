@@ -143,6 +143,7 @@ class Contract
     {
         $sql = "
             SELECT c.*, ct.contract_type AS contract_type_name, pt.name AS payment_terms_name,
+                   pt.description AS payment_terms_description,
                    d.department_name, d.department_code,
                    co.name AS counterparty_company_name,
                    op.email AS owner_primary_contact_email,
