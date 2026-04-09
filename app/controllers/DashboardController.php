@@ -22,6 +22,16 @@ class DashboardController
         // Current user info
         $person = current_person();
 
+        // Look up the description for the user's primary role
+        $roleDescription = null;
+        if (!empty($person['role'])) {
+            $stmt = $this->db->prepare(
+                "SELECT description FROM roles WHERE role_key = ? AND is_active = 1 LIMIT 1"
+            );
+            $stmt->execute([$person['role']]);
+            $roleDescription = $stmt->fetchColumn() ?: null;
+        }
+
         // All statuses for radio filter
         $statuses = $this->statusModel->all();
 

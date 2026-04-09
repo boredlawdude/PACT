@@ -39,6 +39,11 @@ $userRole = h($person['role'] ?? (isset($person['roles'][0]) ? $person['roles'][
                     <span class="badge text-bg-secondary text-uppercase" style="font-size:.75rem;letter-spacing:.04em;">
                         <?= $userRole ?>
                     </span>
+                    <?php if (!empty($roleDescription)): ?>
+                        <p class="mb-0 mt-2 text-muted small fst-italic">
+                            As a <?= $userRole ?>, your job in contract management is to <?= h($roleDescription) ?>.
+                        </p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
