@@ -4,10 +4,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/../includes/init.php';
 
 $email = trim(strtolower($_POST['email'] ?? ''));
-$next  = (string)($_GET['next'] ?? $_POST['next'] ?? '/index.php?page=contracts');
+$next  = (string)($_GET['next'] ?? $_POST['next'] ?? '/index.php?page=dashboard');
 $errors = [];
 
-function safe_next_local(string $next, string $fallback = '/index.php?page=contracts'): string {
+function safe_next_local(string $next, string $fallback = '/index.php?page=dashboard'): string {
   $next = trim($next);
   if ($next === '') return $fallback;
   if (strpos($next, '/') === 0 && strpos($next, '//') !== 0) return $next;
@@ -15,7 +15,7 @@ function safe_next_local(string $next, string $fallback = '/index.php?page=contr
 }
 
 if (current_person()) {
-  header("Location: /contracts_list.php");
+  header("Location: /index.php?page=dashboard");
   exit;
 }
 
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login_result = login_person($email, $pw);
     if ($login_result) {
       session_write_close();
-      header("Location: " . safe_next_local($next, '/index.php?page=contracts'));
+      header("Location: " . safe_next_local($next, '/index.php?page=dashboard'));
       exit;
     }
     $errors[] = "Invalid email or password.";
