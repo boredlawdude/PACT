@@ -22,7 +22,6 @@ function dashboard_status_badge(string $status): string {
 }
 
 $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
-$userRole = h($person['role'] ?? (isset($person['roles'][0]) ? $person['roles'][0] : 'No Role'));
 ?>
 
 <!-- ── User Card ──────────────────────────────────────────────────────────── -->
@@ -36,13 +35,21 @@ $userRole = h($person['role'] ?? (isset($person['roles'][0]) ? $person['roles'][
                 </div>
                 <div>
                     <div class="fw-semibold fs-5"><?= $userName ?></div>
-                    <span class="badge text-bg-secondary text-uppercase" style="font-size:.75rem;letter-spacing:.04em;">
-                        <?= $userRole ?>
-                    </span>
-                    <?php if (!empty($roleDescription)): ?>
-                        <p class="mb-0 mt-2 text-muted small fst-italic">
-                            As a <?= $userRole ?>, your job in contract management is to <?= h($roleDescription) ?>.
-                        </p>
+                    <?php if (!empty($userRoles)): ?>
+                        <?php foreach ($userRoles as $r): ?>
+                            <div class="mt-1">
+                                <span class="badge text-bg-secondary text-uppercase" style="font-size:.75rem;letter-spacing:.04em;">
+                                    <?= h($r['role_name']) ?>
+                                </span>
+                                <?php if (!empty($r['description'])): ?>
+                                    <span class="text-muted small fst-italic ms-1">
+                                        &mdash; your job in contract management is to <?= h($r['description']) ?>.
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <span class="badge text-bg-secondary">No Role</span>
                     <?php endif; ?>
                 </div>
             </div>

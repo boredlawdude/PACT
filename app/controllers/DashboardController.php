@@ -22,14 +22,17 @@ class DashboardController
         // Current user info
         $person = current_person();
 
-        // Look up the description for the user's primary role
-        $roleDescription = null;
-        if (!empty($person['role'])) {
+        // Look up all roles (with descriptions) for this user
+        $userRoles = [];
+        if (!empty($person['roles'])) {
+            $placeholders = implode(',', array_fill(0, count($person['roles']), '?'));
             $stmt = $this->db->prepare(
-                "SELECT description FROM roles WHERE role_key = ? AND is_active = 1 LIMIT 1"
+                "SELECT role_key, role_name, description FROM roles
+                  WHERE role_key IN ($placeholders) AND is_active = 1
+                  ORDER BY role_name ASC"
             );
-            $stmt->execute([$person['role']]);
-            $roleDescription = $stmt->fetchColumn() ?: null;
+            $stmt->execute(array_values($person['roles']));
+            $userRoles = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         // All statuses for radio filter
