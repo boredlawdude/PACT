@@ -172,6 +172,11 @@ case 'people_update':
     (new PeopleController())->update();
     break;
 
+case 'people_set_password':
+    require_once APP_ROOT . '/app/controllers/PeopleController.php';
+    (new PeopleController())->setPassword();
+    break;
+
 case 'departments':
     require_once APP_ROOT . '/app/controllers/DepartmentsController.php';
     (new DepartmentsController())->index();

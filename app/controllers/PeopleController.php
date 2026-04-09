@@ -176,6 +176,47 @@ final class PeopleController
         return $errors;
     }
 
+    public function setPassword(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            exit('Method not allowed.');
+        }
+
+        require_login();
+        if (!function_exists('person_has_role_key') || !person_has_role_key('SUPERUSER')) {
+            http_response_code(403);
+            exit('Access denied. Superuser required.');
+        }
+
+        $id       = (int)($_POST['person_id'] ?? 0);
+        $password = (string)($_POST['new_password'] ?? '');
+        $confirm  = (string)($_POST['confirm_password'] ?? '');
+
+        $errors = [];
+        if ($id <= 0) {
+            $errors[] = 'Invalid person ID.';
+        }
+        if (strlen($password) < 8) {
+            $errors[] = 'Password must be at least 8 characters.';
+        }
+        if ($password !== $confirm) {
+            $errors[] = 'Passwords do not match.';
+        }
+
+        if ($errors) {
+            $_SESSION['people_set_password_errors'] = $errors;
+        } else {
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $this->pdo->prepare("UPDATE people SET password_hash = ?, can_login = 1 WHERE person_id = ?");
+            $stmt->execute([$hash, $id]);
+            $_SESSION['people_set_password_success'] = true;
+        }
+
+        header('Location: /index.php?page=people_edit&id=' . $id . '#password-section');
+        exit;
+    }
+
     private function emptyPerson(): array
     {
         return [
