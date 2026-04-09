@@ -14,6 +14,7 @@ require_once APP_ROOT . '/app/controllers/PaymentTermController.php';
 require_once APP_ROOT . '/app/controllers/BiddingComplianceController.php';
 require_once APP_ROOT . '/app/controllers/DocuSignController.php';
 require_once APP_ROOT . '/app/controllers/DashboardController.php';
+require_once APP_ROOT . '/app/controllers/RolesController.php';
 
 $companiesController = new CompaniesController();
 $PeopleController = new PeopleController();
@@ -272,6 +273,24 @@ case 'departments_store':
         } else {
             http_response_code(405);
         }
+        break;
+
+    // ── User Roles ────────────────────────────────────────────────────────────
+
+    case 'admin_roles':
+        (new RolesController())->index();
+        break;
+
+    case 'admin_roles_create':
+        (new RolesController())->create();
+        break;
+
+    case 'admin_roles_update':
+        (new RolesController())->update();
+        break;
+
+    case 'admin_roles_delete':
+        (new RolesController())->delete();
         break;
 
     // ── DocuSign ──────────────────────────────────────────────────────────────

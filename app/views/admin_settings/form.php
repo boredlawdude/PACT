@@ -65,9 +65,10 @@
         Existing files are not moved — update paths carefully.
     </div>
 
-    <div class="mt-5 d-flex gap-2">
+    <div class="mt-5 d-flex gap-2 flex-wrap">
         <a href="/index.php?page=admin_statuses" class="btn btn-outline-primary">Manage Contract Statuses</a>
         <a href="/index.php?page=admin_payment_terms" class="btn btn-outline-primary">Manage Payment Terms</a>
+        <a href="/index.php?page=admin_roles" class="btn btn-outline-primary">Manage User Roles</a>
     </div>
 </div>
 <?php include APP_ROOT . '/app/views/layouts/footer.php'; ?>
