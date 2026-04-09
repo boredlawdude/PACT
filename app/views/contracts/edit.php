@@ -22,6 +22,16 @@ if (!function_exists('h')) {
     <h1 class="h4 me-auto"><?= $isEdit ? 'Edit Contract' : 'Create Contract' ?></h1>
 </div>
 
+<?php if (!empty($flashErrors)): ?>
+  <div class="alert alert-danger">
+    <ul class="mb-0">
+      <?php foreach ($flashErrors as $err): ?>
+        <li><?= h($err) ?></li>
+      <?php endforeach; ?>
+    </ul>
+  </div>
+<?php endif; ?>
+
 <form method="post" action="<?= h($action) ?>" class="card shadow-sm">
 
     <div class="card-body">
