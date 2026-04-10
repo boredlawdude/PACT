@@ -103,6 +103,19 @@ function status_badge(string $status): string {
             <a href="#" id="btnEdit" class="btn btn-sm btn-outline-primary disabled">Edit</a>
             <button type="button" id="btnDelete" class="btn btn-sm btn-outline-danger disabled">Delete</button>
         </div>
+        <div class="ms-3">
+            <select id="contractSelect" class="form-select form-select-sm" style="min-width:180px;">
+                <option value="">Select a contract…</option>
+                <?php foreach ($contracts as $c): ?>
+                    <option value="<?= (int)$c['contract_id'] ?>"
+                        data-view-url="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>"
+                        data-edit-url="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>"
+                        data-delete-url="/index.php?page=contracts_delete&contract_id=<?= (int)$c['contract_id'] ?>">
+                        <?= h($c['contract_number'] ?? '') ?> — <?= h($c['name'] ?? '') ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
     </div>
 
     <div class="card-body p-0">
@@ -115,9 +128,6 @@ function status_badge(string $status): string {
                 <table class="table table-striped table-hover mb-0 align-middle" id="contractsListTable">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:36px;">
-                                <input type="checkbox" class="form-check-input" id="selectAllContracts">
-                            </th>
                             <th>Contract #</th>
                             <th>Name</th>
                             <th>Status</th>
@@ -125,7 +135,7 @@ function status_badge(string $status): string {
                             <th>Responsible</th>
                             <th>Value</th>
                             <th>Comment</th>
-                            <th style="width:40px;"></th>
+                            <th></th>
                         </tr>
                     </thead>
 
@@ -135,34 +145,23 @@ function status_badge(string $status): string {
                             data-view-url="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>"
                             data-edit-url="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>"
                             data-delete-url="/index.php?page=contracts_delete&contract_id=<?= (int)$c['contract_id'] ?>">
-                            <td>
-                                <input type="checkbox" class="form-check-input contract-row-check"
-                                       value="<?= (int)$c['contract_id'] ?>">
-                            </td>
-                            <td><?= h($c['contract_number'] ?? '') ?></td>
-
+                            <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] ?? '') ?></a></td>
                             <td class="fw-semibold">
                                 <?= h($c['name'] ?? '') ?>
                             </td>
-
                             <td>
                                 <span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>">
                                     <?= h($c['status_name'] ?? '') ?>
                                 </span>
                             </td>
-
                             <td><?= h($c['department_name'] ?? '') ?></td>
-
                             <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
-
                             <td>
                                 <?php if (!empty($c['total_contract_value'])): ?>
                                     $<?= number_format((float)$c['total_contract_value'], 2) ?>
                                 <?php endif; ?>
                             </td>
-
                             <td class="text-muted small"><?= h($c['status_comment'] ?? '') ?></td>
-
                             <td></td>
                         </tr>
                     <?php endforeach; ?>
@@ -176,69 +175,38 @@ function status_badge(string $status): string {
 
 <script>
 (function () {
-    const selectAll = document.getElementById('selectAllContracts');
-    const btnView   = document.getElementById('btnView');
-    const btnEdit   = document.getElementById('btnEdit');
+    const select = document.getElementById('contractSelect');
+    const btnView = document.getElementById('btnView');
+    const btnEdit = document.getElementById('btnEdit');
     const btnDelete = document.getElementById('btnDelete');
-
-    function getChecked() {
-        return Array.from(document.querySelectorAll('.contract-row-check:checked'));
-    }
-
     function updateButtons() {
-        const checked = getChecked();
-        const one = checked.length === 1;
-        const any = checked.length > 0;
-
-        if (one) {
-            const row = checked[0].closest('tr');
-            btnView.href = row.dataset.viewUrl;
-            btnEdit.href = row.dataset.editUrl;
-        } else {
+        const val = select.value;
+        if (!val) {
+            btnView.classList.add('disabled');
+            btnEdit.classList.add('disabled');
+            btnDelete.classList.add('disabled');
             btnView.href = '#';
             btnEdit.href = '#';
+            return;
         }
-
-        btnView.classList.toggle('disabled', !one);
-        btnEdit.classList.toggle('disabled', !one);
-        btnDelete.classList.toggle('disabled', !any);
-    }
-
-    document.querySelectorAll('.contract-row-check').forEach(cb => {
-        cb.addEventListener('change', function () {
-            // Deselect others (single-select behavior for View/Edit; multi allowed for Delete)
-            if (this.checked) {
-                document.querySelectorAll('.contract-row-check').forEach(o => {
-                    if (o !== this) o.checked = false;
-                });
+        const opt = select.querySelector('option[value="' + val + '"]');
+        btnView.classList.remove('disabled');
+        btnEdit.classList.remove('disabled');
+        btnDelete.classList.remove('disabled');
+        btnView.href = opt.dataset.viewUrl;
+        btnEdit.href = opt.dataset.editUrl;
+        btnDelete.onclick = function () {
+            if (confirm('Delete this contract?')) {
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = opt.dataset.deleteUrl;
+                document.body.appendChild(form);
+                form.submit();
             }
-            updateButtons();
-        });
-    });
-
-    if (selectAll) {
-        selectAll.addEventListener('change', function () {
-            document.querySelectorAll('.contract-row-check').forEach(cb => {
-                cb.checked = false;
-            });
-            updateButtons();
-        });
+            return false;
+        };
     }
-
-    btnDelete.addEventListener('click', function () {
-        const checked = getChecked();
-        if (!checked.length) return;
-        if (!confirm('Delete ' + checked.length + ' contract(s)?')) return;
-        checked.forEach(cb => {
-            const row = cb.closest('tr');
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = row.dataset.deleteUrl;
-            document.body.appendChild(form);
-            form.submit();
-        });
-    });
-
+    select.addEventListener('change', updateButtons);
     updateButtons();
 })();
 </script>
