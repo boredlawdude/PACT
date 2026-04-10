@@ -261,6 +261,40 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     }
     makeResizable(document.getElementById('dashContractsTable'));
 })();
+
+// ── Status radio: client-side row filter ─────────────────────────────────
+(function () {
+    const radios = document.querySelectorAll('.status-radio');
+    const noResults = document.getElementById('dashNoResults');
+
+    function filterRows() {
+        const selected = document.querySelector('.status-radio:checked');
+        const val = selected ? selected.value : '';
+        const rows = document.querySelectorAll('#dashContractsTable tbody tr');
+        let visible = 0;
+        rows.forEach(function (row) {
+            const show = val === '' || row.dataset.statusId === val;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        if (noResults) noResults.classList.toggle('d-none', visible > 0);
+        // Uncheck hidden rows
+        document.querySelectorAll('.dash-row-check').forEach(function (cb) {
+            if (cb.closest('tr').style.display === 'none') cb.checked = false;
+        });
+        // Reset header buttons
+        document.getElementById('dashBtnView').classList.add('disabled');
+        document.getElementById('dashBtnEdit').classList.add('disabled');
+        document.getElementById('dashBtnDelete').classList.add('disabled');
+        document.getElementById('dashBtnView').href = '#';
+        document.getElementById('dashBtnEdit').href = '#';
+    }
+
+    radios.forEach(function (r) {
+        r.addEventListener('change', filterRows);
+    });
+    filterRows();
+})();
 </script>
 
 <?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>
