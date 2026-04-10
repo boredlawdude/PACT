@@ -225,11 +225,27 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     updateButtons();
 })();
 
-// ── Draggable column resize ───────────────────────────────────────────────
+// ── Draggable column resize (with localStorage persistence) ─────────────
 (function () {
     function makeResizable(table) {
+        const storageKey = 'colWidths_' + table.id;
         const cols = table.querySelectorAll('thead th');
         table.style.tableLayout = 'fixed';
+
+        // Restore saved widths
+        try {
+            const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+            cols.forEach(function (th, i) {
+                if (saved[i]) th.style.width = saved[i];
+            });
+        } catch(e) {}
+
+        function saveWidths() {
+            const widths = {};
+            cols.forEach(function (th, i) { widths[i] = th.style.width; });
+            try { localStorage.setItem(storageKey, JSON.stringify(widths)); } catch(e) {}
+        }
+
         cols.forEach(function (th) {
             if (th.style.width === '0px' || th.style.width === '0') return;
             th.style.position = 'relative';
@@ -252,6 +268,7 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
                     document.body.style.userSelect = '';
                     document.removeEventListener('mousemove', onMove);
                     document.removeEventListener('mouseup', onUp);
+                    saveWidths();
                 }
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
