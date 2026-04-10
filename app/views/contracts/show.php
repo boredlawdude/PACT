@@ -132,10 +132,17 @@ $status         = trim((string)($contract['status_name'] ?? ''));
           <div class="row g-3">
             <div class="col-md-4">
               <div class="small text-muted">Total Contract Value</div>
-              <div><?= h($contract['total_contract_value'] ?? '') ?: '—' ?></div>
+              <div><?= !empty($contract['total_contract_value']) ? '$' . number_format((float)$contract['total_contract_value'], 2) : '—' ?></div>
             </div>
 
             <div class="col-md-4">
+              <div class="small text-muted">PO Number</div>
+              <div><?= h($contract['po_number'] ?? '') ?: '—' ?></div>
+            </div>
+
+            <div class="col-md-4">
+              <div class="small text-muted">PO Amount</div>
+              <div><?= !empty($contract['po_amount']) ? '$' . number_format((float)$contract['po_amount'], 2) : '—' ?></div>
             </div>
 
             <div class="col-md-4">
