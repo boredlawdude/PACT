@@ -49,8 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="container py-5">
     <div class="card shadow-sm mx-auto" style="max-width:520px;">
       <div class="card-body">
-        <h1 class="h4 mb-3">Sign in to JACK </h1>
-        <h2 class="h4 mb-3">(John's Awesome Contract Knowledgebase)</h2>
+        <h1 class="h4 mb-3">Sign in to CAMEL </h1>
+        <h2 class="h4 mb-3">(Contract Administration Made Easy by Legal)</h2>
         <?php if ($errors): ?>
           <div class="alert alert-danger"><ul class="mb-0">
             <?php foreach ($errors as $e): ?><li><?= htmlspecialchars($e) ?></li><?php endforeach; ?>

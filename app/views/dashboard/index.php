@@ -224,6 +224,43 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     });
     updateButtons();
 })();
+
+// ── Draggable column resize ───────────────────────────────────────────────
+(function () {
+    function makeResizable(table) {
+        const cols = table.querySelectorAll('thead th');
+        table.style.tableLayout = 'fixed';
+        cols.forEach(function (th) {
+            if (th.style.width === '0px' || th.style.width === '0') return;
+            th.style.position = 'relative';
+            th.style.overflow = 'hidden';
+            const handle = document.createElement('div');
+            handle.style.cssText = 'position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;user-select:none;z-index:1;';
+            th.appendChild(handle);
+            let startX, startW;
+            handle.addEventListener('mousedown', function (e) {
+                startX = e.pageX;
+                startW = th.offsetWidth;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                function onMove(e) {
+                    const w = Math.max(30, startW + (e.pageX - startX));
+                    th.style.width = w + 'px';
+                }
+                function onUp() {
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+                e.preventDefault();
+            });
+        });
+    }
+    makeResizable(document.getElementById('dashContractsTable'));
+})();
 </script>
 
 <?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>
