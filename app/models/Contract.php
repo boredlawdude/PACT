@@ -330,9 +330,9 @@ class Contract
             'department_id' => $this->nullIfEmpty($data['department_id'] ?? null),
             'governing_law' => $this->nullIfEmpty($data['governing_law'] ?? 'North Carolina'),
             'currency' => $this->nullIfEmpty($data['currency'] ?? 'USD'),
-            'total_contract_value' => $this->nullIfEmpty($data['total_contract_value'] ?? null),
+            'total_contract_value' => $this->nullIfEmpty($this->sanitizeCurrency($data['total_contract_value'] ?? null)),
             'po_number' => $this->nullIfEmpty($data['po_number'] ?? null),
-            'po_amount' => $this->nullIfEmpty($data['po_amount'] ?? null),
+            'po_amount' => $this->nullIfEmpty($this->sanitizeCurrency($data['po_amount'] ?? null)),
             'payment_terms_id' => $this->nullIfEmpty($data['payment_terms_id'] ?? 1),
             'contract_status_id' => $this->nullIfEmpty($data['contract_status_id'] ?? null),
             'start_date' => $this->nullIfEmpty($data['start_date'] ?? null),
@@ -348,6 +348,19 @@ class Contract
             'date_approved_by_manager' => $this->nullIfEmpty($data['date_approved_by_manager'] ?? null),
             'date_approved_by_council' => $this->nullIfEmpty($data['date_approved_by_council'] ?? null),
         ];
+    }
+
+    private function sanitizeCurrency(mixed $value): mixed
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        // Strip $, spaces, and commas then return numeric string
+        $cleaned = str_replace(['$', ',', ' '], '', (string)$value);
+        if (!is_numeric($cleaned)) {
+            return null;
+        }
+        return $cleaned;
     }
 
     private function nullIfEmpty(mixed $value): mixed
