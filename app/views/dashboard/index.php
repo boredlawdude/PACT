@@ -120,103 +120,109 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
 <!-- ── Contracts Table ───────────────────────────────────────────────────── -->
 <div class="card shadow-sm">
     <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="d-flex gap-2" id="dashContractsActions">
+            <a href="#" id="dashBtnView" class="btn btn-sm btn-outline-secondary disabled">View</a>
+            <a href="#" id="dashBtnEdit" class="btn btn-sm btn-outline-primary disabled">Edit</a>
+            <button type="button" id="dashBtnDelete" class="btn btn-sm btn-outline-danger disabled">Delete</button>
+        </div>
         <span class="fw-semibold">Contracts</span>
         <a href="/index.php?page=contracts_create" class="btn btn-sm btn-primary">+ New Contract</a>
     </div>
-
     <div class="card-body p-0">
-        <?php if (empty($contracts)): ?>
-            <div class="p-3 text-muted">No contracts found.</div>
-        <?php else: ?>
-            <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle" id="dashContractsTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Contract #</th>
-                            <th>Name</th>
-                            <th>Status</th>
-                            <th>Department</th>
-                            <th>Responsible</th>
-                            <th>Value</th>
-                            <th>Comment</th>
-                            <th style="width:120px;"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($contracts as $c): ?>
-                        <?php $isStale = isset($staleIds[(int)($c['contract_id'] ?? 0)]); ?>
-                        <tr data-status-id="<?= (int)($c['contract_status_id'] ?? 0) ?>">
-                            <td><?= h($c['contract_number'] ?? '') ?></td>
-
-                            <td class="fw-semibold<?= $isStale ? ' text-danger' : '' ?>"><?= h($c['name'] ?? '') ?></td>
-
-                            <td>
-                                <span class="badge text-bg-<?= dashboard_status_badge($c['status_name'] ?? '') ?>">
-                                    <?= h($c['status_name'] ?? '') ?>
-                                </span>
-                            </td>
-
-                            <td><?= h($c['department_name'] ?? '') ?></td>
-
-                            <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
-
-                            <td>
-                                <?php if (!empty($c['total_contract_value'])): ?>
-                                    $<?= number_format((float)$c['total_contract_value'], 2) ?>
-                                <?php endif; ?>
-                            </td>
-
-                            <td class="text-muted small"><?= h($c['status_comment'] ?? '') ?></td>
-
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-secondary"
-                                   href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>">
-                                    View
-                                </a>
-                                <a class="btn btn-sm btn-outline-primary"
-                                   href="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>">
-                                    Edit
-                                </a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="dashNoResults" class="p-3 text-muted d-none">No contracts match the selected status.</div>
-        <?php endif; ?>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm mb-0 align-middle small" id="dashContractsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:32px;"><input type="checkbox" id="dashSelectAll" class="form-check-input"></th>
+                        <th style="width:180px;">Contract #</th>
+                        <th style="width:120px;">Status</th>
+                        <th style="width:160px;">Name</th>
+                        <th style="width:55px;">Dept</th>
+                        <th style="width:90px;">Responsible</th>
+                        <th style="width:75px;">Value</th>
+                        <th>Comment</th>
+                        <th style="width:0;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($contracts as $c): ?>
+                    <?php $isStale = isset($staleIds[(int)($c['contract_id'] ?? 0)]); ?>
+                    <tr data-status-id="<?= (int)($c['contract_status_id'] ?? 0) ?>"
+                        data-contract-id="<?= (int)$c['contract_id'] ?>"
+                        data-view-url="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>"
+                        data-edit-url="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>"
+                        data-delete-url="/index.php?page=contracts_delete&contract_id=<?= (int)$c['contract_id'] ?>">
+                        <td><input type="checkbox" class="form-check-input dash-row-check" value="<?= (int)$c['contract_id'] ?>"></td>
+                        <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] ?? '') ?></a></td>
+                        <td><span class="badge text-bg-<?= dashboard_status_badge($c['status_name'] ?? '') ?>"><?= h($c['status_name'] ?? '') ?></span></td>
+                        <td class="<?= $isStale ? 'text-danger' : '' ?>"><span title="<?= h($c['name'] ?? '') ?>"><?= h(mb_strlen($c['name'] ?? '') > 30 ? mb_substr($c['name'], 0, 30) . '…' : ($c['name'] ?? '')) ?></span></td>
+                        <td><span title="<?= h($c['department_name'] ?? '') ?>"><?= h($c['department_code'] ?? $c['department_name'] ?? '') ?></span></td>
+                        <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
+                        <td>
+                            <?php if (!empty($c['total_contract_value'])): ?>
+                                $<?= number_format((float)$c['total_contract_value'], 2) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-muted small"><?= h($c['status_comment'] ?? '') ?></td>
+                        <td></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div id="dashNoResults" class="p-3 text-muted d-none">No contracts match the selected status.</div>
     </div>
 </div>
 
 <script>
 (function () {
-    const radios = document.querySelectorAll('.status-radio');
-    const tbody  = document.querySelector('#dashContractsTable tbody');
-    const noResults = document.getElementById('dashNoResults');
-
-    if (!radios.length || !tbody) return;
-
-    function applyFilter() {
-        const selected = document.querySelector('.status-radio:checked');
-        const val = selected ? selected.value : '';
-        let visible = 0;
-
-        tbody.querySelectorAll('tr').forEach(function (row) {
-            const rowStatus = row.dataset.statusId || '';
-            const show = (val === '' || rowStatus === val);
-            row.classList.toggle('d-none', !show);
-            if (show) visible++;
-        });
-
-        if (noResults) {
-            noResults.classList.toggle('d-none', visible > 0);
-        }
+    const checks = document.querySelectorAll('.dash-row-check');
+    const selectAll = document.getElementById('dashSelectAll');
+    const btnView = document.getElementById('dashBtnView');
+    const btnEdit = document.getElementById('dashBtnEdit');
+    const btnDelete = document.getElementById('dashBtnDelete');
+    function getChecked() {
+        return Array.from(document.querySelectorAll('.dash-row-check:checked'));
     }
-
-    radios.forEach(function (radio) {
-        radio.addEventListener('change', applyFilter);
+    function updateButtons() {
+        const checked = getChecked();
+        const one = checked.length === 1;
+        const any = checked.length > 0;
+        if (one) {
+            const row = checked[0].closest('tr');
+            btnView.href = row.dataset.viewUrl;
+            btnEdit.href = row.dataset.editUrl;
+        } else {
+            btnView.href = '#';
+            btnEdit.href = '#';
+        }
+        btnView.classList.toggle('disabled', !one);
+        btnEdit.classList.toggle('disabled', !one);
+        btnDelete.classList.toggle('disabled', !any);
+    }
+    checks.forEach(cb => {
+        cb.addEventListener('change', updateButtons);
     });
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            checks.forEach(cb => { cb.checked = selectAll.checked; });
+            updateButtons();
+        });
+    }
+    btnDelete.addEventListener('click', function () {
+        const checked = getChecked();
+        if (!checked.length) return;
+        if (!confirm('Delete ' + checked.length + ' contract(s)?')) return;
+        checked.forEach(cb => {
+            const row = cb.closest('tr');
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = row.dataset.deleteUrl;
+            document.body.appendChild(form);
+            form.submit();
+        });
+    });
+    updateButtons();
 })();
 </script>
 

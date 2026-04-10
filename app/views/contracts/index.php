@@ -32,7 +32,7 @@ function status_badge(string $status): string {
     </a>
 </div>
 
-<form method="get" action="/index.php" class="card shadow-sm mb-3">
+<form method="get" action="/index.php" class="card shadow-sm mb-3" id="contractsFilterForm">
     <input type="hidden" name="page" value="contracts_search">
 
     <div class="card-body">
@@ -46,17 +46,6 @@ function status_badge(string $status): string {
                     placeholder="Search name or number"
                     value="<?= h($_GET['q'] ?? '') ?>"
                 >
-            </div>
-
-            <div class="col-md-2">
-                <select class="form-select" name="contract_status_id">
-                    <option value="">All Status</option>
-                    <?php foreach (($contractStatuses ?? []) as $status): ?>
-                        <option value="<?= (int)$status['contract_status_id'] ?>" <?= ((string)($_GET['contract_status_id'] ?? '') === (string)$status['contract_status_id']) ? 'selected' : '' ?>>
-                            <?= h($status['contract_status_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
             </div>
 
             <div class="col-md-3">
@@ -95,119 +84,169 @@ function status_badge(string $status): string {
     </div>
 </form>
 
-<div class="card shadow-sm">
-    <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
-        <span class="fw-semibold">Contract List</span>
-        <div class="d-flex gap-2" id="contractListActions">
-            <a href="#" id="btnView" class="btn btn-sm btn-outline-secondary disabled">View</a>
-            <a href="#" id="btnEdit" class="btn btn-sm btn-outline-primary disabled">Edit</a>
-            <button type="button" id="btnDelete" class="btn btn-sm btn-outline-danger disabled">Delete</button>
+<!-- ── Status Radio Filter (client-side, no page reload) ─────────────────── -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <strong class="me-1 text-nowrap">Filter by Status:</strong>
+            <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input contracts-status-radio" type="radio"
+                       name="contractsStatusFilter" id="cstatus_all" value="" checked>
+                <label class="form-check-label" for="cstatus_all">All</label>
+            </div>
+            <?php foreach (($contractStatuses ?? []) as $status): ?>
+                <div class="form-check form-check-inline mb-0">
+                    <input class="form-check-input contracts-status-radio" type="radio"
+                           name="contractsStatusFilter"
+                           id="cstatus_<?= (int)$status['contract_status_id'] ?>"
+                           value="<?= (int)$status['contract_status_id'] ?>">
+                    <label class="form-check-label" for="cstatus_<?= (int)$status['contract_status_id'] ?>">
+                        <?= h($status['contract_status_name']) ?>
+                    </label>
+                </div>
+            <?php endforeach; ?>
         </div>
-        <div class="ms-3">
-            <select id="contractSelect" class="form-select form-select-sm" style="min-width:180px;">
-                <option value="">Select a contract…</option>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="d-flex gap-2" id="contractsActions">
+            <a href="#" id="contractsBtnView" class="btn btn-sm btn-outline-secondary disabled">View</a>
+            <a href="#" id="contractsBtnEdit" class="btn btn-sm btn-outline-primary disabled">Edit</a>
+            <button type="button" id="contractsBtnDelete" class="btn btn-sm btn-outline-danger disabled">Delete</button>
+        </div>
+        <span class="fw-semibold">Contracts</span>
+        <a href="/index.php?page=contracts_create" class="btn btn-sm btn-primary">+ New Contract</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm mb-0 align-middle small" id="contractsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:32px;"><input type="checkbox" id="contractsSelectAll" class="form-check-input"></th>
+                        <th style="width:180px;">Contract #</th>
+                        <th style="width:120px;">Status</th>
+                        <th style="width:160px;">Name</th>
+                        <th style="width:55px;">Dept</th>
+                        <th style="width:90px;">Responsible</th>
+                        <th style="width:75px;">Value</th>
+                        <th>Comment</th>
+                        <th style="width:0;"></th>
+                    </tr>
+                </thead>
+                <tbody>
                 <?php foreach ($contracts as $c): ?>
-                    <option value="<?= (int)$c['contract_id'] ?>"
+                    <tr data-status-id="<?= (int)($c['contract_status_id'] ?? 0) ?>"
+                        data-contract-id="<?= (int)$c['contract_id'] ?>"
                         data-view-url="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>"
                         data-edit-url="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>"
                         data-delete-url="/index.php?page=contracts_delete&contract_id=<?= (int)$c['contract_id'] ?>">
-                        <?= h($c['contract_number'] ?? '') ?> — <?= h($c['name'] ?? '') ?>
-                    </option>
+                        <td><input type="checkbox" class="form-check-input contracts-row-check" value="<?= (int)$c['contract_id'] ?>"></td>
+                        <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] ?? '') ?></a></td>
+                        <td><span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>"><?= h($c['status_name'] ?? '') ?></span></td>
+                        <td><span title="<?= h($c['name'] ?? '') ?>"><?= h(mb_strlen($c['name'] ?? '') > 30 ? mb_substr($c['name'], 0, 30) . '…' : ($c['name'] ?? '')) ?></span></td>
+                        <td><span title="<?= h($c['department_name'] ?? '') ?>"><?= h($c['department_code'] ?? $c['department_name'] ?? '') ?></span></td>
+                        <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
+                        <td>
+                            <?php if (!empty($c['total_contract_value'])): ?>
+                                $<?= number_format((float)$c['total_contract_value'], 2) ?>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-muted small"><?= h($c['status_comment'] ?? '') ?></td>
+                        <td></td>
+                    </tr>
                 <?php endforeach; ?>
-            </select>
+                </tbody>
+            </table>
         </div>
-    </div>
-
-    <div class="card-body p-0">
-
-        <?php if (empty($contracts)): ?>
-            <div class="p-3 text-muted">No contracts found.</div>
-        <?php else: ?>
-
-            <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle" id="contractsListTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Contract #</th>
-                            <th>Name</th>
-                            <th>Status</th>
-                            <th>Department</th>
-                            <th>Responsible</th>
-                            <th>Value</th>
-                            <th>Comment</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                    <?php foreach ($contracts as $c): ?>
-                        <tr data-contract-id="<?= (int)$c['contract_id'] ?>"
-                            data-view-url="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>"
-                            data-edit-url="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>"
-                            data-delete-url="/index.php?page=contracts_delete&contract_id=<?= (int)$c['contract_id'] ?>">
-                            <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] ?? '') ?></a></td>
-                            <td class="fw-semibold">
-                                <?= h($c['name'] ?? '') ?>
-                            </td>
-                            <td>
-                                <span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>">
-                                    <?= h($c['status_name'] ?? '') ?>
-                                </span>
-                            </td>
-                            <td><?= h($c['department_name'] ?? '') ?></td>
-                            <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
-                            <td>
-                                <?php if (!empty($c['total_contract_value'])): ?>
-                                    $<?= number_format((float)$c['total_contract_value'], 2) ?>
-                                <?php endif; ?>
-                            </td>
-                            <td class="text-muted small"><?= h($c['status_comment'] ?? '') ?></td>
-                            <td></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-        <?php endif; ?>
+        <div id="contractsNoResults" class="p-3 text-muted d-none">No contracts found.</div>
     </div>
 </div>
 
 <script>
 (function () {
-    const select = document.getElementById('contractSelect');
-    const btnView = document.getElementById('btnView');
-    const btnEdit = document.getElementById('btnEdit');
-    const btnDelete = document.getElementById('btnDelete');
+    const checks = document.querySelectorAll('.contracts-row-check');
+    const selectAll = document.getElementById('contractsSelectAll');
+    const btnView = document.getElementById('contractsBtnView');
+    const btnEdit = document.getElementById('contractsBtnEdit');
+    const btnDelete = document.getElementById('contractsBtnDelete');
+    function getChecked() {
+        return Array.from(document.querySelectorAll('.contracts-row-check:checked'));
+    }
     function updateButtons() {
-        const val = select.value;
-        if (!val) {
-            btnView.classList.add('disabled');
-            btnEdit.classList.add('disabled');
-            btnDelete.classList.add('disabled');
+        const checked = getChecked();
+        const one = checked.length === 1;
+        const any = checked.length > 0;
+        if (one) {
+            const row = checked[0].closest('tr');
+            btnView.href = row.dataset.viewUrl;
+            btnEdit.href = row.dataset.editUrl;
+        } else {
             btnView.href = '#';
             btnEdit.href = '#';
-            return;
         }
-        const opt = select.querySelector('option[value="' + val + '"]');
-        btnView.classList.remove('disabled');
-        btnEdit.classList.remove('disabled');
-        btnDelete.classList.remove('disabled');
-        btnView.href = opt.dataset.viewUrl;
-        btnEdit.href = opt.dataset.editUrl;
-        btnDelete.onclick = function () {
-            if (confirm('Delete this contract?')) {
-                const form = document.createElement('form');
-                form.method = 'post';
-                form.action = opt.dataset.deleteUrl;
-                document.body.appendChild(form);
-                form.submit();
-            }
-            return false;
-        };
+        btnView.classList.toggle('disabled', !one);
+        btnEdit.classList.toggle('disabled', !one);
+        btnDelete.classList.toggle('disabled', !any);
     }
-    select.addEventListener('change', updateButtons);
+    checks.forEach(cb => {
+        cb.addEventListener('change', updateButtons);
+    });
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            checks.forEach(cb => { cb.checked = selectAll.checked; });
+            updateButtons();
+        });
+    }
+    btnDelete.addEventListener('click', function () {
+        const checked = getChecked();
+        if (!checked.length) return;
+        if (!confirm('Delete ' + checked.length + ' contract(s)?')) return;
+        checked.forEach(cb => {
+            const row = cb.closest('tr');
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = row.dataset.deleteUrl;
+            document.body.appendChild(form);
+            form.submit();
+        });
+    });
     updateButtons();
+})();
+
+// ── Status radio: client-side row filter ─────────────────────────────────
+(function () {
+    const radios = document.querySelectorAll('.contracts-status-radio');
+    const noResults = document.getElementById('contractsNoResults');
+
+    function filterRows() {
+        const selected = document.querySelector('.contracts-status-radio:checked');
+        const val = selected ? selected.value : '';
+        const rows = document.querySelectorAll('#contractsTable tbody tr');
+        let visible = 0;
+        rows.forEach(function (row) {
+            const show = val === '' || row.dataset.statusId === val;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        if (noResults) noResults.classList.toggle('d-none', visible > 0);
+        // Uncheck hidden rows
+        document.querySelectorAll('.contracts-row-check').forEach(function (cb) {
+            if (cb.closest('tr').style.display === 'none') cb.checked = false;
+        });
+        // Re-evaluate header buttons
+        document.getElementById('contractsBtnView').classList.add('disabled');
+        document.getElementById('contractsBtnEdit').classList.add('disabled');
+        document.getElementById('contractsBtnDelete').classList.add('disabled');
+        document.getElementById('contractsBtnView').href = '#';
+        document.getElementById('contractsBtnEdit').href = '#';
+    }
+
+    radios.forEach(function (r) {
+        r.addEventListener('change', filterRows);
+    });
+    filterRows();
 })();
 </script>
 

@@ -74,8 +74,10 @@ class Contract
             c.start_date,
             c.end_date,
             c.total_contract_value,
+            c.status_comment,
             c.owner_primary_contact_id,
             d.department_name,
+            d.department_code,
             COALESCE(
                 NULLIF(op.full_name, ''),
                 TRIM(CONCAT(COALESCE(op.first_name, ''), ' ', COALESCE(op.last_name, '')))

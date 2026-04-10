@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Procurement Decision Tool</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background:#f4f7fb;
+  margin:0;
+}
+.container {
+  max-width:700px;
+  margin:60px auto;
+  background:#fff;
+  padding:30px;
+  border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.1);
+}
+h1 { color:#0b3a6e; }
+.question {
+  font-size:20px;
+  margin-bottom:20px;
+}
+.buttons button {
+  padding:12px 20px;
+  margin:10px;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+.yes { background:#1f7a3d; color:white; }
+.no { background:#b42318; color:white; }
+.result {
+  margin-top:30px;
+  padding:20px;
+  border-radius:10px;
+  display:none;
+}
+.result a {
+  display:inline-block;
+  margin-top:15px;
+  padding:12px 18px;
+  background:#0b3a6e;
+  color:#fff;
+  text-decoration:none;
+  border-radius:8px;
+}
+.requisition { background:#e9f7ee; }
+.procurement { background:#fff3d6; }
+.contract { background:#eaf2ff; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Before You Start a Contract</h1>
+
+  <div id="questionBox">
+    <div class="question" id="questionText"></div>
+    <div class="buttons">
+      <button class="yes" onclick="answer(true)">Yes</button>
+      <button class="no" onclick="answer(false)">No</button>
+    </div>
+  </div>
+
+  <div id="result" class="result"></div>
+</div>
+
+<script>
+
+let step = 0;
+
+function showQuestion() {
+  const q = document.getElementById("questionText");
+
+  switch(step) {
+    case 0:
+      q.innerHTML = "Is this ONLY a purchase of goods or supplies (no services)?";
+      break;
+    case 1:
+      q.innerHTML = "Is the total cost under $30,000?";
+      break;
+    case 2:
+      q.innerHTML = "Will the vendor install, assemble, or perform work on Town property?";
+      break;
+    case 3:
+      q.innerHTML = "Is this construction or repair work?";
+      break;
+    case 4:
+      q.innerHTML = "Does this require formal or informal bidding under NC law?";
+      break;
+  }
+}
+
+function answer(val) {
+
+  // STEP LOGIC
+  if (step === 0) {
+    if (val) step = 1;
+    else step = 3;
+  }
+
+  else if (step === 1) {
+    if (val) step = 2;
+    else return showProcurement();
+  }
+
+  else if (step === 2) {
+    if (val) return showContract();
+    else return showRequisition();
+  }
+
+  else if (step === 3) {
+    if (val) return showProcurement();
+    else step = 4;
+  }
+
+  else if (step === 4) {
+    if (val) return showProcurement();
+    else return showContract();
+  }
+
+  showQuestion();
+}
+
+function showRequisition() {
+  showResult("requisition",
+    "This should be handled by REQUISITION / PURCHASE ORDER ONLY.",
+    "/finance/requisition.php"
+  );
+}
+
+function showProcurement() {
+  showResult("procurement",
+    "STOP. You must complete the procurement / bidding process first.",
+    "/procurement/intake.php"
+  );
+}
+
+function showContract() {
+  showResult("contract",
+    "Proceed to create a contract in the Contracts Database.",
+    "/contracts/new_contract.php"
+  );
+}
+
+function showResult(type, message, link) {
+  document.getElementById("questionBox").style.display = "none";
+
+  const r = document.getElementById("result");
+  r.className = "result " + type;
+  r.style.display = "block";
+
+  r.innerHTML = `
+    <strong>${message}</strong><br/>
+    <a href="${link}">Continue</a>
+  `;
+}
+
+// INIT
+showQuestion();
+
+</script>
+
+</body>
+</html>

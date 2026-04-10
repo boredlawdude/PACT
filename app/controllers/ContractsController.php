@@ -264,14 +264,15 @@ class ContractsController
     
 
         $filters = [
-            'q' => $_GET['q'] ?? null,
-            'contract_status_id' => isset($_GET['contract_status_id']) ? (int)$_GET['contract_status_id'] : null,
-            'department_id' => $_GET['department_id'] ?? null,
-            'owner_primary_contact_id' => $_GET['owner_primary_contact_id'] ?? null,
-            'end_date_from' => $_GET['end_date_from'] ?? null,
-            'end_date_to' => $_GET['end_date_to'] ?? null,
-            'company_id' => isset($_GET['company_id']) ? (int)$_GET['company_id'] : null,
+            'q' => isset($_GET['q']) && trim($_GET['q']) !== '' ? $_GET['q'] : null,
+            'contract_status_id' => (isset($_GET['contract_status_id']) && $_GET['contract_status_id'] !== '' && $_GET['contract_status_id'] !== '0') ? (int)$_GET['contract_status_id'] : null,
+            'department_id' => (isset($_GET['department_id']) && $_GET['department_id'] !== '' && $_GET['department_id'] !== '0') ? $_GET['department_id'] : null,
+            'owner_primary_contact_id' => (isset($_GET['owner_primary_contact_id']) && $_GET['owner_primary_contact_id'] !== '' && $_GET['owner_primary_contact_id'] !== '0') ? $_GET['owner_primary_contact_id'] : null,
+            'end_date_from' => isset($_GET['end_date_from']) && $_GET['end_date_from'] !== '' ? $_GET['end_date_from'] : null,
+            'end_date_to' => isset($_GET['end_date_to']) && $_GET['end_date_to'] !== '' ? $_GET['end_date_to'] : null,
+            'company_id' => (isset($_GET['company_id']) && $_GET['company_id'] !== '' && $_GET['company_id'] !== '0') ? (int)$_GET['company_id'] : null,
         ];
+        // Pass filters directly — the model uses !empty() guards so nulls are safely ignored
         $contracts = $this->contracts->search($filters);
         $departments = $this->getDepartments();
         $responsiblePeople = $this->getResponsiblePeople();
