@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__ . '/../includes/init.php';
 
 // Returns JSON — called via fetch() from the dev agreement edit form
 header('Content-Type: application/json; charset=utf-8');
