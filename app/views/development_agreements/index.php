@@ -27,32 +27,40 @@ if (!function_exists('h')) {
         <tr>
           <th>#</th>
           <th>Project Name</th>
+          <th>Contract No.</th>
+          <th>Status</th>
           <th>Property Address</th>
           <th>Applicant</th>
           <th>Property Owner</th>
           <th>Anticipated Start</th>
           <th>Anticipated End</th>
-          <th>Termination Date</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <?php foreach ($agreements as $agr): ?>
         <tr>
-          <td><?= (int)$agr['dev_agreement_id'] ?></td>
+          <td><?= (int)$agr['contract_id'] ?></td>
           <td>
-            <a href="/index.php?page=development_agreements_show&dev_agreement_id=<?= (int)$agr['dev_agreement_id'] ?>">
-              <?= h($agr['project_name']) ?>
+            <a href="/index.php?page=contracts_show&contract_id=<?= (int)$agr['contract_id'] ?>">
+              <?= h($agr['name']) ?>
             </a>
+          </td>
+          <td><span class="font-monospace small"><?= h($agr['contract_number'] ?? '—') ?></span></td>
+          <td>
+            <?php if (!empty($agr['status_name'])): ?>
+              <span class="badge text-bg-secondary"><?= h($agr['status_name']) ?></span>
+            <?php else: ?>
+              <span class="text-muted">—</span>
+            <?php endif; ?>
           </td>
           <td><?= h($agr['property_address'] ?? '—') ?></td>
           <td><?= h($agr['applicant_name'] ?? '—') ?></td>
           <td><?= h($agr['property_owner_name'] ?? '—') ?></td>
-          <td><?= $agr['anticipated_start_date'] ? date('m/d/Y', strtotime($agr['anticipated_start_date'])) : '—' ?></td>
-          <td><?= $agr['anticipated_end_date']   ? date('m/d/Y', strtotime($agr['anticipated_end_date']))   : '—' ?></td>
-          <td><?= $agr['agreement_termination_date'] ? date('m/d/Y', strtotime($agr['agreement_termination_date'])) : '—' ?></td>
+          <td><?= !empty($agr['anticipated_start_date']) ? date('m/d/Y', strtotime($agr['anticipated_start_date'])) : '—' ?></td>
+          <td><?= !empty($agr['anticipated_end_date'])   ? date('m/d/Y', strtotime($agr['anticipated_end_date']))   : '—' ?></td>
           <td class="text-end">
-            <a href="/index.php?page=development_agreements_show&dev_agreement_id=<?= (int)$agr['dev_agreement_id'] ?>"
+            <a href="/index.php?page=contracts_show&contract_id=<?= (int)$agr['contract_id'] ?>"
                class="btn btn-sm btn-outline-secondary">View</a>
           </td>
         </tr>

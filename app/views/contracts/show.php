@@ -2,17 +2,21 @@
 $contractTitle  = trim((string)($contract['name'] ?? 'Contract'));
 $contractNumber = trim((string)($contract['contract_number'] ?? ''));
 $status         = trim((string)($contract['status_name'] ?? ''));
+$isDevAgreement = isset($devAgreement) && is_array($devAgreement);
 ?>
 
 <div class="container py-4">
 
   <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
-      <div class="text-muted small mb-1">Contract Detail</div>
+      <div class="text-muted small mb-1"><?= $isDevAgreement ? 'Development Agreement' : 'Contract Detail' ?></div>
       <h1 class="h3 mb-1"><?= h($contractTitle) ?></h1>
       <div class="text-muted">
         <?php if ($contractNumber !== ''): ?>
           <span class="me-3"><strong>No.</strong> <?= h($contractNumber) ?></span>
+        <?php endif; ?>
+        <?php if ($isDevAgreement): ?>
+          <span class="badge text-bg-info me-1">Development Agreement</span>
         <?php endif; ?>
         <?php if ($status !== ''): ?>
           <?php if (!function_exists('status_badge')) {
@@ -39,8 +43,11 @@ $status         = trim((string)($contract['status_name'] ?? ''));
       </div>
     </div>
 
-    <div class="d-flex gap-2">
-      <a href="/index.php?page=contracts" class="btn btn-outline-secondary btn-sm">Back</a>
+    <div class="d-flex gap-2 flex-wrap justify-content-end">
+      <a href="/index.php?page=<?= $isDevAgreement ? 'development_agreements' : 'contracts' ?>" class="btn btn-outline-secondary btn-sm">Back</a>
+      <?php if ($isDevAgreement && !empty($devAgreement['dev_agreement_id'])): ?>
+        <a href="/index.php?page=development_agreements_edit&dev_agreement_id=<?= (int)$devAgreement['dev_agreement_id'] ?>" class="btn btn-warning btn-sm">Edit Dev Agreement Details</a>
+      <?php endif; ?>
       <a href="/index.php?page=contracts_edit&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-primary btn-sm">Change Contract Info</a>
       <a href="/index.php?page=contracts_generate_html&contract_id=<?= (int)$contract['contract_id'] ?>" target="_blank" class="btn btn-outline-success btn-sm">Generate HTML</a>
       <a href="/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-info btn-sm">Generate Word Doc</a>
@@ -161,6 +168,107 @@ $status         = trim((string)($contract['status_name'] ?? ''));
         </div>
       </div>
 
+      <?php if ($isDevAgreement && $devAgreement): ?>
+
+      <!-- Dev Agreement: Property Information -->
+      <div class="card shadow-sm mb-4 border-info">
+        <div class="card-header bg-info bg-opacity-10">
+          <h2 class="h6 mb-0 text-info">Property Information</h2>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-12">
+              <div class="small text-muted">Property Address</div>
+              <div><?= h($devAgreement['property_address'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Parcel PIN</div>
+              <div><?= h($devAgreement['property_pin'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Real Estate ID</div>
+              <div><?= h($devAgreement['property_realestateid'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Acreage</div>
+              <div><?= h($devAgreement['property_acerage'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Current Zoning</div>
+              <div><?= h($devAgreement['current_zoning'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Proposed Zoning</div>
+              <div><?= h($devAgreement['proposed_zoning'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Comp Plan Designation</div>
+              <div><?= h($devAgreement['comp_plan_designation'] ?? '') ?: '—' ?></div>
+            </div>
+            <?php if (!empty($devAgreement['project_description'])): ?>
+            <div class="col-12">
+              <div class="small text-muted">Project Description</div>
+              <div style="white-space:pre-wrap"><?= h($devAgreement['project_description']) ?></div>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($devAgreement['proposed_improvements'])): ?>
+            <div class="col-12">
+              <div class="small text-muted">Proposed Improvements</div>
+              <div style="white-space:pre-wrap"><?= h($devAgreement['proposed_improvements']) ?></div>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dev Agreement: Parties -->
+      <div class="card shadow-sm mb-4 border-info">
+        <div class="card-header bg-info bg-opacity-10">
+          <h2 class="h6 mb-0 text-info">Parties</h2>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="small text-muted">Applicant</div>
+              <div><?= h($devAgreement['applicant_name'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Property Owner</div>
+              <div><?= h($devAgreement['property_owner_name'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Attorney</div>
+              <div><?= h($devAgreement['attorney_name'] ?? '') ?: '—' ?></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dev Agreement: Key Dates -->
+      <div class="card shadow-sm mb-4 border-info">
+        <div class="card-header bg-info bg-opacity-10">
+          <h2 class="h6 mb-0 text-info">Dev Agreement Dates</h2>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="small text-muted">Anticipated Start</div>
+              <div><?= !empty($devAgreement['anticipated_start_date']) ? date('m/d/Y', strtotime($devAgreement['anticipated_start_date'])) : '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Anticipated End</div>
+              <div><?= !empty($devAgreement['anticipated_end_date']) ? date('m/d/Y', strtotime($devAgreement['anticipated_end_date'])) : '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Termination Date</div>
+              <div><?= !empty($devAgreement['agreement_termination_date']) ? date('m/d/Y', strtotime($devAgreement['agreement_termination_date'])) : '—' ?></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <?php endif; ?>
+
     </div>
 
     <div class="col-lg-4">
@@ -179,6 +287,7 @@ $status         = trim((string)($contract['status_name'] ?? ''));
         </div>
       </div>
 
+      <?php if (!$isDevAgreement): ?>
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-white">
           <h2 class="h6 mb-0">Procurement &amp; Public Bidding Compliance</h2>
@@ -221,6 +330,7 @@ $status         = trim((string)($contract['status_name'] ?? ''));
           </div>
         </div>
       </div>
+      <?php endif; ?>
 
     </div>
 
@@ -372,6 +482,7 @@ $status         = trim((string)($contract['status_name'] ?? ''));
       </div>
 
   <!-- Bidding Compliance Log -->
+  <?php if (!$isDevAgreement): ?>
   <div class="row mt-4" id="bidding-compliance">
     <div class="col-12">
       <div class="card shadow-sm mb-4">
@@ -466,6 +577,7 @@ $status         = trim((string)($contract['status_name'] ?? ''));
       </div>
     </div>
   </div>
+  <?php endif; /* !$isDevAgreement */ ?>
 
   <!-- Contract History -->
   <div class="row mt-4">

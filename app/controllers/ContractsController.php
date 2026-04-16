@@ -310,6 +310,14 @@ class ContractsController
         $complianceStmt->execute([$id]);
         $complianceRecords = $complianceStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Load linked development agreement (if this contract is of type "Development Agreement")
+        $devAgreement = null;
+        if (!empty($contract['contract_type_name']) && strtolower($contract['contract_type_name']) === 'development agreement') {
+            require_once APP_ROOT . '/app/models/DevelopmentAgreement.php';
+            $devModel = new DevelopmentAgreement($this->db);
+            $devAgreement = $devModel->findByContractId($id);
+        }
+
         require APP_ROOT . '/app/views/contracts/show.php';
     }
 

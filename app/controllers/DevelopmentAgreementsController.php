@@ -1,31 +1,52 @@
 <?php
 declare(strict_types=1);
 require_once APP_ROOT . '/app/models/DevelopmentAgreement.php';
+require_once APP_ROOT . '/app/models/Contract.php';
 
 class DevelopmentAgreementsController
 {
     private PDO $db;
     private DevelopmentAgreement $model;
+    private Contract $contracts;
 
     public function __construct()
     {
-        $this->db    = db();
-        $this->model = new DevelopmentAgreement($this->db);
+        $this->db        = db();
+        $this->model     = new DevelopmentAgreement($this->db);
+        $this->contracts = new Contract($this->db);
     }
 
     // ------------------------------------------------------------------ index
     public function index(): void
     {
-        $agreements = $this->model->all();
+        // Show contracts of type "Development Agreement"
+        $stmt = $this->db->query("
+            SELECT c.contract_id, c.name, c.contract_number, c.contract_status_id,
+                   cs.contract_status_name AS status_name,
+                   da.dev_agreement_id, da.property_address, da.property_pin,
+                   da.anticipated_start_date, da.anticipated_end_date,
+                   CONCAT_WS(' ', a.first_name, a.last_name)  AS applicant_name,
+                   CONCAT_WS(' ', po.first_name, po.last_name) AS property_owner_name,
+                   c.created_at
+            FROM contracts c
+            JOIN contract_types ct ON ct.contract_type_id = c.contract_type_id
+                 AND ct.contract_type = 'Development Agreement'
+            LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
+            LEFT JOIN development_agreements da ON da.contract_id = c.contract_id
+            LEFT JOIN people a  ON a.person_id  = da.applicant_id
+            LEFT JOIN people po ON po.person_id = da.property_owner_id
+            ORDER BY c.contract_id DESC
+        ");
+        $agreements = $stmt->fetchAll(PDO::FETCH_ASSOC);
         require APP_ROOT . '/app/views/development_agreements/index.php';
     }
 
     // ------------------------------------------------------------------ create (GET)
     public function create(): void
     {
-        $mode       = 'create';
-        $agreement  = $_SESSION['old_devagr_form'] ?? [];
-        $errors     = $_SESSION['flash_errors'] ?? [];
+        $mode      = 'create';
+        $agreement = $_SESSION['old_devagr_form'] ?? [];
+        $errors    = $_SESSION['flash_errors'] ?? [];
         unset($_SESSION['old_devagr_form'], $_SESSION['flash_errors']);
 
         $people = $this->getPeopleList();
@@ -49,9 +70,35 @@ class DevelopmentAgreementsController
             exit;
         }
 
-        $newId = $this->model->create($data);
-        $_SESSION['flash_success'] = 'Development agreement created.';
-        header('Location: /index.php?page=development_agreements_show&dev_agreement_id=' . $newId);
+        // --- Auto-create linked Contract record ---
+        $contractTypeId = $this->getDevAgrContractTypeId();
+
+        $contractData = [
+            'name'              => trim((string)($data['project_name'] ?? '')),
+            'contract_type_id'  => $contractTypeId,
+            'contract_status_id' => 1,
+            'governing_law'     => 'North Carolina',
+            'currency'          => 'USD',
+            'contract_number'   => '',   // generated below
+        ];
+        $contractData['contract_number'] = $this->generateContractNumber($contractData);
+
+        try {
+            $contractId = $this->contracts->create($contractData);
+        } catch (Throwable $e) {
+            $_SESSION['flash_errors']    = ['Unable to create linked contract: ' . $e->getMessage()];
+            $_SESSION['old_devagr_form'] = $data;
+            header('Location: /index.php?page=development_agreements_create');
+            exit;
+        }
+
+        $this->logContractHistory($contractId, 'contract_created', null, 'Draft', 'Development agreement created');
+
+        // --- Create dev agreement linked to the new contract ---
+        $data['contract_id'] = $contractId;
+        $this->model->create($data);
+
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;
     }
 
@@ -62,9 +109,15 @@ class DevelopmentAgreementsController
         $agreement = $this->model->find($id);
         if (!$agreement) { http_response_code(404); echo 'Not found.'; return; }
 
+        // Redirect to the linked contract show page
+        if (!empty($agreement['contract_id'])) {
+            header('Location: /index.php?page=contracts_show&contract_id=' . (int)$agreement['contract_id']);
+            exit;
+        }
+
+        // Legacy fallback: no linked contract
         $flashSuccess = $_SESSION['flash_success'] ?? null;
         unset($_SESSION['flash_success']);
-
         require APP_ROOT . '/app/views/development_agreements/show.php';
     }
 
@@ -79,7 +132,6 @@ class DevelopmentAgreementsController
         $errors = $_SESSION['flash_errors'] ?? [];
         unset($_SESSION['flash_errors']);
 
-        // Overlay any repopulated old form data
         if (!empty($_SESSION['old_devagr_form'])) {
             $agreement = array_merge($agreement, $_SESSION['old_devagr_form']);
             unset($_SESSION['old_devagr_form']);
@@ -108,6 +160,22 @@ class DevelopmentAgreementsController
         }
 
         $this->model->update($id, $data);
+
+        // Keep linked contract name in sync with project_name
+        $agreement = $this->model->find($id);
+        if ($agreement && !empty($agreement['contract_id'])) {
+            $contractId = (int)$agreement['contract_id'];
+            $contract   = $this->contracts->find($contractId);
+            if ($contract) {
+                $this->contracts->update($contractId, array_merge($contract, [
+                    'name' => trim((string)($data['project_name'] ?? $contract['name'])),
+                ]));
+                $this->logContractHistory($contractId, 'contract_updated', null, null, 'Development agreement details updated');
+            }
+            header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+            exit;
+        }
+
         $_SESSION['flash_success'] = 'Development agreement updated.';
         header('Location: /index.php?page=development_agreements_show&dev_agreement_id=' . $id);
         exit;
@@ -124,15 +192,69 @@ class DevelopmentAgreementsController
         }
 
         $id = (int)($_POST['dev_agreement_id'] ?? 0);
+
         if ($id > 0) {
+            $agreement = $this->model->find($id);
+            $linkedContractId = !empty($agreement['contract_id']) ? (int)$agreement['contract_id'] : null;
+
             $this->model->delete($id);
+
+            // Also delete the auto-created linked contract
+            if ($linkedContractId) {
+                $this->contracts->delete($linkedContractId);
+            }
         }
+
         $_SESSION['flash_success'] = 'Development agreement deleted.';
         header('Location: /index.php?page=development_agreements');
         exit;
     }
 
-    // ------------------------------------------------------------------ helpers
+    // ------------------------------------------------------------------ private helpers
+
+    private function getDevAgrContractTypeId(): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT contract_type_id FROM contract_types WHERE contract_type = 'Development Agreement' LIMIT 1"
+        );
+        $stmt->execute();
+        $id = $stmt->fetchColumn();
+        if (!$id) {
+            // Auto-insert if the migration hasn't been run yet
+            $ins = $this->db->prepare(
+                "INSERT INTO contract_types (contract_type, is_active) VALUES ('Development Agreement', 1)"
+            );
+            $ins->execute();
+            $id = (int)$this->db->lastInsertId();
+        }
+        return (int)$id;
+    }
+
+    private function generateContractNumber(array $data): string
+    {
+        $year  = date('y');
+        $name  = trim((string)($data['name'] ?? ''));
+        $words = preg_split('/\s+/', $name);
+        $first  = isset($words[0]) ? strtoupper(substr($words[0], 0, 3)) : 'DA';
+        $second = isset($words[1]) ? strtoupper(substr($words[1], 0, 3)) : '';
+
+        $stmt = $this->db->query("SELECT MAX(contract_id) FROM contracts");
+        $seq  = (int)$stmt->fetchColumn() + 1;
+
+        $parts = [$year, 'DA', $first . ($second ? '_' . $second : ''), $seq];
+        return implode('-', $parts);
+    }
+
+    private function logContractHistory(int $contractId, string $eventType, ?string $oldStatus = null, ?string $newStatus = null, ?string $notes = null): void
+    {
+        $changedBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
+        $stmt = $this->db->prepare(
+            "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
+             VALUES (?, ?, ?, ?, ?, NOW(), ?)"
+        );
+        $stmt->execute([$contractId, $eventType, $oldStatus, $newStatus, $changedBy, $notes]);
+    }
+
     private function getPeopleList(): array
     {
         $stmt = $this->db->query(
@@ -168,7 +290,7 @@ class DevelopmentAgreementsController
     private function validate(array $data): array
     {
         $errors = [];
-        if (trim($data['project_name']) === '') {
+        if (trim((string)($data['project_name'] ?? '')) === '') {
             $errors[] = 'Project name is required.';
         }
         return $errors;

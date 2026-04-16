@@ -328,7 +328,7 @@ class Contract
             'description' => $this->nullIfEmpty($data['description'] ?? null),
             'contract_body_html' => $this->nullIfEmpty($data['contract_body_html'] ?? null),
             'contract_type_id' => $this->nullIfEmpty($data['contract_type_id'] ?? null),
-            'counterparty_company_id' => $this->requiredInt($data['counterparty_company_id'] ?? null),
+            'counterparty_company_id' => $this->nullIfEmpty($data['counterparty_company_id'] ?? null),
             'counterparty_primary_contact_id' => $this->nullIfEmpty($data['counterparty_primary_contact_id'] ?? null),
             'owner_company_id' => $this->nullIfEmpty($data['owner_company_id'] ?? 3),
             'owner_primary_contact_id' => $this->nullIfEmpty($data['owner_primary_contact_id'] ?? null),

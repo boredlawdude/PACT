@@ -54,18 +54,38 @@ class DevelopmentAgreement
         return $row ?: null;
     }
 
+    public function findByContractId(int $contractId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                da.*,
+                CONCAT_WS(' ', a.first_name, a.last_name)  AS applicant_name,
+                CONCAT_WS(' ', po.first_name, po.last_name) AS property_owner_name,
+                CONCAT_WS(' ', at.first_name, at.last_name) AS attorney_name
+            FROM development_agreements da
+            LEFT JOIN people a  ON a.person_id  = da.applicant_id
+            LEFT JOIN people po ON po.person_id = da.property_owner_id
+            LEFT JOIN people at ON at.person_id  = da.attorney_id
+            WHERE da.contract_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$contractId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
     public function create(array $data): int
     {
         $stmt = $this->db->prepare("
             INSERT INTO development_agreements
-                (applicant_id, property_owner_id, attorney_id,
+                (contract_id, applicant_id, property_owner_id, attorney_id,
                  property_address, property_pin, property_realestateid,
                  project_name, project_description, property_acerage,
                  current_zoning, proposed_zoning, comp_plan_designation,
                  anticipated_start_date, anticipated_end_date,
                  proposed_improvements, agreement_termination_date)
             VALUES
-                (:applicant_id, :property_owner_id, :attorney_id,
+                (:contract_id, :applicant_id, :property_owner_id, :attorney_id,
                  :property_address, :property_pin, :property_realestateid,
                  :project_name, :project_description, :property_acerage,
                  :current_zoning, :proposed_zoning, :comp_plan_designation,
@@ -98,6 +118,7 @@ class DevelopmentAgreement
                 agreement_termination_date = :agreement_termination_date
             WHERE dev_agreement_id = :id
         ");
+        // Note: contract_id is not updated after initial creation
         $params = $this->bindParams($data);
         $params[':id'] = $id;
         $stmt->execute($params);
@@ -116,6 +137,7 @@ class DevelopmentAgreement
         $nullOrDate = fn($v) => ($v !== '' && $v !== null) ? $v : null;
 
         return [
+            ':contract_id'               => $nullOrInt($data['contract_id'] ?? null),
             ':applicant_id'              => $nullOrInt($data['applicant_id'] ?? null),
             ':property_owner_id'         => $nullOrInt($data['property_owner_id'] ?? null),
             ':attorney_id'               => $nullOrInt($data['attorney_id'] ?? null),
