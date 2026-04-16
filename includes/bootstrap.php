@@ -11,6 +11,6 @@ if (!defined('APP_ROOT')) {
 }
 
 if (!defined('APP_NAME')) {
-    define('APP_NAME', $_ENV['APP_NAME'] ?? 'Contracts');
+    define('APP_NAME', $_ENV['APP_NAME'] ?? 'PACT');
 }
 

@@ -29,7 +29,7 @@ defined('DB_NAME')      || define('DB_NAME', $_ENV['DB_DATABASE'] ?? 'contract_m
 defined('DB_USER')      || define('DB_USER', $_ENV['DB_USERNAME'] ?? '');
 defined('DB_PASS')      || define('DB_PASS', $_ENV['DB_PASSWORD'] ?? '');
 
-defined('APP_NAME')     || define('APP_NAME', $_ENV['APP_NAME'] ?? 'Contracts');
+defined('APP_NAME')     || define('APP_NAME', $_ENV['APP_NAME'] ?? 'PACT');
 defined('SESSION_NAME') || define('SESSION_NAME', $_ENV['SESSION_NAME'] ?? 'contracts_app_sess');
 
 defined('SMTP_HOST')        || define('SMTP_HOST', $_ENV['SMTP_HOST'] ?? '');

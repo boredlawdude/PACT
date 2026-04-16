@@ -53,19 +53,21 @@ declare(strict_types=1);
         <li class="nav-item"><a class="nav-link" href="/index.php?page=dashboard">Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" href="/index.php?page=contracts">Contracts</a></li>
         <li class="nav-item"><a class="nav-link" href="/index.php?page=contracts_create">New Contract</a></li>
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=development_agreements">Dev Agreements</a></li>
-        <li class="nav-item">
-          <a class="nav-link" href="/index.php?page=dev_agreement_submissions">
-            Intake Submissions
-            <?php
-            try {
-                require_once APP_ROOT . '/app/models/DevelopmentAgreementSubmission.php';
-                $pendingCount = (new DevelopmentAgreementSubmission(db()))->countPending();
-                if ($pendingCount > 0) echo '<span class="badge bg-warning text-dark ms-1">' . $pendingCount . '</span>';
-            } catch (Throwable $e) { /* table may not exist yet */ }
-            ?>
-          </a>
-        </li>
+        <div class="d-flex align-items-center border border-light border-opacity-50 rounded px-1 mx-1" style="background:rgba(255,255,255,0.08);">
+          <li class="nav-item"><a class="nav-link" href="/index.php?page=development_agreements">Dev Agreements</a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="/index.php?page=dev_agreement_submissions">
+              Intake Submissions
+              <?php
+              try {
+                  require_once APP_ROOT . '/app/models/DevelopmentAgreementSubmission.php';
+                  $pendingCount = (new DevelopmentAgreementSubmission(db()))->countPending();
+                  if ($pendingCount > 0) echo '<span class="badge bg-warning text-dark ms-1">' . $pendingCount . '</span>';
+              } catch (Throwable $e) { /* table may not exist yet */ }
+              ?>
+            </a>
+          </li>
+        </div>
 
         <li class="nav-item"><a class="nav-link" href="/index.php?page=companies">Companies</a></li>
         <li class="nav-item"><a class="nav-link" href="/index.php?page=companies_create">New Company</a></li>
