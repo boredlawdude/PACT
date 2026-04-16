@@ -151,6 +151,16 @@ $v = fn($field) => h($agreement[$field] ?? '');
         <input class="form-control" type="date" id="agreement_termination_date" name="agreement_termination_date"
                value="<?= $v('agreement_termination_date') ?>">
       </div>
+      <div class="col-md-3">
+        <label class="form-label" for="planning_board_date">Planning Board Date</label>
+        <input class="form-control" type="date" id="planning_board_date" name="planning_board_date"
+               value="<?= $v('planning_board_date') ?>">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="town_council_hearing_date">Town Council Hearing Date</label>
+        <input class="form-control" type="date" id="town_council_hearing_date" name="town_council_hearing_date"
+               value="<?= $v('town_council_hearing_date') ?>">
+      </div>
     </div>
 
   </div><!-- /card-body -->

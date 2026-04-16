@@ -83,14 +83,16 @@ class DevelopmentAgreement
                  project_name, project_description, property_acerage,
                  current_zoning, proposed_zoning, comp_plan_designation,
                  anticipated_start_date, anticipated_end_date,
-                 proposed_improvements, agreement_termination_date)
+                 proposed_improvements, agreement_termination_date,
+                 planning_board_date, town_council_hearing_date)
             VALUES
                 (:contract_id, :applicant_id, :property_owner_id, :attorney_id,
                  :property_address, :property_pin, :property_realestateid,
                  :project_name, :project_description, :property_acerage,
                  :current_zoning, :proposed_zoning, :comp_plan_designation,
                  :anticipated_start_date, :anticipated_end_date,
-                 :proposed_improvements, :agreement_termination_date)
+                 :proposed_improvements, :agreement_termination_date,
+                 :planning_board_date, :town_council_hearing_date)
         ");
         $stmt->execute($this->bindParams($data));
         return (int)$this->db->lastInsertId();
@@ -115,7 +117,9 @@ class DevelopmentAgreement
                 anticipated_start_date    = :anticipated_start_date,
                 anticipated_end_date      = :anticipated_end_date,
                 proposed_improvements     = :proposed_improvements,
-                agreement_termination_date = :agreement_termination_date
+                agreement_termination_date = :agreement_termination_date,
+                planning_board_date        = :planning_board_date,
+                town_council_hearing_date  = :town_council_hearing_date
             WHERE dev_agreement_id = :id
         ");
         // Note: contract_id is not updated after initial creation
@@ -154,6 +158,8 @@ class DevelopmentAgreement
             ':anticipated_end_date'      => $nullOrDate($data['anticipated_end_date'] ?? null),
             ':proposed_improvements'     => $nullOrStr($data['proposed_improvements'] ?? null),
             ':agreement_termination_date' => $nullOrDate($data['agreement_termination_date'] ?? null),
+            ':planning_board_date'        => $nullOrDate($data['planning_board_date'] ?? null),
+            ':town_council_hearing_date'  => $nullOrDate($data['town_council_hearing_date'] ?? null),
         ];
     }
 }

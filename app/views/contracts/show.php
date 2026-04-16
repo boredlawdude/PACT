@@ -263,6 +263,14 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
               <div class="small text-muted">Termination Date</div>
               <div><?= !empty($devAgreement['agreement_termination_date']) ? date('m/d/Y', strtotime($devAgreement['agreement_termination_date'])) : '—' ?></div>
             </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Planning Board Date</div>
+              <div><?= !empty($devAgreement['planning_board_date']) ? date('m/d/Y', strtotime($devAgreement['planning_board_date'])) : '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Town Council Hearing Date</div>
+              <div><?= !empty($devAgreement['town_council_hearing_date']) ? date('m/d/Y', strtotime($devAgreement['town_council_hearing_date'])) : '—' ?></div>
+            </div>
           </div>
         </div>
       </div>

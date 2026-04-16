@@ -284,6 +284,8 @@ class DevelopmentAgreementsController
             'anticipated_end_date'       => $_POST['anticipated_end_date']       ?? '',
             'proposed_improvements'      => $_POST['proposed_improvements']      ?? '',
             'agreement_termination_date' => $_POST['agreement_termination_date'] ?? '',
+            'planning_board_date'        => $_POST['planning_board_date']        ?? '',
+            'town_council_hearing_date'  => $_POST['town_council_hearing_date']  ?? '',
         ];
     }
 
