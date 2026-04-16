@@ -163,7 +163,7 @@ if (!function_exists('h')) {
 
             <div class="col-md-6">
                 <label class="form-label">Counterparty Company</label>
-                <select class="form-select" name="counterparty_company_id" required>
+                <select class="form-select" name="counterparty_company_id">
                     <option value="">Select…</option>
                     <?php foreach (($companies ?? []) as $co): ?>
                         <option value="<?= (int)$co['company_id'] ?>"
