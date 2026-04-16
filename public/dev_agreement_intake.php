@@ -45,22 +45,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db    = db();
         $model = new DevelopmentAgreementSubmission($db);
         $model->create([
-            'submitter_name'             => $subName,
-            'submitter_email'            => $subEmail,
-            'submitter_phone'            => trim((string)($_POST['submitter_phone']   ?? '')),
-            'submitter_company'          => trim((string)($_POST['submitter_company'] ?? '')),
-            'project_name'               => $projectName,
-            'project_description'        => trim((string)($_POST['project_description']   ?? '')),
-            'proposed_improvements'      => trim((string)($_POST['proposed_improvements'] ?? '')),
-            'current_zoning'             => trim((string)($_POST['current_zoning']         ?? '')),
-            'proposed_zoning'            => trim((string)($_POST['proposed_zoning']         ?? '')),
-            'comp_plan_designation'      => trim((string)($_POST['comp_plan_designation']   ?? '')),
-            'anticipated_start_date'     => $_POST['anticipated_start_date']     ?: null,
-            'anticipated_end_date'       => $_POST['anticipated_end_date']       ?: null,
-            'agreement_termination_date' => $_POST['agreement_termination_date'] ?: null,
-            'planning_board_date'        => $_POST['planning_board_date']        ?: null,
-            'town_council_hearing_date'  => $_POST['town_council_hearing_date']  ?: null,
-            'tracts_json'                => json_encode($tracts),
+            'submitter_name'                    => $subName,
+            'submitter_email'                   => $subEmail,
+            'submitter_phone'                   => trim((string)($_POST['submitter_phone']                   ?? '')),
+            'submitter_company'                 => trim((string)($_POST['submitter_company']                 ?? '')),
+            'property_owner_name'               => trim((string)($_POST['property_owner_name']               ?? '')),
+            'developer_entity_name'             => trim((string)($_POST['developer_entity_name']             ?? '')),
+            'developer_contact_name'            => trim((string)($_POST['developer_contact_name']            ?? '')),
+            'developer_address'                 => trim((string)($_POST['developer_address']                 ?? '')),
+            'developer_phone'                   => trim((string)($_POST['developer_phone']                   ?? '')),
+            'developer_email'                   => trim((string)($_POST['developer_email']                   ?? '')),
+            'developer_state_of_incorporation'  => trim((string)($_POST['developer_state_of_incorporation']  ?? '')),
+            'developer_entity_type'             => trim((string)($_POST['developer_entity_type']             ?? '')),
+            'project_name'                      => $projectName,
+            'project_description'               => trim((string)($_POST['project_description']               ?? '')),
+            'proposed_improvements'             => trim((string)($_POST['proposed_improvements']             ?? '')),
+            'current_zoning'                    => trim((string)($_POST['current_zoning']                    ?? '')),
+            'proposed_zoning'                   => trim((string)($_POST['proposed_zoning']                   ?? '')),
+            'comp_plan_designation'             => trim((string)($_POST['comp_plan_designation']             ?? '')),
+            'anticipated_start_date'            => $_POST['anticipated_start_date']     ?: null,
+            'anticipated_end_date'              => $_POST['anticipated_end_date']       ?: null,
+            'agreement_termination_date'        => $_POST['agreement_termination_date'] ?: null,
+            'planning_board_date'               => $_POST['planning_board_date']        ?: null,
+            'town_council_hearing_date'         => $_POST['town_council_hearing_date']  ?: null,
+            'tracts_json'                       => json_encode($tracts),
         ]);
 
         $success = true;
@@ -147,6 +155,60 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
           <label class="form-label">Company / Organization</label>
           <input type="text" class="form-control" name="submitter_company" maxlength="200"
                  value="<?= h($old['submitter_company'] ?? '') ?>">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Developer Entity Information ────────────────────────────────────── -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <p class="section-label">Developer Entity Information</p>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Corporation / Entity Name</label>
+          <input type="text" class="form-control" name="developer_entity_name" maxlength="200"
+                 value="<?= h($old['developer_entity_name'] ?? '') ?>">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Name of Contact</label>
+          <input type="text" class="form-control" name="developer_contact_name" maxlength="200"
+                 value="<?= h($old['developer_contact_name'] ?? '') ?>">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Address</label>
+          <input type="text" class="form-control" name="developer_address" maxlength="255"
+                 value="<?= h($old['developer_address'] ?? '') ?>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">State of Incorporation</label>
+          <input type="text" class="form-control" name="developer_state_of_incorporation" maxlength="100"
+                 placeholder="e.g. North Carolina"
+                 value="<?= h($old['developer_state_of_incorporation'] ?? '') ?>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Phone</label>
+          <input type="tel" class="form-control" name="developer_phone" maxlength="50"
+                 value="<?= h($old['developer_phone'] ?? '') ?>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" name="developer_email" maxlength="200"
+                 value="<?= h($old['developer_email'] ?? '') ?>">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Type of Legal Entity</label>
+          <select class="form-select" name="developer_entity_type">
+            <option value="">— Select —</option>
+            <?php foreach (['Individual', 'Corporation', 'LLC', 'Non-Profit'] as $et): ?>
+              <option value="<?= h($et) ?>" <?= (($old['developer_entity_type'] ?? '') === $et) ? 'selected' : '' ?>><?= h($et) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Property Owner Name <span class="fw-normal text-muted">(if different from developer)</span></label>
+          <input type="text" class="form-control" name="property_owner_name" maxlength="200"
+                 value="<?= h($old['property_owner_name'] ?? '') ?>">
         </div>
       </div>
     </div>

@@ -82,27 +82,33 @@ class DevelopmentAgreementSubmissionsController
             // 2 — Create Development Agreement
             $devModel = new DevelopmentAgreement($this->db);
             $devData  = [
-                'contract_id'                => $contractId,
-                'project_name'               => $submission['project_name']               ?? '',
-                'project_description'        => $submission['project_description']        ?? '',
-                'proposed_improvements'      => $submission['proposed_improvements']      ?? '',
-                'current_zoning'             => $submission['current_zoning']             ?? '',
-                'proposed_zoning'            => $submission['proposed_zoning']            ?? '',
-                'comp_plan_designation'      => $submission['comp_plan_designation']      ?? '',
-                'anticipated_start_date'     => $submission['anticipated_start_date']     ?? '',
-                'anticipated_end_date'       => $submission['anticipated_end_date']       ?? '',
-                'agreement_termination_date' => $submission['agreement_termination_date'] ?? '',
-                'planning_board_date'        => $submission['planning_board_date']        ?? '',
-                'town_council_hearing_date'  => $submission['town_council_hearing_date']  ?? '',
-                // Parties left blank — admin assigns after import
-                'applicant_id'               => '',
-                'property_owner_id'          => '',
-                'attorney_id'                => '',
+                'contract_id'                        => $contractId,
+                'project_name'                       => $submission['project_name']                       ?? '',
+                'project_description'                => $submission['project_description']                ?? '',
+                'proposed_improvements'              => $submission['proposed_improvements']              ?? '',
+                'current_zoning'                     => $submission['current_zoning']                     ?? '',
+                'proposed_zoning'                    => $submission['proposed_zoning']                    ?? '',
+                'comp_plan_designation'              => $submission['comp_plan_designation']              ?? '',
+                'anticipated_start_date'             => $submission['anticipated_start_date']             ?? '',
+                'anticipated_end_date'               => $submission['anticipated_end_date']               ?? '',
+                'agreement_termination_date'         => $submission['agreement_termination_date']         ?? '',
+                'planning_board_date'                => $submission['planning_board_date']                ?? '',
+                'town_council_hearing_date'          => $submission['town_council_hearing_date']          ?? '',
+                'property_owner_name'                => $submission['property_owner_name']                ?? '',
+                'developer_entity_name'              => $submission['developer_entity_name']              ?? '',
+                'developer_contact_name'             => $submission['developer_contact_name']             ?? '',
+                'developer_address'                  => $submission['developer_address']                  ?? '',
+                'developer_phone'                    => $submission['developer_phone']                    ?? '',
+                'developer_email'                    => $submission['developer_email']                    ?? '',
+                'developer_state_of_incorporation'   => $submission['developer_state_of_incorporation']   ?? '',
+                'developer_entity_type'              => $submission['developer_entity_type']              ?? '',
+                // attorney_id left blank — admin assigns after import
+                'attorney_id'                        => '',
                 // Legacy single-parcel fields (unused post-tracts)
-                'property_address'           => '',
-                'property_pin'               => '',
-                'property_realestateid'      => '',
-                'property_acerage'           => '',
+                'property_address'                   => '',
+                'property_pin'                       => '',
+                'property_realestateid'              => '',
+                'property_acerage'                   => '',
             ];
             $devAgreementId = $devModel->create($devData);
 

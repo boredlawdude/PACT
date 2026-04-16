@@ -52,32 +52,57 @@ $v = fn($field) => h($agreement[$field] ?? '');
       </div>
     </div>
 
-    <!-- Parties -->
-    <h6 class="text-muted text-uppercase fw-semibold mb-3 border-bottom pb-1">Parties</h6>
+    <!-- Developer Entity -->
+    <h6 class="text-muted text-uppercase fw-semibold mb-3 border-bottom pb-1">Developer Entity</h6>
     <div class="row g-3 mb-4">
       <div class="col-md-4">
-        <label class="form-label" for="applicant_id">Applicant</label>
-        <select class="form-select" id="applicant_id" name="applicant_id">
+        <label class="form-label" for="developer_entity_name">Corporation / Entity Name</label>
+        <input class="form-control" type="text" id="developer_entity_name" name="developer_entity_name" maxlength="200"
+               value="<?= $v('developer_entity_name') ?>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="developer_contact_name">Name of Contact</label>
+        <input class="form-control" type="text" id="developer_contact_name" name="developer_contact_name" maxlength="200"
+               value="<?= $v('developer_contact_name') ?>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="developer_entity_type">Type of Legal Entity</label>
+        <select class="form-select" id="developer_entity_type" name="developer_entity_type">
           <option value="">— Select —</option>
-          <?php foreach ($people as $p): ?>
-            <option value="<?= (int)$p['person_id'] ?>"
-              <?= ((string)($agreement['applicant_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
-              <?= h($p['full_name']) ?>
-            </option>
+          <?php foreach (['Individual', 'Corporation', 'LLC', 'Non-Profit'] as $et): ?>
+            <option value="<?= h($et) ?>" <?= ($v('developer_entity_type') === $et) ? 'selected' : '' ?>><?= h($et) ?></option>
           <?php endforeach; ?>
         </select>
       </div>
+      <div class="col-md-6">
+        <label class="form-label" for="developer_address">Address</label>
+        <input class="form-control" type="text" id="developer_address" name="developer_address" maxlength="255"
+               value="<?= $v('developer_address') ?>">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="developer_state_of_incorporation">State of Incorporation</label>
+        <input class="form-control" type="text" id="developer_state_of_incorporation" name="developer_state_of_incorporation" maxlength="100"
+               value="<?= $v('developer_state_of_incorporation') ?>">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="developer_phone">Phone</label>
+        <input class="form-control" type="tel" id="developer_phone" name="developer_phone" maxlength="50"
+               value="<?= $v('developer_phone') ?>">
+      </div>
       <div class="col-md-4">
-        <label class="form-label" for="property_owner_id">Property Owner</label>
-        <select class="form-select" id="property_owner_id" name="property_owner_id">
-          <option value="">— Select —</option>
-          <?php foreach ($people as $p): ?>
-            <option value="<?= (int)$p['person_id'] ?>"
-              <?= ((string)($agreement['property_owner_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
-              <?= h($p['full_name']) ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
+        <label class="form-label" for="developer_email">Email</label>
+        <input class="form-control" type="email" id="developer_email" name="developer_email" maxlength="200"
+               value="<?= $v('developer_email') ?>">
+      </div>
+    </div>
+
+    <!-- Other Parties -->
+    <h6 class="text-muted text-uppercase fw-semibold mb-3 border-bottom pb-1">Other Parties</h6>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <label class="form-label" for="property_owner_name">Property Owner</label>
+        <input class="form-control" type="text" id="property_owner_name" name="property_owner_name" maxlength="200"
+               value="<?= $v('property_owner_name') ?>">
       </div>
       <div class="col-md-4">
         <label class="form-label" for="attorney_id">Attorney</label>

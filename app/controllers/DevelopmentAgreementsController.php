@@ -28,16 +28,14 @@ class DevelopmentAgreementsController
                    cs.contract_status_name AS status_name,
                    da.dev_agreement_id, da.property_address, da.property_pin,
                    da.anticipated_start_date, da.anticipated_end_date,
-                   CONCAT_WS(' ', a.first_name, a.last_name)  AS applicant_name,
-                   CONCAT_WS(' ', po.first_name, po.last_name) AS property_owner_name,
+                   da.developer_entity_name, da.developer_contact_name,
+                   da.property_owner_name,
                    c.created_at
             FROM contracts c
             JOIN contract_types ct ON ct.contract_type_id = c.contract_type_id
                  AND ct.contract_type = 'Development Agreement'
             LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
             LEFT JOIN development_agreements da ON da.contract_id = c.contract_id
-            LEFT JOIN people a  ON a.person_id  = da.applicant_id
-            LEFT JOIN people po ON po.person_id = da.property_owner_id
             ORDER BY c.contract_id DESC
         ");
         $agreements = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -289,24 +287,30 @@ class DevelopmentAgreementsController
     private function extractPost(): array
     {
         return [
-            'applicant_id'               => $_POST['applicant_id']               ?? '',
-            'property_owner_id'          => $_POST['property_owner_id']          ?? '',
-            'attorney_id'                => $_POST['attorney_id']                ?? '',
-            'property_address'           => $_POST['property_address']           ?? '',
-            'property_pin'               => $_POST['property_pin']               ?? '',
-            'property_realestateid'      => $_POST['property_realestateid']      ?? '',
-            'project_name'               => $_POST['project_name']               ?? '',
-            'project_description'        => $_POST['project_description']        ?? '',
-            'property_acerage'           => $_POST['property_acerage']           ?? '',
-            'current_zoning'             => $_POST['current_zoning']             ?? '',
-            'proposed_zoning'            => $_POST['proposed_zoning']            ?? '',
-            'comp_plan_designation'      => $_POST['comp_plan_designation']      ?? '',
-            'anticipated_start_date'     => $_POST['anticipated_start_date']     ?? '',
-            'anticipated_end_date'       => $_POST['anticipated_end_date']       ?? '',
-            'proposed_improvements'      => $_POST['proposed_improvements']      ?? '',
-            'agreement_termination_date' => $_POST['agreement_termination_date'] ?? '',
-            'planning_board_date'        => $_POST['planning_board_date']        ?? '',
-            'town_council_hearing_date'  => $_POST['town_council_hearing_date']  ?? '',
+            'attorney_id'                        => $_POST['attorney_id']                        ?? '',
+            'property_owner_name'                => $_POST['property_owner_name']                ?? '',
+            'developer_entity_name'              => $_POST['developer_entity_name']              ?? '',
+            'developer_contact_name'             => $_POST['developer_contact_name']             ?? '',
+            'developer_address'                  => $_POST['developer_address']                  ?? '',
+            'developer_phone'                    => $_POST['developer_phone']                    ?? '',
+            'developer_email'                    => $_POST['developer_email']                    ?? '',
+            'developer_state_of_incorporation'   => $_POST['developer_state_of_incorporation']   ?? '',
+            'developer_entity_type'              => $_POST['developer_entity_type']              ?? '',
+            'property_address'                   => $_POST['property_address']                   ?? '',
+            'property_pin'                       => $_POST['property_pin']                       ?? '',
+            'property_realestateid'              => $_POST['property_realestateid']              ?? '',
+            'project_name'                       => $_POST['project_name']                       ?? '',
+            'project_description'                => $_POST['project_description']                ?? '',
+            'property_acerage'                   => $_POST['property_acerage']                   ?? '',
+            'current_zoning'                     => $_POST['current_zoning']                     ?? '',
+            'proposed_zoning'                    => $_POST['proposed_zoning']                    ?? '',
+            'comp_plan_designation'              => $_POST['comp_plan_designation']              ?? '',
+            'anticipated_start_date'             => $_POST['anticipated_start_date']             ?? '',
+            'anticipated_end_date'               => $_POST['anticipated_end_date']               ?? '',
+            'proposed_improvements'              => $_POST['proposed_improvements']              ?? '',
+            'agreement_termination_date'         => $_POST['agreement_termination_date']         ?? '',
+            'planning_board_date'                => $_POST['planning_board_date']                ?? '',
+            'town_council_hearing_date'          => $_POST['town_council_hearing_date']          ?? '',
         ];
     }
 

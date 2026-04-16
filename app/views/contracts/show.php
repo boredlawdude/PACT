@@ -237,16 +237,40 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
         </div>
       </div>
 
-      <!-- Dev Agreement: Parties -->
+      <!-- Dev Agreement: Developer Entity & Parties -->
       <div class="card shadow-sm mb-4 border-info">
         <div class="card-header bg-info bg-opacity-10">
-          <h2 class="h6 mb-0 text-info">Parties</h2>
+          <h2 class="h6 mb-0 text-info">Developer Entity</h2>
         </div>
         <div class="card-body">
           <div class="row g-3">
             <div class="col-md-4">
-              <div class="small text-muted">Applicant</div>
-              <div><?= h($devAgreement['applicant_name'] ?? '') ?: '—' ?></div>
+              <div class="small text-muted">Corporation / Entity Name</div>
+              <div><?= h($devAgreement['developer_entity_name'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Name of Contact</div>
+              <div><?= h($devAgreement['developer_contact_name'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Type of Legal Entity</div>
+              <div><?= h($devAgreement['developer_entity_type'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted">Address</div>
+              <div><?= h($devAgreement['developer_address'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">State of Incorporation</div>
+              <div><?= h($devAgreement['developer_state_of_incorporation'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Phone</div>
+              <div><?= h($devAgreement['developer_phone'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-4">
+              <div class="small text-muted">Email</div>
+              <div><?= $devAgreement['developer_email'] ? '<a href="mailto:' . h($devAgreement['developer_email']) . '">' . h($devAgreement['developer_email']) . '</a>' : '—' ?></div>
             </div>
             <div class="col-md-4">
               <div class="small text-muted">Property Owner</div>

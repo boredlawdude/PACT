@@ -48,6 +48,10 @@ class DevelopmentAgreementSubmission
         $stmt = $this->db->prepare("
             INSERT INTO development_agreement_submissions
                 (submitter_name, submitter_email, submitter_phone, submitter_company,
+                 property_owner_name,
+                 developer_entity_name, developer_contact_name, developer_address,
+                 developer_phone, developer_email,
+                 developer_state_of_incorporation, developer_entity_type,
                  project_name, project_description, proposed_improvements,
                  current_zoning, proposed_zoning, comp_plan_designation,
                  anticipated_start_date, anticipated_end_date,
@@ -55,6 +59,10 @@ class DevelopmentAgreementSubmission
                  tracts_json, status)
             VALUES
                 (:submitter_name, :submitter_email, :submitter_phone, :submitter_company,
+                 :property_owner_name,
+                 :developer_entity_name, :developer_contact_name, :developer_address,
+                 :developer_phone, :developer_email,
+                 :developer_state_of_incorporation, :developer_entity_type,
                  :project_name, :project_description, :proposed_improvements,
                  :current_zoning, :proposed_zoning, :comp_plan_designation,
                  :anticipated_start_date, :anticipated_end_date,
@@ -62,22 +70,30 @@ class DevelopmentAgreementSubmission
                  :tracts_json, 'pending')
         ");
         $stmt->execute([
-            ':submitter_name'             => $n($data['submitter_name']             ?? null),
-            ':submitter_email'            => $n($data['submitter_email']            ?? null),
-            ':submitter_phone'            => $n($data['submitter_phone']            ?? null),
-            ':submitter_company'          => $n($data['submitter_company']          ?? null),
-            ':project_name'               => trim((string)($data['project_name']    ?? '')),
-            ':project_description'        => $n($data['project_description']        ?? null),
-            ':proposed_improvements'      => $n($data['proposed_improvements']      ?? null),
-            ':current_zoning'             => $n($data['current_zoning']             ?? null),
-            ':proposed_zoning'            => $n($data['proposed_zoning']            ?? null),
-            ':comp_plan_designation'      => $n($data['comp_plan_designation']      ?? null),
-            ':anticipated_start_date'     => $d($data['anticipated_start_date']     ?? null),
-            ':anticipated_end_date'       => $d($data['anticipated_end_date']       ?? null),
-            ':agreement_termination_date' => $d($data['agreement_termination_date'] ?? null),
-            ':planning_board_date'        => $d($data['planning_board_date']        ?? null),
-            ':town_council_hearing_date'  => $d($data['town_council_hearing_date']  ?? null),
-            ':tracts_json'                => $data['tracts_json'] ?? null,
+            ':submitter_name'                   => $n($data['submitter_name']                   ?? null),
+            ':submitter_email'                  => $n($data['submitter_email']                  ?? null),
+            ':submitter_phone'                  => $n($data['submitter_phone']                  ?? null),
+            ':submitter_company'                => $n($data['submitter_company']                ?? null),
+            ':property_owner_name'              => $n($data['property_owner_name']              ?? null),
+            ':developer_entity_name'            => $n($data['developer_entity_name']            ?? null),
+            ':developer_contact_name'           => $n($data['developer_contact_name']           ?? null),
+            ':developer_address'                => $n($data['developer_address']                ?? null),
+            ':developer_phone'                  => $n($data['developer_phone']                  ?? null),
+            ':developer_email'                  => $n($data['developer_email']                  ?? null),
+            ':developer_state_of_incorporation' => $n($data['developer_state_of_incorporation'] ?? null),
+            ':developer_entity_type'            => $n($data['developer_entity_type']            ?? null),
+            ':project_name'                     => trim((string)($data['project_name']          ?? '')),
+            ':project_description'              => $n($data['project_description']              ?? null),
+            ':proposed_improvements'            => $n($data['proposed_improvements']            ?? null),
+            ':current_zoning'                   => $n($data['current_zoning']                   ?? null),
+            ':proposed_zoning'                  => $n($data['proposed_zoning']                  ?? null),
+            ':comp_plan_designation'            => $n($data['comp_plan_designation']            ?? null),
+            ':anticipated_start_date'           => $d($data['anticipated_start_date']           ?? null),
+            ':anticipated_end_date'             => $d($data['anticipated_end_date']             ?? null),
+            ':agreement_termination_date'       => $d($data['agreement_termination_date']       ?? null),
+            ':planning_board_date'              => $d($data['planning_board_date']              ?? null),
+            ':town_council_hearing_date'        => $d($data['town_council_hearing_date']        ?? null),
+            ':tracts_json'                      => $data['tracts_json'] ?? null,
         ]);
         return (int)$this->db->lastInsertId();
     }
