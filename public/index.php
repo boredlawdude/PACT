@@ -16,6 +16,7 @@ require_once APP_ROOT . '/app/controllers/DocuSignController.php';
 require_once APP_ROOT . '/app/controllers/DashboardController.php';
 require_once APP_ROOT . '/app/controllers/RolesController.php';
 require_once APP_ROOT . '/app/controllers/DevelopmentAgreementsController.php';
+    require_once APP_ROOT . '/app/controllers/DevelopmentAgreementSubmissionsController.php';
 
 $companiesController = new CompaniesController();
 $PeopleController = new PeopleController();
@@ -377,6 +378,22 @@ case 'departments_store':
 
     case 'development_agreements_delete':
         (new DevelopmentAgreementsController())->delete();
+        break;
+
+    case 'dev_agreement_submissions':
+        (new DevelopmentAgreementSubmissionsController())->index();
+        break;
+
+    case 'dev_agreement_submissions_show':
+        (new DevelopmentAgreementSubmissionsController())->show();
+        break;
+
+    case 'dev_agreement_submissions_import':
+        (new DevelopmentAgreementSubmissionsController())->import();
+        break;
+
+    case 'dev_agreement_submissions_reject':
+        (new DevelopmentAgreementSubmissionsController())->reject();
         break;
 
     default:
