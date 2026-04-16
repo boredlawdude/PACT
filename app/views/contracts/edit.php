@@ -117,9 +117,9 @@ if (!function_exists('h')) {
             </div>
 
             <div class="col-md-5">
-                <label class="form-label">Status Comment <span class="text-muted fw-normal small">(40 chars)</span></label>
+                <label class="form-label">Status Comment</label>
                 <input type="text" class="form-control" name="status_comment"
-                       maxlength="40"
+                       maxlength="255"
                        value="<?= h($contract['status_comment'] ?? '') ?>">
             </div>
 
