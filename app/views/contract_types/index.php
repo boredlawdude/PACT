@@ -12,8 +12,33 @@ if (!function_exists('h')) {
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0">Contract Types</h1>
-    <a href="/index.php?page=contracts" class="btn btn-outline-secondary btn-sm">Back to Contracts</a>
+    <div class="d-flex gap-2">
+      <a href="/index.php?page=contract_types_create" class="btn btn-primary btn-sm">+ New Contract Type</a>
+      <a href="/index.php?page=contracts" class="btn btn-outline-secondary btn-sm">Back to Contracts</a>
+    </div>
   </div>
+
+  <?php if (!empty($_SESSION['flash_messages'])): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <?php foreach ($_SESSION['flash_messages'] as $msg): ?>
+        <div><?= h($msg) ?></div>
+      <?php endforeach; ?>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php unset($_SESSION['flash_messages']); ?>
+  <?php endif; ?>
+
+  <?php if (!empty($_SESSION['flash_errors'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <ul class="mb-0">
+        <?php foreach ($_SESSION['flash_errors'] as $err): ?>
+          <li><?= h($err) ?></li>
+        <?php endforeach; ?>
+      </ul>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php unset($_SESSION['flash_errors']); ?>
+  <?php endif; ?>
 
   <div class="table-responsive">
     <table class="table table-hover">
@@ -55,9 +80,13 @@ if (!function_exists('h')) {
           </td>
           <td class="text-end">
             <a href="/index.php?page=contract_types_edit&contract_type_id=<?= (int)$ct['contract_type_id'] ?>"
-               class="btn btn-primary btn-sm">
-              Manage Templates
-            </a>
+               class="btn btn-primary btn-sm">Edit</a>
+            <form method="post"
+                  action="/index.php?page=contract_types_delete&contract_type_id=<?= (int)$ct['contract_type_id'] ?>"
+                  class="d-inline"
+                  onsubmit="return confirm('Delete contract type &quot;<?= h(addslashes($ct['contract_type'])) ?>&quot;? This cannot be undone.')">
+              <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+            </form>
           </td>
         </tr>
         <?php endforeach; ?>
@@ -67,7 +96,7 @@ if (!function_exists('h')) {
 
   <?php if (empty($contractTypes)): ?>
   <div class="alert alert-info">
-    No contract types found.
+    No contract types found. <a href="/index.php?page=contract_types_create">Create one</a>.
   </div>
   <?php endif; ?>
 </div>

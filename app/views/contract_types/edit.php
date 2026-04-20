@@ -43,6 +43,12 @@ if (!function_exists('h')) {
       <div class="row g-3">
 
         <div class="col-12">
+          <label class="form-label fw-semibold" for="contract_type">Contract Type Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="contract_type" name="contract_type"
+                 value="<?= h($contractType['contract_type']) ?>" maxlength="100" required>
+        </div>
+
+        <div class="col-12">
           <label class="form-label">Description</label>
           <textarea class="form-control" name="description" rows="3"><?= h($contractType['description'] ?? '') ?></textarea>
         </div>

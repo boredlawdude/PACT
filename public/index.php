@@ -117,12 +117,24 @@ switch ($page) {
         $ContractTypesController->index();
         break;
 
+    case 'contract_types_create':
+        $ContractTypesController->create();
+        break;
+
+    case 'contract_types_store':
+        $ContractTypesController->store();
+        break;
+
     case 'contract_types_edit':
         $ContractTypesController->edit((int)($_GET['contract_type_id'] ?? 0));
         break;
 
     case 'contract_types_update':
         $ContractTypesController->update((int)($_GET['contract_type_id'] ?? 0));
+        break;
+
+    case 'contract_types_delete':
+        $ContractTypesController->delete((int)($_GET['contract_type_id'] ?? 0));
         break;
 
 case 'companies':

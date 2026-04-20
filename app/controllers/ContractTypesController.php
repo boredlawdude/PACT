@@ -42,6 +42,94 @@ class ContractTypesController
         require APP_ROOT . '/app/views/contract_types/edit.php';
     }
 
+    public function create(): void
+    {
+        $flashErrors = $_SESSION['flash_errors'] ?? [];
+        $flashOld    = $_SESSION['flash_old'] ?? [];
+        unset($_SESSION['flash_errors'], $_SESSION['flash_old']);
+
+        require APP_ROOT . '/app/views/contract_types/create.php';
+    }
+
+    public function store(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed';
+            return;
+        }
+
+        $contractTypeName     = trim((string)($_POST['contract_type'] ?? ''));
+        $description          = trim((string)($_POST['description'] ?? ''));
+        $formalBiddingRequired = isset($_POST['formal_bidding_required']) ? 1 : 0;
+
+        $errors = [];
+
+        if ($contractTypeName === '') {
+            $errors[] = 'Contract type name is required.';
+        } elseif (strlen($contractTypeName) > 100) {
+            $errors[] = 'Contract type name must be 100 characters or fewer.';
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['flash_errors'] = $errors;
+            $_SESSION['flash_old']    = $_POST;
+            header('Location: /index.php?page=contract_types_create');
+            exit;
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO contract_types (contract_type, description, formal_bidding_required)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->execute([$contractTypeName, $description, $formalBiddingRequired]);
+            $newId = (int)$this->db->lastInsertId();
+        } catch (Throwable $e) {
+            if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $_SESSION['flash_errors'] = ["A contract type named \"$contractTypeName\" already exists."];
+            } else {
+                $_SESSION['flash_errors'] = ['Failed to create contract type: ' . $e->getMessage()];
+            }
+            $_SESSION['flash_old'] = $_POST;
+            header('Location: /index.php?page=contract_types_create');
+            exit;
+        }
+
+        $_SESSION['flash_messages'] = ["Contract type \"$contractTypeName\" created successfully."];
+        header("Location: /index.php?page=contract_types_edit&contract_type_id={$newId}");
+        exit;
+    }
+
+    public function delete(int $contractTypeId): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed';
+            return;
+        }
+
+        $contractType = $this->getContractType($contractTypeId);
+        if (!$contractType) {
+            $_SESSION['flash_errors'] = ['Contract type not found.'];
+            header('Location: /index.php?page=contract_types');
+            exit;
+        }
+
+        try {
+            $stmt = $this->db->prepare("UPDATE contract_types SET is_active = 0 WHERE contract_type_id = ?");
+            $stmt->execute([$contractTypeId]);
+        } catch (Throwable $e) {
+            $_SESSION['flash_errors'] = ['Failed to delete contract type: ' . $e->getMessage()];
+            header('Location: /index.php?page=contract_types');
+            exit;
+        }
+
+        $_SESSION['flash_messages'] = ["Contract type \"" . $contractType['contract_type'] . "\" deleted."];
+        header('Location: /index.php?page=contract_types');
+        exit;
+    }
+
     public function update(int $contractTypeId): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -62,19 +150,36 @@ class ContractTypesController
         $messages = [];
 
         // Update basic fields
-        $description = trim((string)($_POST['description'] ?? ''));
+        $contractTypeName     = trim((string)($_POST['contract_type'] ?? ''));
+        $description          = trim((string)($_POST['description'] ?? ''));
         $formalBiddingRequired = isset($_POST['formal_bidding_required']) ? 1 : 0;
+
+        if ($contractTypeName === '') {
+            $errors[] = 'Contract type name is required.';
+        } elseif (strlen($contractTypeName) > 100) {
+            $errors[] = 'Contract type name must be 100 characters or fewer.';
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['flash_errors'] = $errors;
+            header("Location: /index.php?page=contract_types_edit&contract_type_id={$contractTypeId}");
+            exit;
+        }
 
         try {
             $stmt = $this->db->prepare("
                 UPDATE contract_types 
-                SET description = ?, formal_bidding_required = ?
+                SET contract_type = ?, description = ?, formal_bidding_required = ?
                 WHERE contract_type_id = ?
             ");
-            $stmt->execute([$description, $formalBiddingRequired, $contractTypeId]);
+            $stmt->execute([$contractTypeName, $description, $formalBiddingRequired, $contractTypeId]);
             $messages[] = 'Contract type updated successfully';
         } catch (Throwable $e) {
-            $errors[] = 'Failed to update contract type: ' . $e->getMessage();
+            if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $errors[] = "A contract type named \"$contractTypeName\" already exists.";
+            } else {
+                $errors[] = 'Failed to update contract type: ' . $e->getMessage();
+            }
         }
 
         // Handle HTML template upload
