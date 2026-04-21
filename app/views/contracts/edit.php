@@ -259,6 +259,13 @@ if (!function_exists('h')) {
             </div>
 
             <div class="col-12">
+                <label class="form-label" for="documents_path">Contract Documents Path</label>
+                <input class="form-control" type="text" id="documents_path" name="documents_path" maxlength="255"
+                       placeholder="e.g. \\server\contracts\2025"
+                       value="<?= h($contract['documents_path'] ?? '') ?>">
+            </div>
+
+            <div class="col-12">
               <hr class="my-2">
               <h6 class="text-muted mb-3">
                 <?php if (!empty($complianceInfoLink)): ?>
@@ -300,12 +307,7 @@ if (!function_exists('h')) {
                          value="<?= h($contract['bid_rfp_number'] ?? '') ?>">
                 </div>
 
-                <div class="col-md-4">
-                  <label class="form-label" for="bid_documents_path">Bid Documents Path</label>
-                  <input class="form-control" type="text" id="bid_documents_path" name="bid_documents_path" maxlength="500"
-                         placeholder="e.g. \\server\procurement\2025\IFB-2025-012"
-                         value="<?= h($contract['bid_documents_path'] ?? '') ?>">
-                </div>
+
 
                 <div class="col-12">
                   <label class="form-label" for="procurement_notes">Explain Compliance with Public Bidding / Procurement Laws</label>

@@ -164,6 +164,13 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
               <div class="small text-muted">Payment Type</div>
               <div><?= h($contract['payment_terms_name'] ?? '') ?: '—' ?></div>
             </div>
+
+            <?php if (!empty($contract['documents_path'])): ?>
+            <div class="col-12">
+              <div class="small text-muted">Contract Documents Path</div>
+              <div class="font-monospace small"><?= h($contract['documents_path']) ?></div>
+            </div>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -354,12 +361,7 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
               <div><?= h($contract['bid_rfp_number']) ?></div>
             </div>
             <?php endif; ?>
-            <?php if (!empty($contract['bid_documents_path'])): ?>
-            <div class="col-md-5">
-              <div class="small text-muted">Bid Documents Path</div>
-              <div class="font-monospace small"><?= h($contract['bid_documents_path']) ?></div>
-            </div>
-            <?php endif; ?>
+
             <?php if (!empty($contract['date_approved_by_procurement'])): ?>
             <div class="col-md-4">
               <div class="small text-muted">Date Approved by Procurement</div>
