@@ -140,6 +140,39 @@ final class PeopleController
         exit;
     }
 
+    public function destroy(): void
+    {
+        if (!is_system_admin()) {
+            http_response_code(403); exit('Access denied.');
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+        $id = (int)($_POST['person_id'] ?? 0);
+        if ($id <= 0) {
+            header('Location: /index.php?page=people');
+            exit;
+        }
+        // Prevent self-deletion
+        if ($id === (int)current_person_id()) {
+            $_SESSION['flash_errors'] = ['You cannot delete your own account.'];
+            header('Location: /index.php?page=people');
+            exit;
+        }
+        try {
+            $this->pdo->prepare("DELETE FROM person_roles WHERE person_id = ?")->execute([$id]);
+            $this->pdo->prepare("DELETE FROM people WHERE person_id = ?")->execute([$id]);
+        } catch (\Throwable $e) {
+            error_log('Person delete failed: ' . $e->getMessage());
+            $_SESSION['flash_errors'] = ['Could not delete user — they may be referenced by contracts or other records.'];
+            header('Location: /index.php?page=people');
+            exit;
+        }
+        $_SESSION['flash_messages'] = ['User deleted.'];
+        header('Location: /index.php?page=people');
+        exit;
+    }
+
     private function collectFormData(): array
     {
         return [
