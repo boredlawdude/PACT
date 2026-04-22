@@ -97,6 +97,10 @@ switch ($page) {
         $ContractsController->destroy((int)($_GET['contract_id'] ?? 0));
         break;
 
+    case 'contracts_bulk_delete':
+        $ContractsController->bulkDestroy();
+        break;
+
     case 'contracts_search':
         $ContractsController->search();
         break;

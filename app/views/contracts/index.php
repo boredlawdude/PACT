@@ -215,14 +215,18 @@ function status_badge(string $status): string {
         const checked = getChecked();
         if (!checked.length) return;
         if (!confirm('Delete ' + checked.length + ' contract(s)?')) return;
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '/index.php?page=contracts_bulk_delete';
         checked.forEach(cb => {
-            const row = cb.closest('tr');
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = row.dataset.deleteUrl;
-            document.body.appendChild(form);
-            form.submit();
+            const input = document.createElement('input');
+            input.type  = 'hidden';
+            input.name  = 'contract_ids[]';
+            input.value = cb.value;
+            form.appendChild(input);
         });
+        document.body.appendChild(form);
+        form.submit();
     });
     updateButtons();
 })();

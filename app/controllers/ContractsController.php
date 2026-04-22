@@ -525,6 +525,32 @@ class ContractsController
         exit;
     }
 
+    public function bulkDestroy(): void
+    {
+        require_login();
+        if (!is_system_admin()) {
+            http_response_code(403); exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405); exit;
+        }
+        $rawIds = $_POST['contract_ids'] ?? [];
+        if (!is_array($rawIds) || empty($rawIds)) {
+            header('Location: /index.php?page=contracts');
+            exit;
+        }
+        $ids = array_filter(array_map('intval', $rawIds), fn($id) => $id > 0);
+        foreach ($ids as $id) {
+            try {
+                $this->contracts->delete($id);
+            } catch (Throwable $e) {
+                error_log('Bulk contract delete failed for ID ' . $id . ': ' . $e->getMessage());
+            }
+        }
+        header('Location: /index.php?page=contracts');
+        exit;
+    }
+
     // --- Helper stubs (implement as needed or connect to models) ---
     private function getResponsiblePeople(): array { return []; }
 
