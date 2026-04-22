@@ -430,10 +430,15 @@ $importedCount = (int)$pdo->query("SELECT COUNT(*) FROM contracts WHERE is_impor
 <body>
 <div class="page-header">
   <div class="container">
-    <h1>Contract Bulk Import</h1>
-    <p class="mb-0" style="opacity:.8;font-size:.85rem;">
-      Import contracts from the LF Forms CSV export &mdash; ADMIN only
-    </p>
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1>Contract Bulk Import</h1>
+        <p class="mb-0" style="opacity:.8;font-size:.85rem;">
+          Import contracts from the LF Forms CSV export &mdash; ADMIN only
+        </p>
+      </div>
+      <a href="/index.php?page=admin_settings" class="btn btn-sm btn-outline-light mt-1">⚙ System Settings</a>
+    </div>
   </div>
 </div>
 <div class="container pb-5">

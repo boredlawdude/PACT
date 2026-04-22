@@ -3,7 +3,10 @@
 
 ?>
 <div class="container mt-4">
-    <h1 class="h3 mb-4">System Settings – Paths & Templates</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">System Settings – Paths & Templates</h1>
+        <a href="/contract_import.php" class="btn btn-sm btn-outline-secondary">⬆ Contract Bulk Import</a>
+    </div>
     <?php if (!empty($success)): ?>
         <div class="alert alert-success alert-dismissible fade show">
             <?= implode('<br>', array_map('h', $messages)) ?>
