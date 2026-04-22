@@ -254,6 +254,28 @@ class ContractsController
     public function index(): void
     {
         $contracts = $this->contracts->search([]);
+
+        // Handle ?pending_approval=manager|purchasing|legal|risk_manager|council
+        $pendingApprovalFilter = null;
+        $pendingApprovalLabel  = null;
+        $pendingApprovalColMap = [
+            'manager'      => 'manager_approval_date',
+            'purchasing'   => 'purchasing_approval_date',
+            'legal'        => 'legal_approval_date',
+            'risk_manager' => 'risk_manager_approval_date',
+            'council'      => 'council_approval_date',
+        ];
+        $pa = trim($_GET['pending_approval'] ?? '');
+        if ($pa !== '' && isset($pendingApprovalColMap[$pa])) {
+            require_once APP_ROOT . '/app/controllers/ApprovalRulesController.php';
+            $col = $pendingApprovalColMap[$pa];
+            $stmt = $this->db->query("SELECT contract_id FROM contracts WHERE `$col` IS NULL");
+            $pendingIds = array_flip($stmt->fetchAll(PDO::FETCH_COLUMN));
+            $contracts = array_filter($contracts, fn($c) => isset($pendingIds[(int)$c['contract_id']]));
+            $pendingApprovalFilter = $pa;
+            $pendingApprovalLabel  = ApprovalRulesController::APPROVAL_LABELS[$pa] ?? $pa;
+        }
+
         $departments = $this->getDepartments();
         $responsiblePeople = $this->getResponsiblePeople();
         $contractStatuses = $this->getContractStatuses();

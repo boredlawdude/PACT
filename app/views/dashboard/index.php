@@ -90,6 +90,29 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     </div>
 </div>
 
+<?php if (!empty($myPendingApprovals)): ?>
+<!-- ── My Pending Approvals ──────────────────────────────────────────────── -->
+<div class="card shadow-sm border-danger mb-4">
+    <div class="card-header bg-danger text-white fw-semibold py-2">
+        &#9888; My Pending Approvals
+    </div>
+    <div class="card-body py-2 px-3">
+        <p class="text-muted small mb-2">Contracts awaiting your approval based on your role(s):</p>
+        <div class="d-flex flex-wrap gap-3">
+            <?php foreach ($myPendingApprovals as $pa): ?>
+                <a href="/index.php?page=contracts&pending_approval=<?= h($pa['key']) ?>"
+                   class="text-decoration-none">
+                    <div class="border rounded px-3 py-2 text-center" style="min-width:120px;">
+                        <div class="fs-3 fw-bold text-danger"><?= $pa['count'] ?></div>
+                        <div class="small text-muted"><?= h($pa['label']) ?> Approval</div>
+                    </div>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ── Status Radio Filter ───────────────────────────────────────────────── -->
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">

@@ -102,6 +102,47 @@ class DashboardController
         // All statuses for radio filter
         $statuses = $this->statusModel->all();
 
+        // ── Pending approvals by role ─────────────────────────────────────
+        // For each approval type the current user's roles map to, count
+        // contracts where that approval date is still NULL.
+        require_once APP_ROOT . '/app/controllers/ApprovalRulesController.php';
+        $approvalRoleMap = ApprovalRulesController::APPROVAL_ROLE_MAP;  // key => role_key|null
+        $approvalLabels  = ApprovalRulesController::APPROVAL_LABELS;
+        $myPendingApprovals = [];  // [['key','label','count'], ...]
+
+        foreach ($approvalRoleMap as $approvalKey => $requiredRoleKey) {
+            // Only surface if user actually holds this role (or it has no role requirement)
+            $holds = ($requiredRoleKey === null)
+                || (function_exists('person_has_role_key') && person_has_role_key($requiredRoleKey));
+            if (!$holds) continue;
+
+            // Map approval key -> column name
+            $colMap = [
+                'manager'      => 'manager_approval_date',
+                'purchasing'   => 'purchasing_approval_date',
+                'legal'        => 'legal_approval_date',
+                'risk_manager' => 'risk_manager_approval_date',
+                'council'      => 'council_approval_date',
+            ];
+            $col = $colMap[$approvalKey];
+
+            // Count contracts where this approval date is null
+            // (only count contracts that have at least one active approval rule requiring this type)
+            $countStmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM contracts WHERE `$col` IS NULL"
+            );
+            $countStmt->execute();
+            $total = (int)$countStmt->fetchColumn();
+
+            if ($total > 0) {
+                $myPendingApprovals[] = [
+                    'key'   => $approvalKey,
+                    'label' => $approvalLabels[$approvalKey] ?? $approvalKey,
+                    'count' => $total,
+                ];
+            }
+        }
+
         // All contracts (unfiltered); JS handles client-side filtering
         $contracts = $this->contractModel->search([]);
 

@@ -27,6 +27,13 @@ function status_badge(string $status): string {
 <div class="d-flex align-items-center mb-3">
     <h1 class="h4 me-auto">Contracts</h1>
 
+    <?php if (!empty($pendingApprovalFilter) && !empty($pendingApprovalLabel)): ?>
+        <span class="badge text-bg-danger me-2 fs-6">
+            Filtered: <?= h($pendingApprovalLabel) ?> approval pending
+        </span>
+        <a href="/index.php?page=contracts" class="btn btn-sm btn-outline-secondary me-2">Clear Filter</a>
+    <?php endif; ?>
+
     <a href="/index.php?page=contracts_create" class="btn btn-primary">
         + New Contract
     </a>
@@ -127,7 +134,7 @@ function status_badge(string $status): string {
                         <th style="width:32px;"><input type="checkbox" id="contractsSelectAll" class="form-check-input"></th>
                         <th style="width:180px;">Contract #</th>
                         <th style="width:120px;">Status</th>
-                        <th style="width:160px;">Name</th>
+                        <th style="width:280px;">Name</th>
                         <th style="width:55px;">Dept</th>
                         <th style="width:90px;">Responsible</th>
                         <th style="width:75px;">Value</th>
@@ -145,7 +152,12 @@ function status_badge(string $status): string {
                         <td><input type="checkbox" class="form-check-input contracts-row-check" value="<?= (int)$c['contract_id'] ?>"></td>
                         <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] ?? '') ?></a></td>
                         <td><span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>"><?= h($c['status_name'] ?? '') ?></span></td>
-                        <td><span title="<?= h($c['name'] ?? '') ?>"><?= h(mb_strlen($c['name'] ?? '') > 30 ? mb_substr($c['name'], 0, 30) . '…' : ($c['name'] ?? '')) ?></span></td>
+                        <td>
+                            <span title="<?= h($c['name'] ?? '') ?>"><?= h(mb_strlen($c['name'] ?? '') > 55 ? mb_substr($c['name'], 0, 55) . '…' : ($c['name'] ?? '')) ?></span>
+                            <?php if (!empty($c['counterparty_company_name'])): ?>
+                                <br><small class="text-muted"><?= h($c['counterparty_company_name']) ?></small>
+                            <?php endif; ?>
+                        </td>
                         <td><span title="<?= h($c['department_name'] ?? '') ?>"><?= h($c['department_code'] ?? $c['department_name'] ?? '') ?></span></td>
                         <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
                         <td>
