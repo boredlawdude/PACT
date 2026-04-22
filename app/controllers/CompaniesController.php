@@ -13,7 +13,7 @@ class CompaniesController
     public function index(): void
     {
         $stmt = $this->db->query("
-            SELECT company_id, name, vendor_id, address, phone, email, contact_name, verified_by, is_active
+            SELECT company_id, name, vendor_id, address, phone, email, contact_name, verified_by, is_active, sosid
             FROM companies
             ORDER BY name
         ");
@@ -73,7 +73,8 @@ class CompaniesController
                         address, phone, email, vendor_id, contact_name, verified_by,
                         company_type_id, state_of_incorporation,
                         is_active,
-                        coi_exp_date, coi_carrier, coi_verified_by_person_id
+                        coi_exp_date, coi_carrier, coi_verified_by_person_id,
+                        sosid
                     )
                 VALUES
                     (
@@ -82,7 +83,8 @@ class CompaniesController
                         :address, :phone, :email, :vendor_id, :contact_name, :verified_by,
                         :company_type_id, :state_of_incorporation,
                         :is_active,
-                        :coi_exp_date, :coi_carrier, :coi_verified_by_person_id
+                        :coi_exp_date, :coi_carrier, :coi_verified_by_person_id,
+                        :sosid
                     )
             ");
 
@@ -127,6 +129,53 @@ class CompaniesController
 
         header('Location: /index.php?page=companies_edit&company_id=' . $companyId);
         exit;
+    }
+
+    public function show(int $companyId): void
+    {
+        if ($companyId <= 0) {
+            http_response_code(404);
+            echo 'Company not found.';
+            return;
+        }
+
+        // Full company row + company type name + COI verifier name
+        $stmt = $this->db->prepare("
+            SELECT c.*,
+                   ct.company_type    AS company_type_name,
+                   COALESCE(NULLIF(p.full_name,''), CONCAT_WS(' ', p.first_name, p.last_name)) AS coi_verified_by_name
+            FROM companies c
+            LEFT JOIN company_types ct ON ct.company_type_id = c.company_type_id
+            LEFT JOIN people p         ON p.person_id = c.coi_verified_by_person_id
+            WHERE c.company_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$companyId]);
+        $company = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$company) {
+            http_response_code(404);
+            echo 'Company not found.';
+            return;
+        }
+
+        $employees = $this->getCompanyPeople($companyId);
+        $comments  = $this->getCompanyComments($companyId);
+
+        // Contracts where this company is the counterparty
+        $cStmt = $this->db->prepare("
+            SELECT c.contract_id, c.name, c.contract_number, c.start_date, c.end_date,
+                   cs.contract_status_name AS status_name
+            FROM contracts c
+            LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
+            WHERE c.counterparty_company_id = ?
+            ORDER BY c.start_date DESC
+            LIMIT 50
+        ");
+        $cStmt->execute([$companyId]);
+        $contracts = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        require APP_ROOT . '/app/views/companies/show.php';
     }
 
     public function edit(int $companyId): void
@@ -224,7 +273,8 @@ class CompaniesController
                     is_active = :is_active,
                     coi_exp_date = :coi_exp_date,
                     coi_carrier = :coi_carrier,
-                    coi_verified_by_person_id = :coi_verified_by_person_id
+                    coi_verified_by_person_id = :coi_verified_by_person_id,
+                    sosid = :sosid
                 WHERE company_id = :company_id
             ");
 
@@ -315,6 +365,7 @@ class CompaniesController
             'coi_exp_date' => $this->nullIfEmpty($input['coi_exp_date'] ?? null),
             'coi_carrier' => $this->nullIfEmpty($input['coi_carrier'] ?? null),
             'coi_verified_by_person_id' => $this->nullableInt($input['coi_verified_by_person_id'] ?? null),
+            'sosid' => $this->nullIfEmpty($input['sosid'] ?? null),
         ];
     }
 
@@ -439,6 +490,51 @@ class CompaniesController
         ");
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function bulkDestroy(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /index.php?page=companies');
+            exit;
+        }
+
+        $raw = $_POST['company_ids'] ?? [];
+        if (!is_array($raw) || empty($raw)) {
+            header('Location: /index.php?page=companies');
+            exit;
+        }
+
+        $ids = array_values(array_filter(array_map('intval', $raw), fn(int $id) => $id > 0));
+        if (empty($ids)) {
+            header('Location: /index.php?page=companies');
+            exit;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+        try {
+            $this->db->beginTransaction();
+            // Nullify FK references that are RESTRICT (no cascade)
+            $this->db->prepare("UPDATE contracts SET counterparty_company_id = NULL WHERE counterparty_company_id IN ($placeholders)")->execute($ids);
+            $this->db->prepare("UPDATE contracts SET owner_company_id = NULL WHERE owner_company_id IN ($placeholders)")->execute($ids);
+            // people.company_id is SET NULL on delete, but nullify explicitly to be safe
+            $this->db->prepare("UPDATE people SET company_id = NULL WHERE company_id IN ($placeholders)")->execute($ids);
+            $this->db->prepare("DELETE FROM companies WHERE company_id IN ($placeholders)")->execute($ids);
+            $this->db->commit();
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            $_SESSION['flash_errors'] = ['Delete failed: ' . $e->getMessage()];
+            header('Location: /index.php?page=companies');
+            exit;
+        }
+
+        $count = count($ids);
+        $_SESSION['flash_messages'] = [($count === 1 ? '1 company' : "$count companies") . ' deleted.'];
+        header('Location: /index.php?page=companies');
+        exit;
     }
 
     private function nullableInt(mixed $value): ?int

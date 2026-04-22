@@ -141,6 +141,10 @@ case 'companies':
     $companiesController->index();
     break;
 
+case 'companies_show':
+    $companiesController->show((int)($_GET['company_id'] ?? 0));
+    break;
+
 case 'companies_create':
     $companiesController->create();
     break;
@@ -160,6 +164,10 @@ case 'companies_update':
 
 case 'companies_delete':
     $companiesController->destroy((int)($_GET['company_id'] ?? 0));
+    break;
+
+case 'companies_bulk_delete':
+    $companiesController->bulkDestroy();
     break;
 
 case 'companies_link_person':
