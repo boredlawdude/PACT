@@ -10,7 +10,7 @@ class AdminSettingsController {
         $pdo = db();
         // Load settings
         $settings = [];
-        $stmt = $pdo->query("SELECT setting_key, setting_value, description FROM system_settings WHERE setting_key IN ('storage_base_dir', 'contracts_generated_subdir', 'docx_template_dir', 'html_template_dir', 'default_docx_template', 'default_html_template', 'default_email_message', 'compliance_info_link', 'risk_manager_email') ORDER BY setting_key");
+        $stmt = $pdo->query("SELECT setting_key, setting_value, description FROM system_settings WHERE setting_key IN ('storage_base_dir', 'docx_template_dir', 'html_template_dir', 'default_docx_template', 'default_html_template', 'default_email_message', 'compliance_info_link', 'risk_manager_email') ORDER BY setting_key");
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $settings[$row['setting_key']] = $row;
         }
@@ -40,13 +40,13 @@ class AdminSettingsController {
                 unset($_SESSION['csrf_token']);
                 $settingsToUpdate = [
                     'storage_base_dir',
-                    'contracts_generated_subdir',
                     'docx_template_dir',
                     'html_template_dir',
                     'default_docx_template',
                     'default_html_template',
                     'default_email_message',
                     'compliance_info_link',
+                    'risk_manager_email',
                 ];
                 foreach ($settingsToUpdate as $key) {
                     $value = trim((string)($_POST[$key] ?? ''));
