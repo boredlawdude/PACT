@@ -23,6 +23,30 @@ class ApprovalRulesController
 
     public const OPERATORS = ['>' => '>', '>=' => '>=', '<' => '<', '<=' => '<=', '=' => '=', '!=' => '!='];
 
+    // Maps approval type → role_key required to stamp (null = no role check)
+    public const APPROVAL_ROLE_MAP = [
+        'manager'      => 'TOWN_MANAGER',
+        'purchasing'   => 'PROCUREMENT',
+        'legal'        => 'LEGAL_ADMIN',
+        'risk_manager' => null,
+        'council'      => 'TOWN_COUNCIL',
+    ];
+
+    /**
+     * Returns the set of approval keys the current user holds the matching role for.
+     * Approval types with null role mapping are always considered held.
+     */
+    public static function getApprovalRolesForCurrentUser(): array
+    {
+        $held = [];
+        foreach (self::APPROVAL_ROLE_MAP as $approvalKey => $roleKey) {
+            if ($roleKey === null || (function_exists('person_has_role_key') && person_has_role_key($roleKey))) {
+                $held[] = $approvalKey;
+            }
+        }
+        return $held;
+    }
+
     public function __construct()
     {
         $this->db = db();
@@ -133,23 +157,46 @@ class ApprovalRulesController
             exit;
         }
 
-        $dateVal = date('Y-m-d'); // always stamp today
+        $dateVal    = date('Y-m-d'); // always stamp today
+        $isBypass   = !empty($_POST['bypass_warning']);
+
+        // Role check
+        $requiredRole = self::APPROVAL_ROLE_MAP[$approvalType] ?? null;
+        $userHasRole  = ($requiredRole === null) || (function_exists('person_has_role_key') && person_has_role_key($requiredRole));
+
+        // Server-side guard: if no role and no explicit bypass, reject
+        if (!$userHasRole && !$isBypass) {
+            $_SESSION['flash_errors'] = ['You do not have the required role to stamp this approval. Check the bypass box to override.'];
+            header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+            exit;
+        }
 
         $col = $allowedCols[$approvalType];
         $this->db->prepare("UPDATE contracts SET `$col` = ? WHERE contract_id = ?")->execute([$dateVal, $contractId]);
 
         // Log to contract history
-        $person    = current_person();
+        $person     = current_person();
         $personName = trim(($person['first_name'] ?? '') . ' ' . ($person['last_name'] ?? ''));
-        if (empty($personName)) $personName = $person['display_name'] ?? $person['email'] ?? 'Unknown';
-        $label     = self::APPROVAL_LABELS[$approvalType] ?? $approvalType;
-        $personId  = !empty($person['person_id']) ? (int)$person['person_id'] : null;
+        if (empty(trim($personName))) $personName = $person['display_name'] ?? $person['email'] ?? 'Unknown';
+        $label    = self::APPROVAL_LABELS[$approvalType] ?? $approvalType;
+        $personId = !empty($person['person_id']) ? (int)$person['person_id'] : null;
+
+        if ($isBypass && !$userHasRole) {
+            $requiredRoleName = $requiredRole ?? 'N/A';
+            $note = "$label approved by $personName on $dateVal [BYPASS — user lacked required role: $requiredRoleName]";
+        } else {
+            $note = "$label approved by $personName on $dateVal";
+        }
+
         $this->db->prepare(
             "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
              VALUES (?, 'approval', NULL, NULL, ?, NOW(), ?)"
-        )->execute([$contractId, $personId, "$label approved by $personName on $dateVal"]);
+        )->execute([$contractId, $personId, $note]);
 
-        $_SESSION['flash_messages'] = ["$label approval stamped for $dateVal."];
+        $flashMsg = $isBypass && !$userHasRole
+            ? "$label approval stamped (role bypass recorded in history)."
+            : "$label approval stamped for $dateVal.";
+        $_SESSION['flash_messages'] = [$flashMsg];
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;
     }

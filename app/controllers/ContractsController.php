@@ -326,7 +326,8 @@ class ContractsController
 
         // Load approval rules and evaluate which are required for this contract
         require_once APP_ROOT . '/app/controllers/ApprovalRulesController.php';
-        $requiredApprovals = ApprovalRulesController::requiredApprovalsFor($this->db, $contract);
+        $requiredApprovals  = ApprovalRulesController::requiredApprovalsFor($this->db, $contract);
+        $userApprovalRoles  = ApprovalRulesController::getApprovalRolesForCurrentUser();
 
         require APP_ROOT . '/app/views/contracts/show.php';
     }

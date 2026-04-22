@@ -401,11 +401,19 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
             'council'      => ['label' => 'Council',      'col' => 'council_approval_date'],
         ];
         $requiredApprovals = $requiredApprovals ?? [];
+        $userApprovalRoles = $userApprovalRoles ?? [];
         $anyRequired = !empty($requiredApprovals);
         $pendingCount = 0;
         foreach ($requiredApprovals as $rk) {
             if (empty($contract[$approvalMeta[$rk]['col']])) $pendingCount++;
         }
+        $approvalRoleLabels = [
+            'manager'      => 'Town Manager (TOWN_MANAGER)',
+            'purchasing'   => 'Procurement (PROCUREMENT)',
+            'legal'        => 'Legal Admin (LEGAL_ADMIN)',
+            'risk_manager' => null,
+            'council'      => 'Town Council (TOWN_COUNCIL)',
+        ];
       ?>
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -428,6 +436,8 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                 <?php
                   $isRequired   = in_array($key, $requiredApprovals, true);
                   $approvedDate = $contract[$meta['col']] ?? null;
+                  $hasRole      = in_array($key, $userApprovalRoles, true);
+                  $roleLabel    = $approvalRoleLabels[$key] ?? null;
                 ?>
                 <tr class="<?= ($isRequired && !$approvedDate) ? 'table-warning' : '' ?>">
                   <td class="fw-semibold"><?= h($meta['label']) ?></td>
@@ -445,14 +455,17 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                   </td>
                   <td class="text-end">
                     <?php if (is_system_admin()): ?>
-                      <form method="post" action="/index.php?page=approval_stamp" class="d-inline">
-                        <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
-                        <input type="hidden" name="approval_type" value="<?= h($key) ?>">
-                        <button class="btn btn-sm btn-outline-secondary" type="submit"
-                                onclick="return confirm('Stamp <?= h($meta['label']) ?> approval as today?')">
-                          <?= $approvedDate ? 'Re-stamp' : 'Stamp' ?>
-                        </button>
-                      </form>
+                      <button type="button"
+                              class="btn btn-sm <?= $hasRole ? 'btn-outline-secondary' : 'btn-outline-warning' ?>"
+                              onclick="openStampModal(
+                                  '<?= h($key) ?>',
+                                  '<?= h($meta['label']) ?>',
+                                  <?= $hasRole ? 'true' : 'false' ?>,
+                                  <?= $roleLabel ? "'" . h($roleLabel) . "'" : 'null' ?>
+                              )">
+                        <?= $approvedDate ? 'Re-stamp' : 'Stamp' ?>
+                        <?php if (!$hasRole): ?><i class="text-warning">⚠</i><?php endif; ?>
+                      </button>
                     <?php endif; ?>
                   </td>
                 </tr>
@@ -461,6 +474,63 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
           </table>
         </div>
       </div>
+
+      <!-- Approval stamp modal -->
+      <div class="modal fade" id="approvalStampModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <form method="post" action="/index.php?page=approval_stamp" class="modal-content">
+            <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
+            <input type="hidden" name="approval_type" id="stampApprovalType">
+            <input type="hidden" name="bypass_warning" id="stampBypassFlag" value="0">
+            <div class="modal-header" id="stampModalHeader">
+              <h5 class="modal-title" id="stampModalTitle">Confirm Approval Stamp</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="stampModalBody"></div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="stampSubmitBtn">Stamp Today</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <script>
+      function openStampModal(key, label, hasRole, roleLabel) {
+          document.getElementById('stampApprovalType').value = key;
+          document.getElementById('stampBypassFlag').value   = '0';
+
+          var header = document.getElementById('stampModalHeader');
+          var body   = document.getElementById('stampModalBody');
+          var btn    = document.getElementById('stampSubmitBtn');
+          var title  = document.getElementById('stampModalTitle');
+
+          if (hasRole) {
+              header.className = 'modal-header';
+              title.textContent = 'Confirm: Stamp ' + label + ' Approval';
+              body.innerHTML = '<p>Stamp <strong>' + label + '</strong> approval as <strong>today</strong>?</p>';
+              btn.className = 'btn btn-primary';
+              btn.textContent = 'Stamp Today';
+          } else {
+              header.className = 'modal-header bg-warning';
+              title.textContent = '⚠ Role Warning: ' + label + ' Approval';
+              var roleMsg = roleLabel ? '<br><span class="text-muted small">Required role: ' + roleLabel + '</span>' : '';
+              body.innerHTML =
+                  '<div class="alert alert-warning mb-3">' +
+                  '<strong>You do not hold the required role</strong> to stamp this approval.' + roleMsg +
+                  '</div>' +
+                  '<p>You may still stamp this approval, but <strong>it will be flagged as a bypass in contract history.</strong></p>' +
+                  '<div class="form-check">' +
+                  '<input class="form-check-input" type="checkbox" id="bypassConfirmCheck" onchange="document.getElementById(\'stampBypassFlag\').value = this.checked ? \'1\' : \'0\'; document.getElementById(\'stampSubmitBtn\').disabled = !this.checked;">' +
+                  '<label class="form-check-label" for="bypassConfirmCheck">I understand — stamp anyway and log the bypass</label>' +
+                  '</div>';
+              btn.className  = 'btn btn-warning';
+              btn.textContent = 'Stamp Anyway (Bypass)';
+              btn.disabled   = true;
+          }
+
+          new bootstrap.Modal(document.getElementById('approvalStampModal')).show();
+      }
+      </script>
 
 
 
