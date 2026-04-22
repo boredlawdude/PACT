@@ -96,6 +96,19 @@ $townEmployees = $townEmployees ?? [];
             </div>
 
             <div class="col-md-4">
+                <label class="form-label">
+                    NC SOS ID
+                    <a href="https://sosnc.gov/online_services/search/by_title/search_Business_Registration"
+                       target="_blank" rel="noopener noreferrer"
+                       class="ms-1 small text-decoration-none" title="Search NC Secretary of State Business Registration">
+                        &#x1F517; Search SOS
+                    </a>
+                </label>
+                <input class="form-control" name="sosid" placeholder="NC Secretary of State ID"
+                       value="<?= h($company['sosid'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-4">
                 <label class="form-label">Phone</label>
                 <input class="form-control" name="phone" value="<?= h($company['phone'] ?? '') ?>">
             </div>
