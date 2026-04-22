@@ -330,6 +330,8 @@ class ContractsController
 
         require APP_ROOT . '/app/views/contracts/show.php';
     }
+
+    public function create(): void
     {
         $mode = 'create';
         $flashErrors = $_SESSION['flash_errors'] ?? [];
