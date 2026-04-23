@@ -242,6 +242,61 @@ $v = fn($field) => h($agreement[$field] ?? '');
 
   </div><!-- /card-body -->
 
+  <!-- Utility / Land Use -->
+  <div class="card-body border-top">
+    <h6 class="text-muted text-uppercase fw-semibold mb-3 border-bottom pb-1">Utility &amp; Land Use</h6>
+    <div class="row g-3">
+
+      <div class="col-md-3">
+        <label class="form-label" for="number_of_units">Number of Units (SF / ERU)</label>
+        <input class="form-control" type="number" id="number_of_units" name="number_of_units"
+               min="0" step="1"
+               value="<?= h($agreement['number_of_units'] ?? '') ?>">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label" for="daily_flow_maximum">Daily Flow Maximum (GPD)</label>
+        <div class="input-group">
+          <input class="form-control" type="number" id="daily_flow_maximum" name="daily_flow_maximum"
+                 min="0" step="1" placeholder="gallons/day"
+                 value="<?= h($agreement['daily_flow_maximum'] ?? '') ?>">
+          <span class="input-group-text">gpd</span>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label" for="transportation_tier">Transportation Tier</label>
+        <select class="form-select" id="transportation_tier" name="transportation_tier">
+          <option value="">— Select —</option>
+          <?php foreach (['Tier 1', 'Tier 2', 'Tier 3'] as $tier): ?>
+            <option value="<?= h($tier) ?>" <?= ($agreement['transportation_tier'] ?? '') === $tier ? 'selected' : '' ?>>
+              <?= h($tier) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div class="col-md-3 d-flex align-items-end">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="parkland_dedication"
+                 name="parkland_dedication" value="1"
+                 <?= !empty($agreement['parkland_dedication']) ? 'checked' : '' ?>>
+          <label class="form-check-label" for="parkland_dedication">
+            Parkland Dedication Required
+          </label>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label" for="allocation_elements">Allocation Elements</label>
+        <textarea class="form-control" id="allocation_elements" name="allocation_elements"
+                  rows="5"
+                  placeholder="List all allocation elements…"><?= h($agreement['allocation_elements'] ?? '') ?></textarea>
+      </div>
+
+    </div>
+  </div>
+
   <div class="card-footer bg-white d-flex gap-2">
     <button type="submit" class="btn btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Agreement' ?></button>
     <a href="/index.php?page=development_agreements" class="btn btn-outline-secondary">Cancel</a>

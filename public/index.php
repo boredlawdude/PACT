@@ -17,6 +17,8 @@ require_once APP_ROOT . '/app/controllers/DashboardController.php';
 require_once APP_ROOT . '/app/controllers/RolesController.php';
 require_once APP_ROOT . '/app/controllers/DevelopmentAgreementsController.php';
     require_once APP_ROOT . '/app/controllers/DevelopmentAgreementSubmissionsController.php';
+require_once APP_ROOT . '/app/controllers/ChangeOrdersController.php';
+$ChangeOrdersController = new ChangeOrdersController();
 
 $companiesController = new CompaniesController();
 $PeopleController = new PeopleController();
@@ -115,6 +117,42 @@ switch ($page) {
 
     case 'contracts_generate_word':
         $ContractsController->generateWordDocument((int)($_GET['contract_id'] ?? 0));
+        break;
+
+    case 'change_orders_create':
+        $ChangeOrdersController->create((int)($_GET['contract_id'] ?? 0));
+        break;
+
+    case 'change_orders_store':
+        $ChangeOrdersController->store();
+        break;
+
+    case 'change_orders_store_print':
+        $ChangeOrdersController->storeAndPrint();
+        break;
+
+    case 'change_orders_edit':
+        $ChangeOrdersController->edit((int)($_GET['change_order_id'] ?? 0));
+        break;
+
+    case 'change_orders_update':
+        $ChangeOrdersController->update((int)($_GET['change_order_id'] ?? 0));
+        break;
+
+    case 'change_orders_update_print':
+        $ChangeOrdersController->updateAndPrint((int)($_GET['change_order_id'] ?? 0));
+        break;
+
+    case 'change_orders_print':
+        $ChangeOrdersController->print((int)($_GET['change_order_id'] ?? 0));
+        break;
+
+    case 'change_orders_generate_doc':
+        $ChangeOrdersController->generateDocument((int)($_GET['change_order_id'] ?? 0));
+        break;
+
+    case 'change_orders_delete':
+        $ChangeOrdersController->delete();
         break;
 
     case 'contract_types':

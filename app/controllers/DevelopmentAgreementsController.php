@@ -311,6 +311,11 @@ class DevelopmentAgreementsController
             'agreement_termination_date'         => $_POST['agreement_termination_date']         ?? '',
             'planning_board_date'                => $_POST['planning_board_date']                ?? '',
             'town_council_hearing_date'          => $_POST['town_council_hearing_date']          ?? '',
+            'number_of_units'                    => $_POST['number_of_units']                    ?? '',
+            'daily_flow_maximum'                 => $_POST['daily_flow_maximum']                 ?? '',
+            'allocation_elements'                => $_POST['allocation_elements']                ?? '',
+            'parkland_dedication'                => $_POST['parkland_dedication']                ?? '',
+            'transportation_tier'                => $_POST['transportation_tier']                ?? '',
         ];
     }
 

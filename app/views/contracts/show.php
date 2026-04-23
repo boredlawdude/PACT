@@ -187,6 +187,70 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
         </div>
       </div>
 
+      <?php
+      // Change Orders tile
+      require_once APP_ROOT . '/app/models/ChangeOrder.php';
+      $coModel      = new ChangeOrder(db());
+      $changeOrders = $coModel->allForContract((int)$contract['contract_id']);
+      ?>
+      <div class="card shadow-sm mb-4" id="change-orders">
+        <div class="card-header bg-white d-flex align-items-center">
+          <h2 class="h6 mb-0 me-auto">Change Orders</h2>
+          <a href="/index.php?page=change_orders_create&contract_id=<?= (int)$contract['contract_id'] ?>"
+             class="btn btn-sm btn-primary">+ Add Change Order</a>
+        </div>
+        <?php if (empty($changeOrders)): ?>
+          <div class="card-body text-muted">No change orders recorded yet.</div>
+        <?php else: ?>
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>CO #</th>
+                  <th>Amount</th>
+                  <th>Approval Date</th>
+                  <th>Justification</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($changeOrders as $co): ?>
+                  <tr>
+                    <td><?= h($co['change_order_number']) ?></td>
+                    <td>
+                      <?php if ($co['co_amount'] !== null && $co['co_amount'] !== ''): ?>
+                        $<?= number_format((float)$co['co_amount'], 2) ?>
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
+                    <td>
+                      <?php if (!empty($co['approval_date'])): ?>
+                        <?= date('m/d/Y', strtotime((string)$co['approval_date'])) ?>
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-truncate" style="max-width:300px;"><?= h($co['co_justification'] ?? '') ?></td>
+                    <td class="text-end text-nowrap">
+                      <a href="/index.php?page=change_orders_edit&change_order_id=<?= (int)$co['change_order_id'] ?>"
+                         class="btn btn-outline-secondary btn-sm">Edit</a>
+                      <a href="/index.php?page=change_orders_generate_doc&change_order_id=<?= (int)$co['change_order_id'] ?>&format=docx"
+                         class="btn btn-outline-primary btn-sm">&#128196; Generate Doc</a>
+                      <form method="post" action="/index.php?page=change_orders_delete" class="d-inline"
+                            onsubmit="return confirm('Delete change order <?= h($co['change_order_number']) ?>?');">
+                        <input type="hidden" name="change_order_id" value="<?= (int)$co['change_order_id'] ?>">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+      </div>
+
       <?php if ($isDevAgreement && $devAgreement): ?>
 
       <!-- Dev Agreement: Property Information -->
@@ -330,6 +394,41 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
               <div class="small text-muted">Town Council Hearing Date</div>
               <div><?= !empty($devAgreement['town_council_hearing_date']) ? date('m/d/Y', strtotime($devAgreement['town_council_hearing_date'])) : '—' ?></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dev Agreement: Utility & Land Use -->
+      <div class="card shadow-sm mb-4 border-info">
+        <div class="card-header bg-info bg-opacity-10">
+          <h2 class="h6 mb-0 text-info">Utility &amp; Land Use</h2>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <div class="small text-muted">Number of Units (SF / ERU)</div>
+              <div><?= $devAgreement['number_of_units'] !== null ? h($devAgreement['number_of_units']) : '—' ?></div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Daily Flow Maximum</div>
+              <div><?= $devAgreement['daily_flow_maximum'] !== null ? number_format((int)$devAgreement['daily_flow_maximum']) . ' gpd' : '—' ?></div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Transportation Tier</div>
+              <div><?= h($devAgreement['transportation_tier'] ?? '') ?: '—' ?></div>
+            </div>
+            <div class="col-md-3">
+              <div class="small text-muted">Parkland Dedication</div>
+              <div><?= !empty($devAgreement['parkland_dedication'])
+                    ? '<span class="badge text-bg-success">Yes</span>'
+                    : '<span class="badge text-bg-secondary">No</span>' ?></div>
+            </div>
+            <?php if (!empty($devAgreement['allocation_elements'])): ?>
+            <div class="col-12">
+              <div class="small text-muted">Allocation Elements</div>
+              <div style="white-space:pre-wrap"><?= h($devAgreement['allocation_elements']) ?></div>
+            </div>
+            <?php endif; ?>
           </div>
         </div>
       </div>

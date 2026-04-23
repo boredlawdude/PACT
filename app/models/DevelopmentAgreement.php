@@ -79,7 +79,9 @@ class DevelopmentAgreement
                  current_zoning, proposed_zoning, comp_plan_designation,
                  anticipated_start_date, anticipated_end_date,
                  proposed_improvements, agreement_termination_date,
-                 planning_board_date, town_council_hearing_date)
+                 planning_board_date, town_council_hearing_date,
+                 number_of_units, daily_flow_maximum, allocation_elements,
+                 parkland_dedication, transportation_tier)
             VALUES
                 (:contract_id, :attorney_id,
                  :property_owner_name,
@@ -91,7 +93,9 @@ class DevelopmentAgreement
                  :current_zoning, :proposed_zoning, :comp_plan_designation,
                  :anticipated_start_date, :anticipated_end_date,
                  :proposed_improvements, :agreement_termination_date,
-                 :planning_board_date, :town_council_hearing_date)
+                 :planning_board_date, :town_council_hearing_date,
+                 :number_of_units, :daily_flow_maximum, :allocation_elements,
+                 :parkland_dedication, :transportation_tier)
         ");
         $stmt->execute($this->bindParams($data));
         return (int)$this->db->lastInsertId();
@@ -124,7 +128,12 @@ class DevelopmentAgreement
                 proposed_improvements           = :proposed_improvements,
                 agreement_termination_date      = :agreement_termination_date,
                 planning_board_date             = :planning_board_date,
-                town_council_hearing_date       = :town_council_hearing_date
+                town_council_hearing_date       = :town_council_hearing_date,
+                number_of_units                 = :number_of_units,
+                daily_flow_maximum              = :daily_flow_maximum,
+                allocation_elements             = :allocation_elements,
+                parkland_dedication             = :parkland_dedication,
+                transportation_tier             = :transportation_tier
             WHERE dev_agreement_id = :id
         ");
         // Note: contract_id is not updated after initial creation
@@ -172,6 +181,11 @@ class DevelopmentAgreement
             ':agreement_termination_date'     => $nullOrDate($data['agreement_termination_date'] ?? null),
             ':planning_board_date'            => $nullOrDate($data['planning_board_date'] ?? null),
             ':town_council_hearing_date'      => $nullOrDate($data['town_council_hearing_date'] ?? null),
+            ':number_of_units'               => ($data['number_of_units'] !== '' && $data['number_of_units'] !== null) ? (int)$data['number_of_units'] : null,
+            ':daily_flow_maximum'            => ($data['daily_flow_maximum'] !== '' && $data['daily_flow_maximum'] !== null) ? (int)$data['daily_flow_maximum'] : null,
+            ':allocation_elements'           => $nullOrStr($data['allocation_elements'] ?? null),
+            ':parkland_dedication'           => !empty($data['parkland_dedication']) ? 1 : 0,
+            ':transportation_tier'           => $nullOrStr($data['transportation_tier'] ?? null),
         ];
     }
 }

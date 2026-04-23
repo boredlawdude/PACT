@@ -156,7 +156,7 @@ function status_badge(string $status): string {
                         data-edit-url="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>"
                         data-delete-url="/index.php?page=contracts_delete&contract_id=<?= (int)$c['contract_id'] ?>">
                         <td><input type="checkbox" class="form-check-input contracts-row-check" value="<?= (int)$c['contract_id'] ?>"></td>
-                        <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] ?? '') ?></a></td>
+                        <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] !== null && $c['contract_number'] !== '' ? $c['contract_number'] : ('#' . $c['contract_id'])) ?></a></td>
                         <td><span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>"><?= h($c['status_name'] ?? '') ?></span></td>
                         <td>
                             <?php if (!empty($c['counterparty_company_name'])): ?>
