@@ -22,7 +22,7 @@ class DocuSignController
 
     public function __construct()
     {
-        $this->db = pdo();
+        $this->db = db();
     }
 
     // -------------------------------------------------------------------------
@@ -32,11 +32,11 @@ class DocuSignController
     private function config(): array
     {
         return [
-            'client_id'    => (string)(getenv('DOCUSIGN_CLIENT_ID')         ?: ''),
-            'client_secret'=> (string)(getenv('DOCUSIGN_CLIENT_SECRET')      ?: ''),
-            'redirect_uri' => (string)(getenv('DOCUSIGN_REDIRECT_URI')       ?: ''),
+            'client_id'    => (string)($_ENV['DOCUSIGN_CLIENT_ID']       ?? ''),
+            'client_secret'=> (string)($_ENV['DOCUSIGN_CLIENT_SECRET']    ?? ''),
+            'redirect_uri' => (string)($_ENV['DOCUSIGN_REDIRECT_URI']     ?? ''),
             'auth_server'  => 'https://account-d.docusign.com',
-            'webhook_hmac' => (string)(getenv('DOCUSIGN_WEBHOOK_HMAC_KEY')   ?: ''),
+            'webhook_hmac' => (string)($_ENV['DOCUSIGN_WEBHOOK_HMAC_KEY'] ?? ''),
         ];
     }
 
