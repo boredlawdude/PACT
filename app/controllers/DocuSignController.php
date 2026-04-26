@@ -349,11 +349,8 @@ class DocuSignController
         foreach ($this->getPeopleByRoleKey('FINANCE_DIRECTOR') as $p) {
             $addSigner($p['name'], $p['email'], 'Finance Director');
         }
-        // 3. Town Attorney (dedicated role first, then Legal Admin fallback)
+        // 3. Town Attorney (TOWN_ATTORNEY role only)
         foreach ($this->getPeopleByRoleKey('TOWN_ATTORNEY') as $p) {
-            $addSigner($p['name'], $p['email'], 'Town Attorney');
-        }
-        foreach ($this->getPeopleByRoleKey('LEGAL_ADMIN') as $p) {
             $addSigner($p['name'], $p['email'], 'Town Attorney');
         }
         // 4. Town Clerk
