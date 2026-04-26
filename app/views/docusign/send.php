@@ -21,7 +21,13 @@ $contractLabel = trim((string)($doc['contract_name'] ?? ''));
 if (!empty($doc['contract_number'])) {
     $contractLabel .= ' (' . $doc['contract_number'] . ')';
 }
-$defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
+$ownerParty       = trim((string)($doc['owner_company_name']       ?? $doc['owner_name']       ?? ''));
+$counterpartyParty = trim((string)($doc['counterparty_company_name'] ?? $doc['counterparty_name'] ?? ''));
+$contractName      = trim((string)($doc['contract_name'] ?? ''));
+
+$subjectParts = array_filter([$ownerParty, $counterpartyParty]);
+$defaultSubject = 'Please sign a contract for: ' . ($contractName !== '' ? $contractName : 'Contract')
+    . ($subjectParts !== [] ? ' between ' . implode(' and ', $subjectParts) : '');
 ?>
 
 <div class="container py-4" style="max-width: 760px;">

@@ -151,6 +151,8 @@ class DocuSignController
                    cp.email AS counterparty_email,
                    CONCAT(op.first_name, ' ', op.last_name) AS owner_name,
                    op.email AS owner_email,
+                   oc.name AS owner_company_name,
+                   cc.name AS counterparty_company_name,
                    d.department_head_id,
                    CONCAT(dh.first_name, ' ', dh.last_name) AS dept_head_name,
                    dh.email AS dept_head_email
@@ -158,6 +160,8 @@ class DocuSignController
             JOIN contracts c ON c.contract_id = cd.contract_id
             LEFT JOIN people cp ON cp.person_id = c.counterparty_primary_contact_id
             LEFT JOIN people op ON op.person_id = c.owner_primary_contact_id
+            LEFT JOIN companies oc ON oc.company_id = c.owner_company_id
+            LEFT JOIN companies cc ON cc.company_id = c.counterparty_company_id
             LEFT JOIN departments d ON d.department_id = c.department_id
             LEFT JOIN people dh ON dh.person_id = d.department_head_id
             WHERE cd.contract_document_id = :id
