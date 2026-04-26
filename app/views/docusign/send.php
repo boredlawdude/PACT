@@ -61,7 +61,7 @@ $defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
       <button type="button" class="btn btn-outline-secondary btn-sm" id="add-signer-btn">+ Add Signer</button>
     </div>
     <div class="form-text mb-3">
-      Signers receive the document in the order listed. Town signers are pre-populated from their assigned roles — edit or remove as needed. The vendor/counterparty is placed last.
+      Signers receive the document in the order listed. Vendor signers sign first, followed by town signers. Edit or remove any row as needed.
     </div>
 
     <div id="signers-container">
@@ -88,13 +88,45 @@ $defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
         </div>
       </template>
 
+      <!-- Vendor / Counterparty signers — sign first (3 slots) -->
+      <?php
+        $vendorRows = [
+            ['name' => $counterpartyName, 'email' => $counterpartyEmail],
+            ['name' => '', 'email' => ''],
+            ['name' => '', 'email' => ''],
+        ];
+      ?>
+      <?php foreach ($vendorRows as $i => $v): ?>
+      <div class="card mb-2 signer-row border-warning-subtle">
+        <div class="card-body py-2 px-3">
+          <div class="row g-2 align-items-center">
+            <div class="col-auto text-muted signer-num fw-bold" style="min-width:28px;"><?= $i + 1 ?></div>
+            <div class="col">
+              <input type="text" class="form-control form-control-sm" name="signer_name[]"
+                     value="<?= h($v['name']) ?>" placeholder="Full Name" maxlength="100"
+                     <?= $i === 0 ? 'required' : '' ?>>
+              <div class="form-text text-warning-emphasis small mt-0">Vendor / Counterparty</div>
+            </div>
+            <div class="col">
+              <input type="email" class="form-control form-control-sm" name="signer_email[]"
+                     value="<?= h($v['email']) ?>" placeholder="email@example.com" maxlength="200"
+                     <?= $i === 0 ? 'required' : '' ?>>
+            </div>
+            <div class="col-auto">
+              <button type="button" class="btn btn-outline-danger btn-sm remove-signer-btn" title="Remove signer">&times;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <?php endforeach; ?>
+
+      <!-- Town signers (pre-populated from roles) -->
       <?php if (!empty($townSigners)): ?>
-        <!-- Town signers (pre-populated) -->
         <?php foreach ($townSigners as $i => $signer): ?>
         <div class="card mb-2 signer-row border-primary-subtle">
           <div class="card-body py-2 px-3">
             <div class="row g-2 align-items-center">
-              <div class="col-auto text-muted signer-num fw-bold" style="min-width:28px;"><?= $i + 1 ?></div>
+              <div class="col-auto text-muted signer-num fw-bold" style="min-width:28px;"><?= count($vendorRows) + $i + 1 ?></div>
               <div class="col">
                 <input type="text" class="form-control form-control-sm" name="signer_name[]"
                        value="<?= h($signer['name']) ?>" placeholder="Full Name" maxlength="100" required>
@@ -112,27 +144,6 @@ $defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
         </div>
         <?php endforeach; ?>
       <?php endif; ?>
-
-      <!-- Counterparty / vendor signer — always last -->
-      <div class="card mb-2 signer-row">
-        <div class="card-body py-2 px-3">
-          <div class="row g-2 align-items-center">
-            <div class="col-auto text-muted signer-num fw-bold" style="min-width:28px;"><?= count($townSigners) + 1 ?></div>
-            <div class="col">
-              <input type="text" class="form-control form-control-sm" name="signer_name[]"
-                     value="<?= h($counterpartyName) ?>" placeholder="Full Name" maxlength="100" required>
-              <div class="form-text text-secondary small mt-0">Vendor / Counterparty</div>
-            </div>
-            <div class="col">
-              <input type="email" class="form-control form-control-sm" name="signer_email[]"
-                     value="<?= h($counterpartyEmail) ?>" placeholder="email@example.com" maxlength="200" required>
-            </div>
-            <div class="col-auto">
-              <button type="button" class="btn btn-outline-danger btn-sm remove-signer-btn" title="Remove signer">&times;</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
     </div><!-- /#signers-container -->
 
@@ -182,14 +193,20 @@ $defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
         const clone = template.content.cloneNode(true);
         const row   = clone.querySelector('.signer-row');
         attachRemoveHandler(row);
-        // Insert before the last row (counterparty stays last)
-        const rows = container.querySelectorAll('.signer-row');
-        const lastRow = rows[rows.length - 1];
-        container.insertBefore(clone, lastRow);
+        // Insert before the first town signer (blue border), or append if none
+        const firstTownRow = container.querySelector('.signer-row.border-primary-subtle');
+        if (firstTownRow) {
+            container.insertBefore(clone, firstTownRow);
+        } else {
+            container.appendChild(clone);
+        }
         renumberRows();
-        // Focus name field of the newly inserted row
+        // Focus name field of newly inserted row
         const allRows = container.querySelectorAll('.signer-row');
-        const newRow  = allRows[allRows.length - 2];
+        const insertedIndex = firstTownRow
+            ? Array.from(allRows).indexOf(container.querySelector('.signer-row.border-primary-subtle')) - 1
+            : allRows.length - 1;
+        const newRow = allRows[insertedIndex];
         if (newRow) newRow.querySelector('input[name="signer_name[]"]')?.focus();
     });
 })();
