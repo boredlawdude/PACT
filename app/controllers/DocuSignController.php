@@ -146,18 +146,41 @@ class DocuSignController
         $stmt = $this->db->prepare("
             SELECT cd.*,
                    c.contract_id, c.name AS contract_name, c.contract_number,
+                   c.department_id,
                    CONCAT(cp.first_name, ' ', cp.last_name) AS counterparty_name,
                    cp.email AS counterparty_email,
                    CONCAT(op.first_name, ' ', op.last_name) AS owner_name,
-                   op.email AS owner_email
+                   op.email AS owner_email,
+                   d.department_head_id,
+                   CONCAT(dh.first_name, ' ', dh.last_name) AS dept_head_name,
+                   dh.email AS dept_head_email
             FROM contract_documents cd
             JOIN contracts c ON c.contract_id = cd.contract_id
             LEFT JOIN people cp ON cp.person_id = c.counterparty_primary_contact_id
             LEFT JOIN people op ON op.person_id = c.owner_primary_contact_id
+            LEFT JOIN departments d ON d.department_id = c.department_id
+            LEFT JOIN people dh ON dh.person_id = d.department_head_id
             WHERE cd.contract_document_id = :id
         ");
         $stmt->execute([':id' => $docId]);
         return $stmt->fetch();
+    }
+
+    /**
+     * Returns people who hold a given role_key as [{name, email}].
+     */
+    private function getPeopleByRoleKey(string $roleKey): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT CONCAT(p.first_name, ' ', p.last_name) AS name, p.email
+            FROM people p
+            JOIN person_roles pr ON pr.person_id = p.person_id
+            JOIN roles r ON r.role_id = pr.role_id
+            WHERE r.role_key = ? AND p.email IS NOT NULL AND p.email <> ''
+            ORDER BY p.last_name, p.first_name
+        ");
+        $stmt->execute([$roleKey]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // -------------------------------------------------------------------------
@@ -303,6 +326,47 @@ class DocuSignController
         if ($doc === false) {
             http_response_code(404);
             exit('Document not found.');
+        }
+
+        // ── Build suggested town signers ──────────────────────────────────
+        // Deduplicate by email to avoid showing the same person twice
+        $seen          = [];
+        $townSigners   = [];
+
+        $addSigner = function(string $name, ?string $email, string $role) use (&$townSigners, &$seen): void {
+            $name  = trim($name);
+            $email = trim((string)$email);
+            if ($name === '' || $email === '' || isset($seen[$email])) return;
+            $seen[$email] = true;
+            $townSigners[] = ['name' => $name, 'email' => $email, 'role' => $role];
+        };
+
+        // 1. Town Manager(s)
+        foreach ($this->getPeopleByRoleKey('TOWN_MANAGER') as $p) {
+            $addSigner($p['name'], $p['email'], 'Town Manager');
+        }
+        // 2. Finance Director(s)
+        foreach ($this->getPeopleByRoleKey('FINANCE_DIRECTOR') as $p) {
+            $addSigner($p['name'], $p['email'], 'Finance Director');
+        }
+        // 3. Town Attorney (dedicated role first, then Legal Admin fallback)
+        foreach ($this->getPeopleByRoleKey('TOWN_ATTORNEY') as $p) {
+            $addSigner($p['name'], $p['email'], 'Town Attorney');
+        }
+        foreach ($this->getPeopleByRoleKey('LEGAL_ADMIN') as $p) {
+            $addSigner($p['name'], $p['email'], 'Town Attorney');
+        }
+        // 4. Town Clerk
+        foreach ($this->getPeopleByRoleKey('TOWN_CLERK') as $p) {
+            $addSigner($p['name'], $p['email'], 'Town Clerk');
+        }
+        // 5. Department Head for this contract's department
+        if (!empty($doc['dept_head_name']) && !empty($doc['dept_head_email'])) {
+            $addSigner($doc['dept_head_name'], $doc['dept_head_email'], 'Department Head');
+        }
+        // 6. Town contact (owner_primary_contact) on the contract
+        if (!empty($doc['owner_name']) && !empty($doc['owner_email'])) {
+            $addSigner($doc['owner_name'], $doc['owner_email'], 'Town Contact');
         }
 
         require APP_ROOT . '/app/views/docusign/send.php';

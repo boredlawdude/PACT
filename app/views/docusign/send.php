@@ -11,9 +11,11 @@ unset($_SESSION['docusign_flash_error'], $_SESSION['docusign_flash_success']);
 $docId      = (int)($doc['contract_document_id'] ?? 0);
 $contractId = (int)($doc['contract_id']          ?? 0);
 
-// Pre-populate first signer from counterparty contact
-$defaultSignerName  = trim((string)($doc['counterparty_name']  ?? ''));
-$defaultSignerEmail = trim((string)($doc['counterparty_email'] ?? ''));
+// $townSigners is passed from controller: [{name, email, role}, ...]
+$townSigners ??= [];
+
+$counterpartyName  = trim((string)($doc['counterparty_name']  ?? ''));
+$counterpartyEmail = trim((string)($doc['counterparty_email'] ?? ''));
 
 $contractLabel = trim((string)($doc['contract_name'] ?? ''));
 if (!empty($doc['contract_number'])) {
@@ -58,11 +60,13 @@ $defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
       <span class="fw-semibold">Signers</span>
       <button type="button" class="btn btn-outline-secondary btn-sm" id="add-signer-btn">+ Add Signer</button>
     </div>
-    <div class="form-text mb-3">Signers receive the document in the order listed. Drag to reorder (or use the move buttons).</div>
+    <div class="form-text mb-3">
+      Signers receive the document in the order listed. Town signers are pre-populated from their assigned roles — edit or remove as needed. The vendor/counterparty is placed last.
+    </div>
 
     <div id="signers-container">
 
-      <!-- Signer row template (filled in by JS when "Add Signer" is clicked) -->
+      <!-- Signer row template (used by "Add Signer" button) -->
       <template id="signer-row-template">
         <div class="card mb-2 signer-row">
           <div class="card-body py-2 px-3">
@@ -84,24 +88,47 @@ $defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
         </div>
       </template>
 
-      <!-- First signer pre-populated from counterparty contact -->
+      <?php if (!empty($townSigners)): ?>
+        <!-- Town signers (pre-populated) -->
+        <?php foreach ($townSigners as $i => $signer): ?>
+        <div class="card mb-2 signer-row border-primary-subtle">
+          <div class="card-body py-2 px-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-auto text-muted signer-num fw-bold" style="min-width:28px;"><?= $i + 1 ?></div>
+              <div class="col">
+                <input type="text" class="form-control form-control-sm" name="signer_name[]"
+                       value="<?= h($signer['name']) ?>" placeholder="Full Name" maxlength="100" required>
+                <div class="form-text text-primary small mt-0"><?= h($signer['role']) ?></div>
+              </div>
+              <div class="col">
+                <input type="email" class="form-control form-control-sm" name="signer_email[]"
+                       value="<?= h($signer['email']) ?>" placeholder="email@example.com" maxlength="200" required>
+              </div>
+              <div class="col-auto">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-signer-btn" title="Remove signer">&times;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+
+      <!-- Counterparty / vendor signer — always last -->
       <div class="card mb-2 signer-row">
         <div class="card-body py-2 px-3">
           <div class="row g-2 align-items-center">
-            <div class="col-auto text-muted signer-num fw-bold" style="min-width:28px;">1</div>
+            <div class="col-auto text-muted signer-num fw-bold" style="min-width:28px;"><?= count($townSigners) + 1 ?></div>
             <div class="col">
               <input type="text" class="form-control form-control-sm" name="signer_name[]"
-                     value="<?= h($defaultSignerName) ?>" placeholder="Full Name" maxlength="100" required>
+                     value="<?= h($counterpartyName) ?>" placeholder="Full Name" maxlength="100" required>
+              <div class="form-text text-secondary small mt-0">Vendor / Counterparty</div>
             </div>
             <div class="col">
               <input type="email" class="form-control form-control-sm" name="signer_email[]"
-                     value="<?= h($defaultSignerEmail) ?>" placeholder="email@example.com" maxlength="200" required>
+                     value="<?= h($counterpartyEmail) ?>" placeholder="email@example.com" maxlength="200" required>
             </div>
             <div class="col-auto">
-              <button type="button" class="btn btn-outline-danger btn-sm remove-signer-btn" title="Remove signer"
-                      <?= ($defaultSignerName !== '' || $defaultSignerEmail !== '') ? '' : '' ?>>
-                &times;
-              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm remove-signer-btn" title="Remove signer">&times;</button>
             </div>
           </div>
         </div>
@@ -142,24 +169,28 @@ $defaultSubject = 'Please sign: ' . ($doc['file_name'] ?? 'Contract Document');
         const btn = row.querySelector('.remove-signer-btn');
         if (!btn) return;
         btn.addEventListener('click', () => {
-            if (container.querySelectorAll('.signer-row').length <= 1) return; // always keep at least 1
+            if (container.querySelectorAll('.signer-row').length <= 1) return; // keep at least 1
             row.remove();
             renumberRows();
         });
     }
 
-    // Attach to existing first row
+    // Attach to pre-populated rows
     container.querySelectorAll('.signer-row').forEach(attachRemoveHandler);
 
     addBtn.addEventListener('click', () => {
         const clone = template.content.cloneNode(true);
         const row   = clone.querySelector('.signer-row');
         attachRemoveHandler(row);
-        container.appendChild(clone);
+        // Insert before the last row (counterparty stays last)
+        const rows = container.querySelectorAll('.signer-row');
+        const lastRow = rows[rows.length - 1];
+        container.insertBefore(clone, lastRow);
         renumberRows();
-        // Focus the name field of the new row
-        const nameInput = container.querySelector('.signer-row:last-child input[name="signer_name[]"]');
-        if (nameInput) nameInput.focus();
+        // Focus name field of the newly inserted row
+        const allRows = container.querySelectorAll('.signer-row');
+        const newRow  = allRows[allRows.length - 2];
+        if (newRow) newRow.querySelector('input[name="signer_name[]"]')?.focus();
     });
 })();
 </script>
