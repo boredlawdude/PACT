@@ -18,6 +18,7 @@ require_once APP_ROOT . '/app/controllers/RolesController.php';
 require_once APP_ROOT . '/app/controllers/DevelopmentAgreementsController.php';
     require_once APP_ROOT . '/app/controllers/DevelopmentAgreementSubmissionsController.php';
 require_once APP_ROOT . '/app/controllers/ChangeOrdersController.php';
+require_once APP_ROOT . '/app/controllers/ContractIntakeController.php';
 $ChangeOrdersController = new ChangeOrdersController();
 
 $companiesController = new CompaniesController();
@@ -510,6 +511,31 @@ case 'departments_store':
 
     case 'dev_agreement_submissions_reject':
         (new DevelopmentAgreementSubmissionsController())->reject();
+        break;
+
+    // ── Contract Intake ─────────────────────────────────────────────────
+    case 'contract_intake_list':
+        (new ContractIntakeController())->index();
+        break;
+
+    case 'contract_intake_show':
+        (new ContractIntakeController())->show();
+        break;
+
+    case 'contract_intake_import':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            (new ContractIntakeController())->import();
+        } else {
+            http_response_code(405);
+        }
+        break;
+
+    case 'contract_intake_reject':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            (new ContractIntakeController())->reject();
+        } else {
+            http_response_code(405);
+        }
         break;
 
     default:

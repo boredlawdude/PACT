@@ -481,6 +481,19 @@ class ContractsController
         $statusName = $this->getStatusName((int)($data['contract_status_id'] ?? 0));
         $this->logHistory($contractId, 'contract_created', null, $statusName, 'Contract created');
 
+        // If created from an intake submission, mark it as imported
+        if (!empty($_SESSION['intake_import_id'])) {
+            $intakeId = (int)$_SESSION['intake_import_id'];
+            unset($_SESSION['intake_import_id']);
+            require_once APP_ROOT . '/app/models/ContractIntakeSubmission.php';
+            $person = current_person();
+            (new ContractIntakeSubmission($this->db))->markImported(
+                $intakeId,
+                $contractId,
+                (int)($person['person_id'] ?? 0)
+            );
+        }
+
         unset($_SESSION['old_contract_form']);
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;

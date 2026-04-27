@@ -1,0 +1,28 @@
+-- Migration: create contract_intake_submissions table
+-- Public-facing contract intake / request form submissions (staging area)
+CREATE TABLE IF NOT EXISTS contract_intake_submissions (
+  submission_id        INT AUTO_INCREMENT PRIMARY KEY,
+  submitter_name       VARCHAR(100) NOT NULL,
+  submitter_email      VARCHAR(200) NOT NULL,
+  submitter_phone      VARCHAR(30)  DEFAULT NULL,
+  submitter_department VARCHAR(200) DEFAULT NULL,
+  contract_name        VARCHAR(200) NOT NULL,
+  contract_description TEXT         DEFAULT NULL,
+  contract_type_id     INT          DEFAULT NULL,
+  counterparty_company VARCHAR(200) DEFAULT NULL,
+  counterparty_contact VARCHAR(100) DEFAULT NULL,
+  counterparty_email   VARCHAR(200) DEFAULT NULL,
+  counterparty_phone   VARCHAR(30)  DEFAULT NULL,
+  estimated_value      DECIMAL(15,2) DEFAULT NULL,
+  start_date           DATE         DEFAULT NULL,
+  end_date             DATE         DEFAULT NULL,
+  po_number            VARCHAR(20)  DEFAULT NULL,
+  account_number       VARCHAR(20)  DEFAULT NULL,
+  notes                TEXT         DEFAULT NULL,
+  status               ENUM('pending','imported','rejected') NOT NULL DEFAULT 'pending',
+  imported_contract_id INT          DEFAULT NULL,
+  reviewed_by          INT          DEFAULT NULL,
+  reviewed_at          DATETIME     DEFAULT NULL,
+  created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

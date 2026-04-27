@@ -53,6 +53,18 @@ declare(strict_types=1);
         <li class="nav-item"><a class="nav-link" href="/index.php?page=dashboard">Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" href="/index.php?page=contracts">Contracts</a></li>
         <li class="nav-item"><a class="nav-link" href="/index.php?page=contracts_create">New Contract</a></li>
+        <li class="nav-item">
+          <a class="nav-link" href="/index.php?page=contract_intake_list">
+            Contract Requests
+            <?php
+            try {
+                require_once APP_ROOT . '/app/models/ContractIntakeSubmission.php';
+                $cIntakePending = (new ContractIntakeSubmission(db()))->countPending();
+                if ($cIntakePending > 0) echo '<span class="badge bg-warning text-dark ms-1">' . $cIntakePending . '</span>';
+            } catch (Throwable $e) { /* table may not exist yet */ }
+            ?>
+          </a>
+        </li>
         <div class="d-flex align-items-center border border-light border-opacity-50 rounded px-1 mx-1" style="background:rgba(255,255,255,0.08);">
           <li class="nav-item"><a class="nav-link" href="/index.php?page=development_agreements">Dev Agreements</a></li>
           <li class="nav-item">
