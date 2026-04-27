@@ -537,10 +537,26 @@ class DocuSignController
 
             $person   = current_person();
             $personId = (int)($person['person_id'] ?? 0) ?: null;
+
+            // Fetch old status name before updating
+            $oldStatusRow = $this->db->prepare(
+                "SELECT cs.contract_status_name
+                 FROM contracts c
+                 LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
+                 WHERE c.contract_id = ? LIMIT 1"
+            );
+            $oldStatusRow->execute([$contractId]);
+            $oldStatusName = (string)($oldStatusRow->fetchColumn() ?? '');
+
+            // Update contract status to "Out For Signature" (id=7)
+            $this->db->prepare(
+                "UPDATE contracts SET contract_status_id = 7 WHERE contract_id = ? AND contract_status_id != 7"
+            )->execute([$contractId]);
+
             $this->db->prepare(
                 "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-                 VALUES (?, 'docusign', NULL, 'sent', ?, NOW(), ?)"
-            )->execute([$contractId, $personId, 'Sent for signature via DocuSign (envelope ' . $envelopeId . ')']);
+                 VALUES (?, 'docusign', ?, 'Out For Signature', ?, NOW(), ?)"
+            )->execute([$contractId, $oldStatusName ?: null, $personId, 'Sent for signature via DocuSign (envelope ' . $envelopeId . ')']);
         }
 
         unset($_SESSION['ds_pending_doc_id'], $_SESSION['ds_pending_contract_id']);
