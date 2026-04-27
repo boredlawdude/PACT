@@ -627,7 +627,16 @@ class ContractsController
     }
 
     // --- Helper stubs (implement as needed or connect to models) ---
-    private function getResponsiblePeople(): array { return []; }
+    private function getResponsiblePeople(): array {
+        $stmt = $this->db->query("
+            SELECT DISTINCT p.person_id,
+                COALESCE(NULLIF(p.full_name,''), TRIM(CONCAT(COALESCE(p.first_name,''), ' ', COALESCE(p.last_name,'')))) AS display_name
+            FROM people p
+            INNER JOIN contracts c ON c.owner_primary_contact_id = p.person_id
+            ORDER BY display_name
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     private function getCompanies(): array {
         $stmt = $this->db->query("SELECT company_id, name FROM companies WHERE is_active = 1 ORDER BY name ASC");
