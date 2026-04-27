@@ -159,6 +159,11 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
             </div>
 
             <div class="col-md-4">
+              <div class="small text-muted">Account Number</div>
+              <div><?= h($contract['account_number'] ?? '') ?: '—' ?></div>
+            </div>
+
+            <div class="col-md-4">
               <div class="small text-muted">PO Amount</div>
               <div><?= !empty($contract['po_amount']) ? '$' . number_format((float)$contract['po_amount'], 2) : '—' ?></div>
             </div>

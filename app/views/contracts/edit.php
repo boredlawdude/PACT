@@ -273,6 +273,13 @@ if (!function_exists('h')) {
             </div>
 
             <div class="col-md-3">
+                <label class="form-label" for="account_number">Account Number</label>
+                <input class="form-control" type="text" id="account_number" name="account_number"
+                       maxlength="20"
+                       value="<?= h($contract['account_number'] ?? '') ?>">
+            </div>
+
+            <div class="col-md-3">
                 <label class="form-label" for="po_amount">PO Amount</label>
                 <div class="input-group">
                     <span class="input-group-text">$</span>
