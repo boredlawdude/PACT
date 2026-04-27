@@ -12,6 +12,9 @@ if (!defined('APP_ROOT')) {
     define('APP_ROOT', dirname(__DIR__));
 }
 
+// Set application timezone
+date_default_timezone_set('America/New_York');
+
 /*
 |--------------------------------------------------------------------------
 | Load .env
@@ -51,6 +54,13 @@ if (!function_exists('db')) {
                         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     ]
                 );
+                // Sync MySQL session timezone with PHP
+                try {
+                    $pdo->exec("SET time_zone = 'America/New_York'");
+                } catch (PDOException $tzEx) {
+                    // Named timezone tables not loaded; leave MySQL on its system timezone
+                    // PHP is already set to America/New_York which should match
+                }
             } catch (PDOException $e) {
                 die("Database connection failed: " . $e->getMessage());
             }
