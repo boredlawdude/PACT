@@ -248,6 +248,26 @@ class ContractsController
         }
         // ───────────────────────────────────────────────────────────────────────
 
+        // ── Exhibit list merge field ────────────────────────────────────────────────
+        // Rows that have an exhibit_label set, in display order (sort_order then created_at).
+        // Produces: "Exhibit A - Scope of Work; Exhibit B - Certificate of Insurance"
+        $exStmt = $this->db->prepare(
+            "SELECT exhibit_label, doc_type, description
+             FROM contract_documents
+             WHERE contract_id = ?
+               AND exhibit_label IS NOT NULL AND exhibit_label <> ''
+             ORDER BY sort_order ASC, created_at ASC"
+        );
+        $exStmt->execute([$contractId]);
+        $exhibitParts = [];
+        foreach ($exStmt->fetchAll(PDO::FETCH_ASSOC) as $exRow) {
+            $exLabel = trim($exRow['exhibit_label']);
+            $exDesc  = trim($exRow['description'] ?? '');
+            $exhibitParts[] = $exDesc !== '' ? $exLabel . ' - ' . $exDesc : $exLabel;
+        }
+        $contract['exhibit_list'] = implode('; ', $exhibitParts);
+        // ─────────────────────────────────────────────────────────────────────────────
+
         // Get contract type info (including template paths)
         $stmt = $this->db->prepare("SELECT * FROM contract_types WHERE contract_type_id = ? LIMIT 1");
         $stmt->execute([$contract['contract_type_id'] ?? 0]);

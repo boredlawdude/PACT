@@ -44,6 +44,7 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
             ['contract_type_name',       'Contract type (e.g. Development Agreement, Service Contract)'],
             ['start_date',               'Contract start / effective date (YYYY-MM-DD)'],
             ['end_date',                 'Contract end / expiration date (YYYY-MM-DD)'],
+            ['exhibit_list',              'Auto-generated list of all exhibits (e.g. Exhibit A - Scope of Work; Exhibit B - Certificate of Insurance). Drawn from documents that have a PDF Stamp set, in sort order.'],
             ['total_contract_value',     'Contract dollar amount — formatted with commas (e.g. 20,000.00)'],
             ['total_contract_value_dollars', 'Contract dollar amount with $ sign (e.g. $20,000.00)'],
             ['total_contract_value_words',   'Contract amount written out in legal form (e.g. Twenty Thousand Dollars and No/100)'],
