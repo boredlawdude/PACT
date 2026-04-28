@@ -68,6 +68,11 @@ if (!function_exists('h')) {
     </div>
 </div>
 
+<div class="mb-3" style="max-width: 360px;">
+    <input type="search" id="companySearch" class="form-control"
+           placeholder="Search by company name…" autocomplete="off">
+</div>
+
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table align-middle mb-0" id="companiesTable">
@@ -258,6 +263,23 @@ if (!function_exists('h')) {
             dragSrcTh = null;
         });
     });
+})();
+</script>
+
+<script>
+(function () {
+    var input = document.getElementById('companySearch');
+    var tbody = document.querySelector('#companiesTable tbody');
+    input.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        Array.from(tbody.querySelectorAll('tr')).forEach(function (row) {
+            // Name is in the 3rd td (index 2)
+            var name = (row.cells[2] ? row.cells[2].textContent : '').toLowerCase();
+            row.style.display = (!q || name.includes(q)) ? '' : 'none';
+        });
+    });
+    // Autofocus on page load
+    input.focus();
 })();
 </script>
 
