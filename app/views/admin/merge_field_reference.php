@@ -20,6 +20,10 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
     <strong>HTML:</strong> wrap in <code>{{field_name}}</code>.
     All fields are replaced with an empty string if the value is blank or null.
   </p>
+  <div class="alert alert-info py-2 mb-4">
+    <strong>Modifiers:</strong> Append <code>|upper</code> to any field name to output the value in ALL CAPS.
+    &nbsp; Examples: &nbsp;<code>${name|upper}</code> &nbsp;/&nbsp; <code>{{owner_company_name|upper}}</code>
+  </div>
 
   <!-- ── Core Contract Fields ──────────────────────────────────── -->
   <div class="card shadow-sm mb-4">

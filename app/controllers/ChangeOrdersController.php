@@ -506,6 +506,8 @@ HTML;
             foreach ($mergeFields as $key => $value) {
                 $safe = htmlspecialchars((string)$value, ENT_QUOTES | ENT_XML1, 'UTF-8');
                 $processor->setValue($key, $safe);
+                // Support ${field|upper} modifier for uppercase output
+                $processor->setValue($key . '|upper', htmlspecialchars(strtoupper((string)$value), ENT_QUOTES | ENT_XML1, 'UTF-8'));
             }
 
             // Reserve a row in contract_documents first so we have the ID for the filename
@@ -533,6 +535,8 @@ HTML;
             }
             foreach ($mergeFields as $key => $value) {
                 $content = str_replace('{{' . $key . '}}', htmlspecialchars((string)$value), $content);
+                // Support {{field|upper}} modifier for uppercase output
+                $content = str_replace('{{' . $key . '|upper}}', htmlspecialchars(strtoupper((string)$value)), $content);
             }
 
             $stmt = $this->db->prepare(

@@ -310,6 +310,8 @@ class ContractsController
                 // in certain code paths (e.g. split macros), causing corrupt DOCX.
                 $safe = htmlspecialchars((string)$value, ENT_QUOTES | ENT_XML1, 'UTF-8');
                 $templateProcessor->setValue($key, $safe);
+                // Support ${field|upper} modifier for uppercase output
+                $templateProcessor->setValue($key . '|upper', htmlspecialchars(strtoupper((string)$value), ENT_QUOTES | ENT_XML1, 'UTF-8'));
             }
 
             $relativeDir = 'storage/contracts/';
@@ -347,6 +349,8 @@ class ContractsController
             $output = $templateContent;
             foreach ($contract as $key => $value) {
                 $output = str_replace('{{' . $key . '}}', htmlspecialchars((string)$value), $output);
+                // Support {{field|upper}} modifier for uppercase output
+                $output = str_replace('{{' . $key . '|upper}}', htmlspecialchars(strtoupper((string)$value)), $output);
             }
             header('Content-Type: ' . $contentType);
             header('Content-Disposition: attachment; filename="' . $downloadName . '"');
