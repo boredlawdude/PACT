@@ -101,17 +101,17 @@ class ContractsController
     }
 
 
-    public function generateWordDocument(int $contractId): void
+    public function generateWordDocument(int $contractId, int $overrideContractTypeId = 0): void
     {
-        $this->generateDocument($contractId, 'docx');
+        $this->generateDocument($contractId, 'docx', $overrideContractTypeId);
     }
 
-    public function generateHtmlDocument(int $contractId): void
+    public function generateHtmlDocument(int $contractId, int $overrideContractTypeId = 0): void
     {
-        $this->generateDocument($contractId, 'html');
+        $this->generateDocument($contractId, 'html', $overrideContractTypeId);
     }
 
-    private function generateDocument(int $contractId, string $format): void
+    private function generateDocument(int $contractId, string $format, int $overrideContractTypeId = 0): void
     {
         // Set $createdBy from session
         $createdBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
@@ -268,9 +268,10 @@ class ContractsController
         $contract['exhibit_list'] = implode('; ', $exhibitParts);
         // ─────────────────────────────────────────────────────────────────────────────
 
-        // Get contract type info (including template paths)
+        // Get contract type info (including template paths) — use override if provided
+        $lookupTypeId = $overrideContractTypeId > 0 ? $overrideContractTypeId : ($contract['contract_type_id'] ?? 0);
         $stmt = $this->db->prepare("SELECT * FROM contract_types WHERE contract_type_id = ? LIMIT 1");
-        $stmt->execute([$contract['contract_type_id'] ?? 0]);
+        $stmt->execute([$lookupTypeId]);
         $contractType = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$contractType) {
             http_response_code(404);
@@ -516,6 +517,9 @@ class ContractsController
         require_once APP_ROOT . '/app/controllers/ApprovalRulesController.php';
         $requiredApprovals  = ApprovalRulesController::requiredApprovalsFor($this->db, $contract);
         $userApprovalRoles  = ApprovalRulesController::getApprovalRolesForCurrentUser();
+
+        // All active contract types for the "Generate Selected Doc" dropdown
+        $contractTypes = $this->getContractTypes();
 
         require APP_ROOT . '/app/views/contracts/show.php';
     }

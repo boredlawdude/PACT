@@ -745,12 +745,27 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
   <div class="card shadow-sm mt-4">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
       <h2 class="h6 mb-0">Documents</h2>
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 align-items-center flex-wrap">
             <a href="/index.php?page=contract_documents_merge_pdf&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-dark btn-sm">Merge as PDF</a>
             <a href="/index.php?page=contract_document_compare&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-info btn-sm">Compare Documents</a>
             <a href="/index.php?page=contract_document_create&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-secondary btn-sm">Upload Document</a>
-            <a href="/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-primary btn-sm">Generate Doc</a>
+            <a href="/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-primary btn-sm">Generate Related Doc</a>
             <a href="/index.php?page=contracts_generate_html&contract_id=<?= (int)$contract['contract_id'] ?>" target="_blank" class="btn btn-outline-success btn-sm">Generate HTML</a>
+            <?php if (!empty($contractTypes)): ?>
+            <div class="d-flex gap-1 align-items-center">
+              <select id="generateDocTypeSelect" class="form-select form-select-sm" style="max-width:220px">
+                <option value="">— Select doc type —</option>
+                <?php foreach ($contractTypes as $ct): ?>
+                  <option value="<?= (int)$ct['contract_type_id'] ?>"><?= htmlspecialchars($ct['contract_type'], ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+              <button type="button" class="btn btn-outline-warning btn-sm" onclick="
+                var sel = document.getElementById('generateDocTypeSelect');
+                if (!sel.value) { alert('Please select a document type.'); return; }
+                window.location.href = '/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>&contract_type_id=' + sel.value;
+              ">Generate Selected Doc</button>
+            </div>
+            <?php endif; ?>
           </div>
         </div>
         <div class="card-body p-0">

@@ -148,11 +148,17 @@ switch ($page) {
         break;
 
     case 'contracts_generate_html':
-        $ContractsController->generateHtmlDocument((int)($_GET['contract_id'] ?? 0));
+        $ContractsController->generateHtmlDocument(
+            (int)($_GET['contract_id'] ?? 0),
+            (int)($_GET['contract_type_id'] ?? 0)
+        );
         break;
 
     case 'contracts_generate_word':
-        $ContractsController->generateWordDocument((int)($_GET['contract_id'] ?? 0));
+        $ContractsController->generateWordDocument(
+            (int)($_GET['contract_id'] ?? 0),
+            (int)($_GET['contract_type_id'] ?? 0)
+        );
         break;
 
     case 'change_orders_create':
