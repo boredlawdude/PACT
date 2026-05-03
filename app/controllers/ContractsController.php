@@ -322,8 +322,8 @@ class ContractsController
             }
 
             // Insert row with created_by_person_id
-            $stmt = $this->db->prepare("INSERT INTO contract_documents (contract_id, file_path, file_name, created_at, created_by_person_id) VALUES (?, '', '', NOW(), ?)");
-            $stmt->execute([$contractId, $createdBy]);
+            $stmt = $this->db->prepare("INSERT INTO contract_documents (contract_id, doc_type, file_path, file_name, created_at, created_by_person_id) VALUES (?, ?, '', '', NOW(), ?)");
+            $stmt->execute([$contractId, $contractType['contract_type'] ?? '', $createdBy]);
             $docId = $this->db->lastInsertId();
 
             $fileName = $contractId . '_DRAFT_v' . $docId . '.docx';

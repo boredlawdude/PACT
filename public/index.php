@@ -38,6 +38,13 @@ if ($page === 'api_company_contacts') {
 }
 // ────────────────────────────────────────────────────────────────────────────
 
+// Backup download must run before any HTML output
+if ($page === 'db_backup_run') {
+    require_once APP_ROOT . '/app/controllers/DatabaseBackupController.php';
+    (new DatabaseBackupController())->run();
+    exit;
+}
+
 require_once __DIR__ . '/../app/views/layouts/header.php';
 require_once APP_ROOT . '/app/controllers/ContractsController.php';
 require_once APP_ROOT . '/app/controllers/CompaniesController.php';
@@ -436,6 +443,16 @@ case 'departments_store':
     case 'admin_settings_update':
         require_once APP_ROOT . '/app/controllers/AdminSettingsController.php';
         (new AdminSettingsController())->update();
+        break;
+
+    case 'db_backup':
+        require_once APP_ROOT . '/app/controllers/DatabaseBackupController.php';
+        (new DatabaseBackupController())->index();
+        break;
+
+    case 'db_backup_run':
+        require_once APP_ROOT . '/app/controllers/DatabaseBackupController.php';
+        (new DatabaseBackupController())->run();
         break;
 
     case 'admin_statuses':
