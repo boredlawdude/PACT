@@ -152,6 +152,8 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
             ['counterparty_contact_name',     'Counterparty primary contact name (from company record)'],
             ['counterparty_website',          'Counterparty website URL'],
             ['counterparty_tax_id',           'Counterparty tax ID / EIN'],
+            ['counterparty_coi_exp_date',     'Counterparty COI expiration date (YYYY-MM-DD raw)'],
+            ['counterparty_coi_exp_date_formatted', 'Counterparty COI expiration date — long format (e.g. May 7, 2026)'],
             ['counterparty_signer1_name',     'Counterparty authorized signer 1 — name'],
             ['counterparty_signer1_title',    'Counterparty authorized signer 1 — title'],
             ['counterparty_signer1_email',    'Counterparty authorized signer 1 — email'],

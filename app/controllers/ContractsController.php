@@ -161,7 +161,8 @@ class ContractsController
                        country, phone, email, contact_name, website, tax_id,
                        signer1_name, signer1_title, signer1_email,
                        signer2_name, signer2_title, signer2_email,
-                       signer3_name, signer3_title, signer3_email
+                       signer3_name, signer3_title, signer3_email,
+                       coi_exp_date
                 FROM companies WHERE company_id = ? LIMIT 1");
             $stmt->execute([(int)$contract['counterparty_company_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -191,6 +192,11 @@ class ContractsController
             $csz = trim(implode(', ', array_filter([$row['city'] ?? '', $row['state_region'] ?? ''])));
             if (!empty($row['postal_code'])) $csz .= ' ' . $row['postal_code'];
             $contract['counterparty_city_state_zip']  = $csz;
+            // COI expiration date
+            $rawCoiExp = $row['coi_exp_date'] ?? '';
+            $contract['counterparty_coi_exp_date'] = $rawCoiExp;
+            $contract['counterparty_coi_exp_date_formatted'] = $rawCoiExp
+                ? date('F j, Y', strtotime($rawCoiExp)) : '';
         } else {
             foreach (['counterparty_company_name','counterparty_address','counterparty_address_line1',
                       'counterparty_address_line2','counterparty_city','counterparty_state',
@@ -199,7 +205,8 @@ class ContractsController
                       'counterparty_tax_id','counterparty_signer1_name','counterparty_signer1_title',
                       'counterparty_signer1_email','counterparty_signer2_name','counterparty_signer2_title',
                       'counterparty_signer2_email','counterparty_signer3_name','counterparty_signer3_title',
-                      'counterparty_signer3_email','counterparty_city_state_zip'] as $k) {
+                      'counterparty_signer3_email','counterparty_city_state_zip',
+                      'counterparty_coi_exp_date','counterparty_coi_exp_date_formatted'] as $k) {
                 $contract[$k] = '';
             }
         }
