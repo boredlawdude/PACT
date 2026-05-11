@@ -271,6 +271,10 @@ if (!function_exists('h')) {
 (function () {
     var input = document.getElementById('companySearch');
     var tbody = document.querySelector('#companiesTable tbody');
+    // Prevent pressing Enter from submitting the bulk-delete form
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); }
+    });
     input.addEventListener('input', function () {
         var q = this.value.trim().toLowerCase();
         Array.from(tbody.querySelectorAll('tr')).forEach(function (row) {
