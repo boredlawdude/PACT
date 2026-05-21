@@ -76,6 +76,9 @@ if ($docAId > 0 && $docBId > 0 && $docAId !== $docBId) {
                 return $html !== false ? strip_tags($html) : null;
             } elseif ($ext === 'txt') {
                 return file_get_contents($path) ?: null;
+            } elseif ($ext === 'pdf') {
+                $result = shell_exec('pdftotext ' . escapeshellarg($path) . ' -');
+                return $result !== null ? $result : null;
             }
             return null;
         };
@@ -84,7 +87,7 @@ if ($docAId > 0 && $docBId > 0 && $docAId !== $docBId) {
         $textB = $extractText($docB);
 
         if ($textA === null || $textB === null) {
-            $diffHtml = '<div class="alert alert-warning">Could not extract text from one or both documents. Only DOCX, HTML, and TXT files are supported.</div>';
+            $diffHtml = '<div class="alert alert-warning">Could not extract text from one or both documents. Supported formats: DOCX, HTML, TXT, and PDF.</div>';
         } else {
             // Perform diff
             $rendererOptions = [
