@@ -804,10 +804,8 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                     <th>Type</th>
                     <th>PDF Stamp</th>
                     <th>Description</th>
-                    <th>File</th>
                     <th>Created</th>
                     <th>Created By</th>
-                    <th>Signature</th>
                     <th class="text-end">Actions</th>
                   </tr>
                 </thead>
@@ -817,34 +815,32 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                       <td>
                         <input type="number" name="order[<?= (int)$doc['contract_document_id'] ?>]" value="<?= (int)($doc['sort_order'] ?? 0) ?>" class="form-control form-control-sm" style="width:55px" min="0">
                       </td>
-                      <td><?= !empty($doc['file_name']) ? h($doc['file_name']) : '—' ?></td>
+                      <?php
+                        $webPath = '';
+                        if (!empty($doc['file_path'])) {
+                          $webPath = $doc['file_path'];
+                          if (strpos($webPath, '/storage/') === false && ($pos = strpos($webPath, 'storage/')) !== false) {
+                            $webPath = '/' . substr($webPath, $pos);
+                          } elseif (strpos($webPath, '/storage/') !== 0) {
+                            $webPath = '/' . ltrim($webPath, '/');
+                          }
+                        }
+                      ?>
+                      <td style="white-space:normal;min-width:140px">
+                        <?php if ($webPath): ?>
+                          <a href="<?= h($webPath) ?>" target="_blank"><?= !empty($doc['file_name']) ? h($doc['file_name']) : 'Open' ?></a>
+                        <?php else: ?>
+                          <?= !empty($doc['file_name']) ? h($doc['file_name']) : '—' ?>
+                        <?php endif; ?>
+                      </td>
                       <td><?= !empty($doc['doc_type']) ? h($doc['doc_type']) : '—' ?></td>
                       <td>
                         <input type="text" name="exhibit_label[<?= (int)$doc['contract_document_id'] ?>]" value="<?= h($doc['exhibit_label'] ?? '') ?>" class="form-control form-control-sm" style="width:140px" maxlength="50" placeholder="no stamp">
                       </td>
                       <td><?= !empty($doc['description']) ? h($doc['description']) : '—' ?></td>
-                      <td>
-                        <?php
-                          $webPath = '';
-                          if (!empty($doc['file_path'])) {
-                            $webPath = $doc['file_path'];
-                            // Remove any absolute path prefix, keep only web path
-                            if (strpos($webPath, '/storage/') === false && ($pos = strpos($webPath, 'storage/')) !== false) {
-                              $webPath = '/' . substr($webPath, $pos);
-                            } elseif (strpos($webPath, '/storage/') !== 0) {
-                              $webPath = '/' . ltrim($webPath, '/');
-                            }
-                          }
-                        ?>
-                        <?php if ($webPath): ?>
-                          <a href="<?= h($webPath) ?>" target="_blank">Open</a>
-                        <?php else: ?>
-                          <span class="text-muted">—</span>
-                        <?php endif; ?>
-                      </td>
                       <td><?= !empty($doc['created_at']) ? date('m/d/y H:i', strtotime($doc['created_at'])) : '—' ?></td>
                       <td><?= !empty($doc['created_by_name']) ? h($doc['created_by_name']) : '—' ?></td>
-                      <td style="white-space:nowrap">
+                      <td class="text-end" style="white-space:nowrap">
                         <?php
                           $dsStatus = $doc['docusign_status'] ?? null;
                           $dsDocId  = (int)$doc['contract_document_id'];
@@ -883,16 +879,9 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                           <button type="button" class="btn btn-outline-warning btn-sm ms-1"
                                   onclick="if(confirm('Void this envelope? Signers will no longer be able to sign.')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=docusign_void';let i1=document.createElement('input');i1.type='hidden';i1.name='doc_id';i1.value='<?= $dsDocId ?>';let i2=document.createElement('input');i2.type='hidden';i2.name='contract_id';i2.value='<?= $dsCtrId ?>';f.appendChild(i1);f.appendChild(i2);document.body.appendChild(f);f.submit();}">Void</button>
                         <?php endif; ?>
-                        <?php if ($dsStatus === null && $dsDocId <= 0): ?>
-                          <span class="text-muted">—</span>
-                        <?php endif; ?>
-                      </td>
-                      <td class="text-end">
                         <?php if (!empty($doc['contract_document_id']) && (int)$doc['contract_document_id'] > 0): ?>
-                          <a href="/index.php?page=contract_document_email&id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-primary btn-sm">Email Doc</a>
+                          <a href="/index.php?page=contract_document_email&id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-primary btn-sm ms-1">Email Doc</a>
                           <button type="button" class="btn btn-outline-danger btn-sm ms-1" onclick="if(confirm('Delete this document?')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_delete';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();}">Delete</button>
-                        <?php else: ?>
-                          <span class="text-muted">—</span>
                         <?php endif; ?>
                       </td>
                     </tr>
