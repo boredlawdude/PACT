@@ -840,7 +840,8 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                       <td><?= !empty($doc['description']) ? h($doc['description']) : '—' ?></td>
                       <td><?= !empty($doc['created_at']) ? date('m/d/y H:i', strtotime($doc['created_at'])) : '—' ?></td>
                       <td><?= !empty($doc['created_by_name']) ? h($doc['created_by_name']) : '—' ?></td>
-                      <td class="text-end" style="white-space:nowrap">
+                      <td class="text-end">
+                        <div class="d-flex flex-column align-items-end gap-1">
                         <?php
                           $dsStatus = $doc['docusign_status'] ?? null;
                           $dsDocId  = (int)$doc['contract_document_id'];
@@ -859,7 +860,7 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                           $dsBadge = $dsStatus !== null ? ($dsBadgeMap[$dsStatus] ?? 'light') : null;
                         ?>
                         <?php if ($dsStatus !== null): ?>
-                          <span class="badge text-bg-<?= h($dsBadge) ?> me-1"><?= h(ucfirst($dsStatus)) ?></span>
+                          <span class="badge text-bg-<?= h($dsBadge) ?>"><?= h(ucfirst($dsStatus)) ?></span>
                         <?php endif; ?>
                         <?php if ($canSend && $dsDocId > 0): ?>
                           <?php
@@ -867,22 +868,23 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                             $dsLabel = $dsStatus !== null ? 'Re-send' : 'Send for Signature';
                           ?>
                           <?php if ($pendingCount > 0): ?>
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100"
                                     onclick="openSignatureOverrideModal('<?= h(addslashes($dsUrl)) ?>')">
                               <?= h($dsLabel) ?>
                             </button>
                           <?php else: ?>
-                            <a href="<?= h($dsUrl) ?>" class="btn btn-outline-secondary btn-sm"><?= h($dsLabel) ?></a>
+                            <a href="<?= h($dsUrl) ?>" class="btn btn-outline-secondary btn-sm w-100"><?= h($dsLabel) ?></a>
                           <?php endif; ?>
                         <?php endif; ?>
                         <?php if ($canVoid && $dsDocId > 0): ?>
-                          <button type="button" class="btn btn-outline-warning btn-sm ms-1"
+                          <button type="button" class="btn btn-outline-warning btn-sm w-100"
                                   onclick="if(confirm('Void this envelope? Signers will no longer be able to sign.')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=docusign_void';let i1=document.createElement('input');i1.type='hidden';i1.name='doc_id';i1.value='<?= $dsDocId ?>';let i2=document.createElement('input');i2.type='hidden';i2.name='contract_id';i2.value='<?= $dsCtrId ?>';f.appendChild(i1);f.appendChild(i2);document.body.appendChild(f);f.submit();}">Void</button>
                         <?php endif; ?>
                         <?php if (!empty($doc['contract_document_id']) && (int)$doc['contract_document_id'] > 0): ?>
-                          <a href="/index.php?page=contract_document_email&id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-primary btn-sm ms-1">Email Doc</a>
-                          <button type="button" class="btn btn-outline-danger btn-sm ms-1" onclick="if(confirm('Delete this document?')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_delete';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();}">Delete</button>
+                          <a href="/index.php?page=contract_document_email&id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-primary btn-sm w-100">Email Doc</a>
+                          <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="if(confirm('Delete this document?')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_delete';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();}">Delete</button>
                         <?php endif; ?>
+                        </div>
                       </td>
                     </tr>
                   <?php endforeach; ?>
