@@ -104,6 +104,7 @@ declare(strict_types=1);
           <li class="nav-item"><a class="nav-link" href="/index.php?page=admin_settings">System Settings</a></li>
         <?php endif; ?>
 
+        <li class="nav-item"><a class="nav-link" href="/index.php?page=user_manual">User Manual</a></li>
         <li class="nav-item"><a class="nav-link" href="/logout.php">Logout</a></li>
       </ul>
 

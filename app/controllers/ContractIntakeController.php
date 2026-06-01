@@ -68,6 +68,15 @@ class ContractIntakeController
             exit('Submission not found.');
         }
 
+        $exhibitStmt = $this->db->prepare("
+            SELECT exhibit_id, original_filename, file_size, mime_type, scan_status, uploaded_at
+            FROM   contract_intake_exhibits
+            WHERE  submission_id = ?
+            ORDER  BY uploaded_at ASC
+        ");
+        $exhibitStmt->execute([$id]);
+        $exhibits = $exhibitStmt->fetchAll(PDO::FETCH_ASSOC);
+
         require APP_ROOT . '/app/views/contract_intake/show.php';
     }
 

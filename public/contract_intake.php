@@ -8,6 +8,123 @@ $contractTypes = db()->query(
     "SELECT contract_type_id, contract_type FROM contract_types WHERE is_active = 1 ORDER BY contract_type"
 )->fetchAll(PDO::FETCH_ASSOC);
 
+// ── File upload helpers ──────────────────────────────────────────────────────
+define('INTAKE_EXHIBIT_DIR', APP_ROOT . '/storage/intake_exhibits/');
+define('INTAKE_EXHIBIT_MAX_FILES', 5);
+define('INTAKE_EXHIBIT_MAX_BYTES', 10 * 1024 * 1024); // 10 MB
+define('INTAKE_EXHIBIT_ALLOWED_MIMES', [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'text/plain',
+]);
+
+/**
+ * Validate the multifile upload field 'exhibits[]'.
+ * Returns ['errors' => [...], 'valid_files' => [['tmp_name','name','size','mime'], ...]]
+ */
+function validateIntakeExhibits(): array {
+    $errors = [];
+    $valid  = [];
+
+    if (empty($_FILES['exhibits']['name'][0])) {
+        return ['errors' => [], 'valid_files' => []];
+    }
+
+    $names  = (array)$_FILES['exhibits']['name'];
+    $tmps   = (array)$_FILES['exhibits']['tmp_name'];
+    $sizes  = (array)$_FILES['exhibits']['size'];
+    $errs   = (array)$_FILES['exhibits']['error'];
+
+    // Filter out blank entries
+    $count = 0;
+    foreach ($names as $i => $name) {
+        if ($name === '' || $errs[$i] === UPLOAD_ERR_NO_FILE) continue;
+        $count++;
+    }
+    if ($count > INTAKE_EXHIBIT_MAX_FILES) {
+        $errors[] = 'You may attach a maximum of ' . INTAKE_EXHIBIT_MAX_FILES . ' files per submission.';
+        return ['errors' => $errors, 'valid_files' => []];
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    foreach ($names as $i => $name) {
+        if ($name === '' || $errs[$i] === UPLOAD_ERR_NO_FILE) continue;
+        $safeName = htmlspecialchars(basename($name), ENT_QUOTES, 'UTF-8');
+        if ($errs[$i] !== UPLOAD_ERR_OK) {
+            $errors[] = "Upload error for \u201c{$safeName}\u201d (code {$errs[$i]}).";
+            continue;
+        }
+        if ($sizes[$i] > INTAKE_EXHIBIT_MAX_BYTES) {
+            $errors[] = "\u201c{$safeName}\u201d exceeds the 10\u00a0MB size limit.";
+            continue;
+        }
+        $mime = $finfo->file($tmps[$i]);
+        if (!in_array($mime, INTAKE_EXHIBIT_ALLOWED_MIMES, true)) {
+            $errors[] = "\u201c{$safeName}\u201d is not an allowed file type ({$mime}).";
+            continue;
+        }
+        $valid[] = ['tmp_name' => $tmps[$i], 'name' => $name, 'size' => $sizes[$i], 'mime' => $mime];
+    }
+    return ['errors' => $errors, 'valid_files' => $valid];
+}
+
+/**
+ * Run ClamAV on a file. Returns [status, output_text].
+ * status: 'clean' | 'infected' | 'error' | 'pending'
+ * Tries clamdscan (daemon, fast) first, then falls back to clamscan (CLI).
+ */
+function scanFileWithClamAV(string $path): array {
+    // Try clamdscan (daemon) first — preferred on Linux servers
+    $which = [];
+    exec('which clamdscan 2>/dev/null', $which, $wc);
+    if ($wc === 0 && !empty($which[0])) {
+        $scanner = trim($which[0]);
+        $out = [];
+        exec(escapeshellcmd($scanner) . ' --no-summary --stdout ' . escapeshellarg($path) . ' 2>&1', $out, $ec);
+        $output = implode("\n", $out);
+        if ($ec === 0) return ['clean',    $output];
+        if ($ec === 1) return ['infected', $output];
+        // ec=2 means daemon not running — fall through to clamscan
+        if ($ec !== 2) return ['error',    $output];
+    }
+    // Fall back to clamscan (standalone CLI)
+    $which2 = [];
+    exec('which clamscan 2>/dev/null', $which2, $wc2);
+    if ($wc2 === 0 && !empty($which2[0])) {
+        $scanner = trim($which2[0]);
+        $out = [];
+        exec(escapeshellcmd($scanner) . ' --no-summary --stdout ' . escapeshellarg($path) . ' 2>&1', $out, $ec);
+        $output = implode("\n", $out);
+        if ($ec === 0) return ['clean',    $output];
+        if ($ec === 1) return ['infected', $output];
+        return               ['error',    $output];
+    }
+    return ['pending', 'ClamAV not installed — file awaiting scan.'];
+}
+
+/**
+ * Move validated upload to storage dir, scan it, insert DB record.
+ */
+function saveIntakeExhibit(int $submissionId, array $file, PDO $db): void {
+    $storedName = bin2hex(random_bytes(16)) . '.bin';
+    $dest = INTAKE_EXHIBIT_DIR . $storedName;
+    if (!move_uploaded_file($file['tmp_name'], $dest)) {
+        return; // silently skip — tmp file already gone or dir unwritable
+    }
+    [$scanStatus, $scanOutput] = scanFileWithClamAV($dest);
+    $db->prepare("
+        INSERT INTO contract_intake_exhibits
+            (submission_id, original_filename, stored_filename, file_size, mime_type, scan_status, scan_output)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ")->execute([$submissionId, basename($file['name']), $storedName, $file['size'], $file['mime'], $scanStatus, $scanOutput]);
+}
+
 // ── Handle submission ─────────────────────────────────────────────────────────
 $errors  = [];
 $success = false;
@@ -62,9 +179,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rawEnd = trim((string)($_POST['end_date'] ?? ''));
         if ($rawEnd !== '' && strtotime($rawEnd) !== false) $endDate = $rawEnd;
 
+        // Validate file uploads
+        $uploadResult  = validateIntakeExhibits();
+        $errors        = array_merge($errors, $uploadResult['errors']);
+        $validUploads  = $uploadResult['valid_files'];
+
         if (empty($errors)) {
             $model = new ContractIntakeSubmission(db());
-            $model->create([
+            $submissionId = $model->create([
                 'submitter_name'       => $submitterName,
                 'submitter_email'      => $submitterEmail,
                 'submitter_phone'      => trim((string)($_POST['submitter_phone']      ?? '')),
@@ -93,6 +215,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'counterparty_signer3_email' => trim((string)($_POST['counterparty_signer3_email'] ?? '')),
                 'esign_consent'        => $esignConsent,
             ]);
+            // Save any uploaded exhibits
+            foreach ($validUploads as $upload) {
+                saveIntakeExhibit($submissionId, $upload, db());
+            }
             $success = true;
         }
     }
@@ -148,7 +274,7 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
   </div>
 <?php endif; ?>
 
-<form method="post" action="/contract_intake.php">
+<form method="post" action="/contract_intake.php" enctype="multipart/form-data">
 
   <!-- Honeypot -->
   <div style="display:none" aria-hidden="true">
@@ -317,10 +443,20 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
       <p class="section-label">Additional Notes</p>
       <textarea class="form-control" name="notes" rows="4" maxlength="3000"
                 placeholder="Any other relevant details — deadlines, related bids, documents you plan to provide, etc."><?= h($old['notes'] ?? '') ?></textarea>
-      <div class="form-text mt-1">
-        If you have supporting documents (scope of work, quotes, insurance certificates, etc.), please note them here.
-        Staff will contact you to collect them after reviewing this request.
-      </div>
+    </div>
+  </div>
+
+  <!-- ── Exhibits / Attachments ────────────────────────────────────────────── -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <p class="section-label">Supporting Documents <span class="fw-normal text-muted">(optional)</span></p>
+      <p class="text-muted small mb-3">
+        You may attach up to <?= INTAKE_EXHIBIT_MAX_FILES ?> files (PDF, Word, Excel, images, or plain text &mdash; max 10&nbsp;MB each).
+        Typical documents include scopes of work, quotes, insurance certificates, or draft agreements.
+      </p>
+      <input class="form-control" type="file" name="exhibits[]" id="exhibits"
+             multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
+      <div class="form-text mt-1">Hold <kbd>Ctrl</kbd> (Windows) or <kbd>&#8984;</kbd> (Mac) to select multiple files at once.</div>
     </div>
   </div>
 

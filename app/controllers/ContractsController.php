@@ -528,6 +528,27 @@ class ContractsController
         // All active contract types for the "Generate Selected Doc" dropdown
         $contractTypes = $this->getContractTypes();
 
+        // Load milestones for this contract
+        $msStmt = $this->db->prepare("
+            SELECT m.milestone_id, m.milestone_date, m.notes, m.created_at,
+                   mt.name AS milestone_type_name,
+                   COALESCE(NULLIF(p.full_name,''), TRIM(CONCAT(COALESCE(p.first_name,''),' ',COALESCE(p.last_name,'')))) AS created_by_name
+            FROM contract_milestones m
+            JOIN contract_milestone_types mt ON m.milestone_type_id = mt.milestone_type_id
+            LEFT JOIN people p ON m.created_by_person_id = p.person_id
+            WHERE m.contract_id = ?
+            ORDER BY m.milestone_date ASC, m.created_at ASC
+        ");
+        $msStmt->execute([$id]);
+        $contractMilestones = $msStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Load active milestone types for the add-form dropdown
+        $msTypesStmt = $this->db->query("
+            SELECT milestone_type_id, name FROM contract_milestone_types
+            WHERE is_active = 1 ORDER BY sort_order ASC, name ASC
+        ");
+        $milestoneTypes = $msTypesStmt ? $msTypesStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
         require APP_ROOT . '/app/views/contracts/show.php';
     }
 

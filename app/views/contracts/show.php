@@ -256,6 +256,103 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
         <?php endif; ?>
       </div>
 
+      <!-- ── Contract Milestones ───────────────────────────────────────── -->
+      <div class="card shadow-sm mb-4" id="milestones">
+        <div class="card-header bg-white d-flex align-items-center">
+          <h2 class="h6 mb-0 me-auto">Contract Milestones</h2>
+        </div>
+
+        <?php
+        $flashMilestoneErrors = $_SESSION['flash_errors'] ?? [];
+        unset($_SESSION['flash_errors']);
+        if (!empty($flashMilestoneErrors)): ?>
+          <div class="alert alert-danger alert-dismissible fade show mx-3 mt-3 mb-0" role="alert">
+            <ul class="mb-0">
+              <?php foreach ($flashMilestoneErrors as $err): ?>
+                <li><?= h($err) ?></li>
+              <?php endforeach; ?>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        <?php endif; ?>
+
+        <?php if (!empty($contractMilestones)): ?>
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Milestone</th>
+                  <th>Date</th>
+                  <th>Notes</th>
+                  <th>Added By</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($contractMilestones as $ms): ?>
+                  <tr>
+                    <td><?= h($ms['milestone_type_name']) ?></td>
+                    <td class="text-nowrap">
+                      <?= !empty($ms['milestone_date']) ? date('m/d/Y', strtotime($ms['milestone_date'])) : '—' ?>
+                    </td>
+                    <td class="text-muted" style="max-width:320px;"><?= h($ms['notes'] ?? '') ?></td>
+                    <td class="text-nowrap text-muted small"><?= h(trim($ms['created_by_name'] ?? '')) ?: '—' ?></td>
+                    <td class="text-end text-nowrap">
+                      <form method="post" action="/index.php?page=contract_milestones_delete" class="d-inline"
+                            onsubmit="return confirm('Delete this milestone?');">
+                        <input type="hidden" name="milestone_id" value="<?= (int)$ms['milestone_id'] ?>">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php else: ?>
+          <div class="card-body text-muted">No milestones recorded yet.</div>
+        <?php endif; ?>
+
+        <?php if (!empty($milestoneTypes)): ?>
+          <!-- Quick-add form -->
+          <div class="card-footer bg-light">
+            <form method="post" action="/index.php?page=contract_milestones_store"
+                  class="row g-2 align-items-end">
+              <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
+              <div class="col-sm-4">
+                <label class="form-label form-label-sm fw-semibold mb-1">Milestone Type</label>
+                <select name="milestone_type_id" class="form-select form-select-sm" required>
+                  <option value="">— Select —</option>
+                  <?php foreach ($milestoneTypes as $mt): ?>
+                    <option value="<?= (int)$mt['milestone_type_id'] ?>"><?= h($mt['name']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-sm-2">
+                <label class="form-label form-label-sm fw-semibold mb-1">Date</label>
+                <input type="date" name="milestone_date" class="form-control form-control-sm" required>
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label form-label-sm fw-semibold mb-1">Notes <span class="fw-normal text-muted">(optional)</span></label>
+                <input type="text" name="notes" class="form-control form-control-sm" maxlength="500"
+                       placeholder="Optional notes">
+              </div>
+              <div class="col-sm-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">+ Add Milestone</button>
+              </div>
+            </form>
+          </div>
+        <?php else: ?>
+          <div class="card-footer bg-light text-muted small">
+            No milestone types defined yet.
+            <?php if (function_exists('is_system_admin') && is_system_admin()): ?>
+              <a href="/index.php?page=admin_milestone_types">Add milestone types in System Settings.</a>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+      <!-- ── /Contract Milestones ──────────────────────────────────────── -->
+
       <?php if ($isDevAgreement && $devAgreement): ?>
 
       <!-- Dev Agreement: Property Information -->

@@ -41,6 +41,9 @@
                     <a href="/index.php?page=approval_rules" class="btn btn-outline-primary w-100">Approval Rules</a>
                 </div>
                 <div class="col-6 col-md-3">
+                    <a href="/index.php?page=admin_milestone_types" class="btn btn-outline-primary w-100">Milestone Types</a>
+                </div>
+                <div class="col-6 col-md-3">
                     <a href="/index.php?page=people" class="btn btn-outline-primary w-100">Manage Users</a>
                 </div>
                 <div class="col-6 col-md-3">
@@ -54,6 +57,9 @@
                 </div>
                 <div class="col-6 col-md-3">
                     <a href="/index.php?page=db_backup" class="btn btn-outline-danger w-100">&#128190; Database Backup</a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="/index.php?page=user_manual" class="btn btn-outline-secondary w-100">&#128218; User Manual</a>
                 </div>
             </div>
         </div>

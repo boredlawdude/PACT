@@ -61,6 +61,8 @@ require_once APP_ROOT . '/app/controllers/DevelopmentAgreementsController.php';
     require_once APP_ROOT . '/app/controllers/DevelopmentAgreementSubmissionsController.php';
 require_once APP_ROOT . '/app/controllers/ChangeOrdersController.php';
 require_once APP_ROOT . '/app/controllers/ContractIntakeController.php';
+require_once APP_ROOT . '/app/controllers/ContractMilestonesController.php';
+require_once APP_ROOT . '/app/controllers/ContractMilestoneTypesController.php';
 $ChangeOrdersController = new ChangeOrdersController();
 
 $companiesController = new CompaniesController();
@@ -202,6 +204,34 @@ switch ($page) {
 
     case 'change_orders_delete':
         $ChangeOrdersController->delete();
+        break;
+
+    // ── Contract Milestones ────────────────────────────────────────────────
+
+    case 'contract_milestones_store':
+        (new ContractMilestonesController())->store();
+        break;
+
+    case 'contract_milestones_delete':
+        (new ContractMilestonesController())->delete();
+        break;
+
+    // ── Contract Milestone Types (admin) ───────────────────────────────────
+
+    case 'admin_milestone_types':
+        (new ContractMilestoneTypesController())->index();
+        break;
+
+    case 'admin_milestone_types_store':
+        (new ContractMilestoneTypesController())->store();
+        break;
+
+    case 'admin_milestone_types_update':
+        (new ContractMilestoneTypesController())->update();
+        break;
+
+    case 'admin_milestone_types_delete':
+        (new ContractMilestoneTypesController())->delete();
         break;
 
     case 'contract_types':
@@ -613,6 +643,41 @@ case 'departments_store':
             http_response_code(405);
         }
         break;
+
+    case 'user_manual':
+        require APP_ROOT . '/app/views/user_manual/index.php';
+        break;
+
+    // ── Intake exhibit download (authenticated) ────────────────────────────
+    case 'intake_exhibit_download':
+        $exhibitId = (int)($_GET['id'] ?? 0);
+        if ($exhibitId < 1) { http_response_code(400); exit('Bad request.'); }
+
+        $stmt = db()->prepare("
+            SELECT e.*, s.submission_id
+            FROM   contract_intake_exhibits e
+            JOIN   contract_intake_submissions s ON s.submission_id = e.submission_id
+            WHERE  e.exhibit_id = ?
+        ");
+        $stmt->execute([$exhibitId]);
+        $exhibit = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$exhibit) { http_response_code(404); exit('File not found.'); }
+        if ($exhibit['scan_status'] === 'infected') {
+            http_response_code(403);
+            exit('This file has been quarantined due to a security scan result and cannot be downloaded.');
+        }
+
+        $filePath = APP_ROOT . '/storage/intake_exhibits/' . $exhibit['stored_filename'];
+        if (!file_exists($filePath)) { http_response_code(404); exit('File not found on disk.'); }
+
+        $safeOriginal = preg_replace('/[^\w.\-]/', '_', $exhibit['original_filename']);
+        header('Content-Type: ' . $exhibit['mime_type']);
+        header('Content-Disposition: attachment; filename="' . $safeOriginal . '"');
+        header('Content-Length: ' . filesize($filePath));
+        header('X-Content-Type-Options: nosniff');
+        readfile($filePath);
+        exit;
 
     default:
         (new DashboardController())->index();

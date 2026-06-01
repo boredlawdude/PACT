@@ -142,6 +142,78 @@ function row(string $label, mixed $value, bool $money = false): void {
   </div>
   <?php endif; ?>
 
+  <!-- ── Exhibits / Attachments ───────────────────────────────────────────── -->
+  <div class="card mb-3">
+    <div class="card-header small fw-semibold text-muted d-flex justify-content-between align-items-center">
+      <span>Attached Documents</span>
+      <?php if (!empty($exhibits)): ?>
+        <span class="badge bg-secondary"><?= count($exhibits) ?></span>
+      <?php endif; ?>
+    </div>
+    <div class="card-body p-0">
+      <?php if (empty($exhibits)): ?>
+        <p class="text-muted px-3 py-3 mb-0">No files attached.</p>
+      <?php else: ?>
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Filename</th>
+              <th>Size</th>
+              <th>Type</th>
+              <th>Scan</th>
+              <th>Uploaded</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($exhibits as $ex):
+              $scanBadge = match($ex['scan_status']) {
+                  'clean'    => ['bg-success',   'Clean'],
+                  'infected' => ['bg-danger',    'Infected'],
+                  'error'    => ['bg-warning text-dark', 'Scan Error'],
+                  default    => ['bg-secondary', 'Pending Scan'],
+              };
+              $canDownload = $ex['scan_status'] !== 'infected';
+              $kb = number_format($ex['file_size'] / 1024, 1);
+            ?>
+            <tr>
+              <td class="align-middle"><?= h($ex['original_filename']) ?></td>
+              <td class="align-middle text-muted small"><?= $kb ?>&nbsp;KB</td>
+              <td class="align-middle text-muted small"><?= h($ex['mime_type']) ?></td>
+              <td class="align-middle">
+                <span class="badge <?= $scanBadge[0] ?>"><?= $scanBadge[1] ?></span>
+              </td>
+              <td class="align-middle text-muted small"><?= date('m/d/Y g:i a', strtotime($ex['uploaded_at'])) ?></td>
+              <td class="align-middle">
+                <?php if ($canDownload): ?>
+                  <a href="/index.php?page=intake_exhibit_download&id=<?= (int)$ex['exhibit_id'] ?>"
+                     class="btn btn-outline-secondary btn-sm">Download</a>
+                <?php else: ?>
+                  <span class="text-danger small">Quarantined</span>
+                <?php endif; ?>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+        <?php
+          $pendingCount = count(array_filter($exhibits, fn($e) => $e['scan_status'] === 'pending'));
+          if ($pendingCount > 0):
+        ?>
+        <div class="alert alert-warning mb-0 rounded-0 rounded-bottom py-2 px-3 small">
+          <strong>&#9888; <?= $pendingCount ?> file(s) have not been virus-scanned yet.</strong>
+          ClamAV is not installed on this server. Install it to enable automatic scanning on upload:<br>
+          <span class="text-muted">
+            Ubuntu/Debian: <code>apt-get install -y clamav clamav-daemon &amp;&amp; freshclam</code><br>
+            RHEL/CentOS 8+: <code>dnf install -y clamav clamd clamav-update &amp;&amp; freshclam</code><br>
+            RHEL/CentOS 7: <code>yum install -y clamav clamd clamav-update &amp;&amp; freshclam</code>
+          </span>
+        </div>
+        <?php endif; ?>
+      <?php endif; ?>
+    </div>
+  </div>
+
   <!-- ── Actions ───────────────────────────────────────────────────────────── -->
   <?php if ($sub['status'] === 'pending'): ?>
   <div class="card border-primary mb-3">

@@ -104,7 +104,7 @@ class Contract
     }
 
     if (!empty($filters['q'])) {
-        $sql .= " AND (c.contract_number LIKE :q OR c.name LIKE :q OR c.description LIKE :q)";
+        $sql .= " AND (c.contract_number LIKE :q OR c.name LIKE :q OR c.description LIKE :q OR co.name LIKE :q)";
         $params['q'] = '%' . trim((string)$filters['q']) . '%';
     }
 

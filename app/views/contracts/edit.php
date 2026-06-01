@@ -166,18 +166,7 @@ if (!function_exists('h')) {
             </div>
 
 
-            <div class="col-md-4">
-                <label class="form-label">Owner Company</label>
-                <select class="form-select" name="owner_company_id" required>
-                    <option value="">Select…</option>
-                    <?php foreach (($companies ?? []) as $co): ?>
-                        <option value="<?= (int)$co['company_id'] ?>"
-                            <?= ((string)($contract['owner_company_id'] ?? '') === (string)$co['company_id']) ? 'selected' : '' ?>>
-                            <?= h($co['name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+            <input type="hidden" name="owner_company_id" value="<?= h($contract['owner_company_id'] ?? '') ?>">
 
             <div class="col-md-4">
                 <label class="form-label">Responsible Person</label>
@@ -204,7 +193,7 @@ if (!function_exists('h')) {
                 <div class="row g-3">
 
             <div class="col-md-6">
-                <label class="form-label">Counterparty Company</label>
+                <label class="form-label">Vendor Company</label>
                 <select class="form-select" id="counterparty_company_id" name="counterparty_company_id">
                     <option value="">Select…</option>
                     <?php foreach (($companies ?? []) as $co): ?>
@@ -217,7 +206,7 @@ if (!function_exists('h')) {
             </div>
 
             <div class="col-md-6">
-                <label class="form-label">Counterparty Primary Contact</label>
+                <label class="form-label">Vendor Primary Contact</label>
                 <select class="form-select" id="counterparty_contact_select">
                     <?php if (!empty($contract['counterparty_contact_name'])): ?>
                         <option value=""
@@ -266,12 +255,7 @@ if (!function_exists('h')) {
                        value="<?= h($contract['total_contract_value'] ?? '') ?>">
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label" for="po_number">PO Number</label>
-                <input class="form-control" type="text" id="po_number" name="po_number"
-                       maxlength="20"
-                       value="<?= h($contract['po_number'] ?? '') ?>">
-            </div>
+            <input type="hidden" id="po_number" name="po_number" value="<?= h($contract['po_number'] ?? '') ?>">
 
             <div class="col-md-3">
                 <label class="form-label" for="account_number">Account Number</label>
@@ -280,15 +264,7 @@ if (!function_exists('h')) {
                        value="<?= h($contract['account_number'] ?? '') ?>">
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label" for="po_amount">PO Amount</label>
-                <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input class="form-control" type="text" id="po_amount" name="po_amount"
-                           placeholder="0.00"
-                           value="<?= h($contract['po_amount'] ?? '') ?>">
-                </div>
-            </div>
+            <input type="hidden" id="po_amount" name="po_amount" value="<?= h($contract['po_amount'] ?? '') ?>">
 
             <div class="col-md-4">
                 <label class="form-label" for="date_approved_by_procurement">Date Approved by Procurement</label>
