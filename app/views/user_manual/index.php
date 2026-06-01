@@ -153,19 +153,19 @@ $appName = defined('APP_NAME') ? APP_NAME : 'Contracts App';
         <h2>Overview</h2>
         <p>
           PACT is a web-based contract lifecycle management system designed to handle
-          the full workflow of municipal contracts — from initial request through execution and beyond.
+          the full workflow of town contracts — from contract creation, through execution and beyond.
           It provides a central, searchable database of all contracts, tracks counterparty vendors,
           automates approval routing, integrates with DocuSign for electronic signatures, and generates
           contract documents from standard templates.
         </p>
         <h2>When you use it & How you use it</h2>
         <p>
-            The system is intended to be the single source of truth for all contracts.  
+            The system is intended to be the single source for all contracts.  It will allow you to request legal review of a vendor contract or use of a town template contract (preferred method) based on fields entered by the user and/or uploaded documents, and then send that contract for electronic signature through DocuSign.  You can track key milestones such as town council or manager approval (when needed), manage change orders, and keep all related documents and notes organized in one place.  The system also provides a dashboard to see upcoming renewals and expirations, and a powerful search function to find contracts based on any criteria.  The system also logs all activity and changes for an audit trail.  The goal is to provide a comprehensive tool to manage the entire lifecycle of contracts in a way that is more efficient, organized, and compliant than using shared drives and email alone.
             When you create a contract in PACT, you are creating the official record of that agreement.  
             All key information about the contract should be entered and maintained in the system, and all documents should be uploaded or generated through it. 
              This ensures that everyone has access to the most up-to-date information and that important details don't get lost in email threads or shared drives.    
         
-            You have already been approved by your Department head for the purchase at this point, selected the appropriate vendor, and have the necessary funds in your budget.  The system is not intended to replace the judgment and oversight of department heads or procurement staff, but rather to provide a tool to manage the information and workflow around contracts once those initial decisions have been made.  Therefore, YOU HAVE ALREADY COMPLIED WITH <a href="https://hollyspringsnc.sharepoint.com/sites/Intranet/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIntranet%2FShared%20Documents%2FPolicies%2FFN%2D12%20Purchasing%20Policy%2Epdf&parent=%2Fsites%2FIntranet%2FShared%20Documents%2FPolicies&p=true&ga=1" <a> THE TOWN'S PROCUREMENT POLICY </a> (linkable in intranet/Sharepoint) before you create a contract in the system.  If you have questions about procurement requirements, please contact a member of procurement in Finance.
+            NOTE:  prior to putting in a contract review or contract creatoion request, you should have already been approved by your Department head for the purchase at this point, selected the appropriate vendor, and have the necessary funds in your budget.  The system is not intended to replace the judgment and oversight of department heads or procurement staff, but rather to provide a tool to manage the information and workflow around contracts once those initial decisions have been made.  Therefore, YOU HAVE ALREADY COMPLIED WITH <a href="https://hollyspringsnc.sharepoint.com/sites/Intranet/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FIntranet%2FShared%20Documents%2FPolicies%2FFN%2D12%20Purchasing%20Policy%2Epdf&parent=%2Fsites%2FIntranet%2FShared%20Documents%2FPolicies&p=true&ga=1" <a> THE TOWN'S PROCUREMENT POLICY </a> (linkable in intranet/Sharepoint) before you create a contract in the system.  If you have questions about procurement requirements, please contact a member of procurement in Finance.
             
         </p>
         <p>
@@ -370,7 +370,7 @@ $appName = defined('APP_NAME') ? APP_NAME : 'Contracts App';
             <thead><tr><th>Field</th><th>Description</th><th>Required?</th></tr></thead>
             <tbody>
               <tr><td>Vendor Company Name</td><td>Select the vendor/company from the database. Once selected, address and contact fields may auto-populate.</td><td>No</td></tr>
-              <tr><td>Primary Contact</td><td>Main contact person at the vendor for this contract</td><td>No</td></tr>
+              <tr><td>Primary Contact</td><td>Main contact person at the vendor for this contract (May or May not be the person who signs for the vendor)</td><td>No</td></tr>
               <tr><td>Signer 1–3 (Name/Title/Email)</td><td>People authorized to sign on the vendor side (used for DocuSign)</td><td>No</td></tr>
               <tr><td>Tax ID</td><td>Vendor federal tax ID / EIN</td><td>No</td></tr>
               <tr><td>COI Expiration Date</td><td>When their certificate of insurance expires</td><td>No</td></tr>
@@ -632,7 +632,7 @@ $appName = defined('APP_NAME') ? APP_NAME : 'Contracts App';
               <li><strong>Contact</strong> — Primary contact name, phone, email</li>
               <li><strong>Signers</strong> — Up to 3 authorized signers (name, title, email). These pre-populate when you link this company to a contract.</li>
               <li><strong>COI Information</strong> — Insurance carrier name, expiration date, verified by</li>
-              <li><strong>NC Secretary of State ID</strong> — With a direct link to the public lookup</li>
+              <li><strong>NC Secretary of State ID</strong> — Use the link to go to the NC Secretary of State's wesite to ensure the Vendor name is correct and they are registered to do business in NC.  Put in the SOSID number in th</li>
             </ul>
           </li>
           <li>Click <strong>Save Company</strong>.</li>
@@ -723,16 +723,7 @@ $appName = defined('APP_NAME') ? APP_NAME : 'Contracts App';
         <p>Records appear on the contract detail page. Use the <strong>Delete</strong> button to remove a record if entered in error.</p>
       </section>
 
-      <!-- ═══════════════════════════════════════════════════════════════ -->
-      <section id="procurement-gate">
-        <h2>Procurement Gate</h2>
-        <p>The Procurement Gate is a guided decision tool that helps determine whether a purchase requires a formal competitive bidding process before a contract is created.</p>
-        <ol>
-          <li>Navigate to the Procurement Gate (linked from the contract creation area).</li>
-          <li>Answer the questions about the purchase type, estimated value, and whether it involves work on town property.</li>
-          <li>The system evaluates your answers and directs you to the correct next step — either proceeding to the Contracts database or using a purchase requisition/PO instead.</li>
-        </ol>
-      </section>
+     
 
       <!-- ═══════════════════════════════════════════════════════════════ -->
       <section id="admin">
