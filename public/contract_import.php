@@ -171,7 +171,7 @@ if (
             $rowNum = (int)$row['_row'];
 
             // Find or create vendor company
-            $vendorName = trim((string)($row['vendor_name'] ?? ''));
+            $vendorName = trim((string)($row['vendor_name'] ?? '')) ?: 'Sole Proprietor';
             $vendorId   = null;
             if ($vendorName !== '') {
                 $compStmt = $pdo->prepare("SELECT company_id FROM companies WHERE LOWER(name) = LOWER(?) LIMIT 1");

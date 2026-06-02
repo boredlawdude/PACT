@@ -65,7 +65,7 @@
         </div>
     </div>
 
-    <!-- ── Settings form ── -->
+    <!-- ── Paths &amp; Templates ── -->
     <div class="card shadow-sm">
         <div class="card-header bg-white fw-semibold">Paths &amp; Templates</div>
         <div class="card-body">
@@ -73,8 +73,11 @@
                 <input type="hidden" name="action" value="update_settings">
                 <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_token']) ?>">
                 <div class="row g-4">
-                    <?php foreach ($settings as $key => $row): ?>
-                        <?php if ($key === 'default_email_message') continue; ?>
+                    <?php
+                    $optionalKeys = ['default_email_message', 'compliance_info_link'];
+                    foreach ($settings as $key => $row):
+                        if (in_array($key, $optionalKeys)) continue;
+                    ?>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">
                                 <?= h(ucwords(str_replace('_', ' ', $key))) ?>
@@ -90,6 +93,15 @@
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <?php if (isset($settings['compliance_info_link'])): ?>
+                <div class="mt-4">
+                    <label class="form-label fw-bold">Procurement Policy Link</label>
+                    <div class="form-text text-muted mb-2"><?= h($settings['compliance_info_link']['description'] ?? '') ?></div>
+                    <input type="url" class="form-control" name="compliance_info_link"
+                           placeholder="https://…"
+                           value="<?= h($settings['compliance_info_link']['setting_value'] ?? '') ?>">
+                </div>
+                <?php endif; ?>
                 <?php if (isset($settings['default_email_message'])): ?>
                 <div class="mt-4">
                     <label class="form-label fw-bold">Default Email Message</label>

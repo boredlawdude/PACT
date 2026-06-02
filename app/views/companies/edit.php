@@ -26,6 +26,7 @@ $townEmployees = $townEmployees ?? [];
 
 <div class="d-flex align-items-center mb-3">
     <h1 class="h4 me-auto"><?= $isEdit ? 'Edit Company' : 'Create Company' ?></h1>
+    <a class="btn btn-outline-primary btn-sm me-2" href="/index.php?page=companies_vendor_pdf_import">Import from PDF</a>
     <a class="btn btn-outline-secondary btn-sm" href="/index.php?page=companies">Back to Companies</a>
 </div>
 
