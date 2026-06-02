@@ -6,7 +6,9 @@ if (!function_exists('h')) {
 }
 
 $fieldOptions    = ApprovalRulesController::FIELD_OPTIONS;
-$approvalLabels  = ApprovalRulesController::APPROVAL_LABELS;
+// $approvalLabels is passed dynamically from the controller (loaded from the roles table).
+// Fall back to the static constant only when viewing outside the controller context.
+$approvalLabels  = $approvalLabels ?? ApprovalRulesController::APPROVAL_LABELS;
 $operators       = ApprovalRulesController::OPERATORS;
 // $contractTypes is passed by the controller as array of [contract_type_id, contract_type]
 $contractTypesById = [];
@@ -388,7 +390,7 @@ function openEditModal(rule) {
     var body = document.getElementById('editRuleBody');
 
     var fieldOptions    = <?= json_encode(ApprovalRulesController::FIELD_OPTIONS) ?>;
-    var approvalLabels  = <?= json_encode(ApprovalRulesController::APPROVAL_LABELS) ?>;
+    var approvalLabels  = <?= json_encode($approvalLabels) ?>;
     var operators       = <?= json_encode(ApprovalRulesController::OPERATORS) ?>;
     var contractTypes   = <?= json_encode(array_values($contractTypes ?? [])) ?>;
 

@@ -32,6 +32,10 @@ if (!function_exists('h')) {
                         <th style="width:130px">Role Key</th>
                         <th style="width:180px">Display Name</th>
                         <th>Description</th>
+                        <th style="width:140px">
+                            Approval Key
+                            <span class="text-muted d-block" style="font-size:.75rem;font-weight:400">Shows in Approval Rules dropdown</span>
+                        </th>
                         <th style="width:80px" class="text-center">Active</th>
                         <th style="width:140px"></th>
                     </tr>
@@ -61,6 +65,14 @@ if (!function_exists('h')) {
                                        class="form-control form-control-sm"
                                        value="<?= h($role['description'] ?? '') ?>"
                                        placeholder="Optional description">
+                            </td>
+                            <td>
+                                <input type="text" name="approval_key"
+                                       class="form-control form-control-sm font-monospace"
+                                       value="<?= h($role['approval_key'] ?? '') ?>"
+                                       placeholder="e.g. manager"
+                                       pattern="[a-z0-9_]*"
+                                       title="Lowercase letters, numbers and underscores only. Leave blank to hide from Approval Rules.">
                             </td>
                             <td class="text-center">
                                 <div class="form-check d-flex justify-content-center mb-0">
@@ -103,6 +115,13 @@ if (!function_exists('h')) {
                             <input type="text" name="description"
                                    class="form-control form-control-sm"
                                    placeholder="Optional description">
+                        </td>
+                        <td>
+                            <input type="text" name="approval_key"
+                                   class="form-control form-control-sm font-monospace"
+                                   placeholder="e.g. manager"
+                                   pattern="[a-z0-9_]*"
+                                   title="Lowercase letters, numbers and underscores only. Leave blank to hide from Approval Rules.">
                         </td>
                         <td class="text-center">
                             <div class="form-check d-flex justify-content-center mb-0">

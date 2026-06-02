@@ -42,11 +42,12 @@ class RolesController
         $roleName    = trim($_POST['role_name']    ?? '');
         $description = trim($_POST['description']  ?? '');
         $isActive    = isset($_POST['is_active']) ? 1 : 0;
+        $approvalKey = trim($_POST['approval_key'] ?? '');
 
-        $errors = $this->validate($roleKey, $roleName);
+        $errors = $this->validate($roleKey, $roleName, $approvalKey);
 
         if (empty($errors)) {
-            $this->model->create($roleKey, $roleName, $description, $isActive);
+            $this->model->create($roleKey, $roleName, $description, $isActive, $approvalKey);
             $_SESSION['roles_success'] = true;
         } else {
             $_SESSION['roles_errors'] = $errors;
@@ -69,15 +70,16 @@ class RolesController
         $roleName    = trim($_POST['role_name']    ?? '');
         $description = trim($_POST['description']  ?? '');
         $isActive    = isset($_POST['is_active']) ? 1 : 0;
+        $approvalKey = trim($_POST['approval_key'] ?? '');
 
         $errors = [];
         if ($id <= 0) {
             $errors[] = 'Invalid role ID.';
         }
-        $errors = array_merge($errors, $this->validate($roleKey, $roleName));
+        $errors = array_merge($errors, $this->validate($roleKey, $roleName, $approvalKey));
 
         if (empty($errors)) {
-            $this->model->update($id, $roleKey, $roleName, $description, $isActive);
+            $this->model->update($id, $roleKey, $roleName, $description, $isActive, $approvalKey);
             $_SESSION['roles_success'] = true;
         } else {
             $_SESSION['roles_errors'] = $errors;
@@ -115,7 +117,7 @@ class RolesController
         exit;
     }
 
-    private function validate(string $roleKey, string $roleName): array
+    private function validate(string $roleKey, string $roleName, string $approvalKey = ''): array
     {
         $errors = [];
         if ($roleKey === '') {
@@ -125,6 +127,9 @@ class RolesController
         }
         if ($roleName === '') {
             $errors[] = 'Role name is required.';
+        }
+        if ($approvalKey !== '' && !preg_match('/^[a-z0-9_]+$/', $approvalKey)) {
+            $errors[] = 'Approval key must contain only lowercase letters, numbers, and underscores.';
         }
         return $errors;
     }

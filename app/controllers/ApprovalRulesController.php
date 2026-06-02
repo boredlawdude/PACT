@@ -35,16 +35,59 @@ class ApprovalRulesController
     /**
      * Returns the set of approval keys the current user holds the matching role for.
      * Approval types with null role mapping are always considered held.
+     * Falls back to the static APPROVAL_ROLE_MAP when no DB connection is available.
      */
     public static function getApprovalRolesForCurrentUser(): array
     {
         $held = [];
-        foreach (self::APPROVAL_ROLE_MAP as $approvalKey => $roleKey) {
-            if ($roleKey === null || (function_exists('person_has_role_key') && person_has_role_key($roleKey))) {
-                $held[] = $approvalKey;
+        // Try to load approval types from the roles table first
+        try {
+            $db = db();
+            $rows = $db->query(
+                "SELECT approval_key, role_key FROM roles
+                  WHERE approval_key IS NOT NULL AND approval_key != '' AND is_active = 1"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as $row) {
+                $roleKey = $row['role_key'];
+                if (function_exists('person_has_role_key') && person_has_role_key($roleKey)) {
+                    $held[] = $row['approval_key'];
+                }
+            }
+        } catch (Throwable $e) {
+            // Fall back to the static map
+            foreach (self::APPROVAL_ROLE_MAP as $approvalKey => $roleKey) {
+                if ($roleKey === null || (function_exists('person_has_role_key') && person_has_role_key($roleKey))) {
+                    $held[] = $approvalKey;
+                }
             }
         }
         return $held;
+    }
+
+    /**
+     * Loads the available approval types from the roles table.
+     * Returns an array keyed by approval_key => role_name.
+     * Falls back to the APPROVAL_LABELS constant if the column doesn't exist yet.
+     */
+    private function loadApprovalLabels(): array
+    {
+        try {
+            $rows = $this->db->query(
+                "SELECT approval_key, role_name FROM roles
+                  WHERE approval_key IS NOT NULL AND approval_key != '' AND is_active = 1
+                  ORDER BY role_name ASC"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            if (!empty($rows)) {
+                $labels = [];
+                foreach ($rows as $row) {
+                    $labels[$row['approval_key']] = $row['role_name'];
+                }
+                return $labels;
+            }
+        } catch (Throwable $e) {
+            // Column may not exist yet — fall back to the static constant
+        }
+        return self::APPROVAL_LABELS;
     }
 
     public function __construct()
@@ -59,6 +102,7 @@ class ApprovalRulesController
 
         $rules = $this->db->query("SELECT * FROM approval_rules ORDER BY sort_order, rule_id")->fetchAll(PDO::FETCH_ASSOC);
         $contractTypes = $this->db->query("SELECT contract_type_id, contract_type FROM contract_types WHERE is_active = 1 ORDER BY contract_type")->fetchAll(PDO::FETCH_ASSOC);
+        $approvalLabels = $this->loadApprovalLabels();
         $flashMessages = $_SESSION['flash_messages'] ?? [];
         $flashErrors   = $_SESSION['flash_errors']   ?? [];
         unset($_SESSION['flash_messages'], $_SESSION['flash_errors']);
@@ -431,7 +475,8 @@ class ApprovalRulesController
         if (!array_key_exists($data['contract_field'], self::FIELD_OPTIONS)) $errors[] = 'Invalid contract field.';
         if (!array_key_exists($data['operator'], self::OPERATORS)) $errors[] = 'Invalid operator.';
         if ($data['threshold_value'] === '' || !is_numeric($data['threshold_value'])) $errors[] = 'Threshold must be a number (or a contract type ID).';
-        if (!array_key_exists($data['required_approval'], self::APPROVAL_LABELS)) $errors[] = 'Invalid approval type.';
+        $validApprovalKeys = array_keys($this->loadApprovalLabels());
+        if (!in_array($data['required_approval'], $validApprovalKeys, true)) $errors[] = 'Invalid approval type.';
         // Validate second condition only if partially filled
         $has2 = $data['contract_field_2'] !== null;
         if ($has2) {
