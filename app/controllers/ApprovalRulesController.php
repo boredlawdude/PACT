@@ -232,7 +232,8 @@ class ApprovalRulesController
         $contractId   = (int)($_POST['contract_id'] ?? 0);
         $approvalType = trim($_POST['approval_type'] ?? '');
 
-        $allowedCols = [
+        // Legacy approval types that have dedicated date columns in contracts
+        $legacyCols = [
             'manager'      => 'manager_approval_date',
             'purchasing'   => 'purchasing_approval_date',
             'legal'        => 'legal_approval_date',
@@ -240,7 +241,19 @@ class ApprovalRulesController
             'council'      => 'council_approval_date',
         ];
 
-        if ($contractId <= 0 || !isset($allowedCols[$approvalType])) {
+        // Validate: must be a known approval_key in the roles table OR a legacy type
+        $isLegacy = isset($legacyCols[$approvalType]);
+        if (!$isLegacy) {
+            $row = $this->db->prepare(
+                "SELECT approval_key FROM roles WHERE approval_key = ? AND is_active = 1 LIMIT 1"
+            );
+            $row->execute([$approvalType]);
+            $isKnown = (bool)$row->fetchColumn();
+        } else {
+            $isKnown = true;
+        }
+
+        if ($contractId <= 0 || !$isKnown) {
             $_SESSION['flash_errors'] = ['Invalid approval request.'];
             header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
             exit;
@@ -249,8 +262,12 @@ class ApprovalRulesController
         $dateVal    = date('Y-m-d'); // always stamp today
         $isBypass   = !empty($_POST['bypass_warning']);
 
-        // Role check
-        $requiredRole = self::APPROVAL_ROLE_MAP[$approvalType] ?? null;
+        // Role check: look up the role_key for this approval_key from the DB
+        $roleRow = $this->db->prepare(
+            "SELECT role_key FROM roles WHERE approval_key = ? LIMIT 1"
+        );
+        $roleRow->execute([$approvalType]);
+        $requiredRole = $roleRow->fetchColumn() ?: (self::APPROVAL_ROLE_MAP[$approvalType] ?? null);
         $userHasRole  = ($requiredRole === null) || (function_exists('person_has_role_key') && person_has_role_key($requiredRole));
 
         // Server-side guard: if no role and no explicit bypass, reject
@@ -260,14 +277,27 @@ class ApprovalRulesController
             exit;
         }
 
-        $col = $allowedCols[$approvalType];
-        $this->db->prepare("UPDATE contracts SET `$col` = ? WHERE contract_id = ?")->execute([$dateVal, $contractId]);
+        if ($isLegacy) {
+            // Write to the dedicated contracts column
+            $col = $legacyCols[$approvalType];
+            $this->db->prepare("UPDATE contracts SET `$col` = ? WHERE contract_id = ?")->execute([$dateVal, $contractId]);
+        } else {
+            // Write to the generic stamps table (INSERT … ON DUPLICATE KEY UPDATE)
+            $stampPerson = current_person();
+            $stampPersonId = !empty($stampPerson['person_id']) ? (int)$stampPerson['person_id'] : null;
+            $this->db->prepare(
+                "INSERT INTO contract_approval_stamps (contract_id, approval_key, stamp_date, stamped_by_person_id)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE stamp_date = VALUES(stamp_date), stamped_by_person_id = VALUES(stamped_by_person_id)"
+            )->execute([$contractId, $approvalType, $dateVal, $stampPersonId]);
+        }
 
         // Log to contract history
         $person     = current_person();
         $personName = trim(($person['first_name'] ?? '') . ' ' . ($person['last_name'] ?? ''));
         if (empty(trim($personName))) $personName = $person['display_name'] ?? $person['email'] ?? 'Unknown';
-        $label    = self::APPROVAL_LABELS[$approvalType] ?? $approvalType;
+        $approvalLabels = $this->loadApprovalLabels();
+        $label    = $approvalLabels[$approvalType] ?? self::APPROVAL_LABELS[$approvalType] ?? $approvalType;
         $personId = !empty($person['person_id']) ? (int)$person['person_id'] : null;
 
         if ($isBypass && !$userHasRole) {
@@ -352,7 +382,14 @@ class ApprovalRulesController
         $contractId   = (int)($_POST['contract_id'] ?? 0);
         $approvalType = trim($_POST['approval_type'] ?? '');
 
-        if ($contractId <= 0 || !isset(self::APPROVAL_LABELS[$approvalType])) {
+        // Accept any active approval_key from the roles table, plus legacy static types
+        $knownStmt = $this->db->prepare(
+            "SELECT 1 FROM roles WHERE approval_key = ? AND is_active = 1 LIMIT 1"
+        );
+        $knownStmt->execute([$approvalType]);
+        $isKnown = $knownStmt->fetchColumn() || isset(self::APPROVAL_LABELS[$approvalType]);
+
+        if ($contractId <= 0 || !$isKnown) {
             http_response_code(422);
             echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
             exit;
@@ -788,6 +825,8 @@ class ApprovalRulesController
             'council'      => 'council_approval_date',
         ];
 
+        $approvalLabels = $this->loadApprovalLabels();
+
         $person     = current_person();
         $personName = trim(($person['first_name'] ?? '') . ' ' . ($person['last_name'] ?? ''));
         if (empty(trim($personName))) $personName = $person['display_name'] ?? $person['email'] ?? 'Unknown';
@@ -810,7 +849,7 @@ class ApprovalRulesController
                 $col = $colMap[$approvalKey] ?? null;
                 if ($col === null || !empty($contract[$col])) continue; // skip if unknown or already stamped
 
-                $label = self::APPROVAL_LABELS[$approvalKey] ?? $approvalKey;
+                $label = $approvalLabels[$approvalKey] ?? self::APPROVAL_LABELS[$approvalKey] ?? $approvalKey;
                 $this->db->prepare("UPDATE contracts SET `$col` = ? WHERE contract_id = ?")->execute([$dateVal, $contract['contract_id']]);
                 $logStmt->execute([
                     $contract['contract_id'],

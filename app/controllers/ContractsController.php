@@ -525,6 +525,49 @@ class ContractsController
         $requiredApprovals  = ApprovalRulesController::requiredApprovalsFor($this->db, $contract);
         $userApprovalRoles  = ApprovalRulesController::getApprovalRolesForCurrentUser();
 
+        // Build the approval metadata map dynamically from the roles table so that
+        // newly added approval types (beyond the original five) show up in the panel.
+        $legacyCols = [
+            'manager'      => 'manager_approval_date',
+            'purchasing'   => 'purchasing_approval_date',
+            'legal'        => 'legal_approval_date',
+            'risk_manager' => 'risk_manager_approval_date',
+            'council'      => 'council_approval_date',
+        ];
+        $approvalRoleRows = $this->db->query(
+            "SELECT approval_key, role_name, role_key FROM roles
+              WHERE approval_key IS NOT NULL AND approval_key != '' AND is_active = 1
+              ORDER BY role_name ASC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $approvalMeta = [];
+        foreach ($approvalRoleRows as $ar) {
+            $key = $ar['approval_key'];
+            $approvalMeta[$key] = [
+                'label'    => $ar['role_name'],
+                'col'      => $legacyCols[$key] ?? null,   // null for dynamic types
+                'role_key' => $ar['role_key'],
+            ];
+        }
+        // Fallback: if roles table has no approval types yet, use the hardcoded set
+        if (empty($approvalMeta)) {
+            foreach ($legacyCols as $key => $col) {
+                $approvalMeta[$key] = ['label' => ucfirst(str_replace('_', ' ', $key)), 'col' => $col, 'role_key' => null];
+            }
+        }
+
+        // Load stamps for dynamic (non-legacy) approval types from the stamps table
+        $approvalStamps = []; // keyed by approval_key => stamp_date
+        $contractId_for_stamps = (int)($contract['contract_id'] ?? 0);
+        if ($contractId_for_stamps > 0) {
+            $stmtStamps = $this->db->prepare(
+                "SELECT approval_key, stamp_date FROM contract_approval_stamps WHERE contract_id = ?"
+            );
+            $stmtStamps->execute([$contractId_for_stamps]);
+            foreach ($stmtStamps->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $approvalStamps[$s['approval_key']] = $s['stamp_date'];
+            }
+        }
+
         // All active contract types for the "Generate Selected Doc" dropdown
         $contractTypes = $this->getContractTypes();
 

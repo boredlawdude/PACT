@@ -597,31 +597,34 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
 
       <!-- ── Approval Status Panel ── -->
       <?php
-        $approvalMeta = [
-            'manager'      => ['label' => 'Manager',      'col' => 'manager_approval_date'],
-            'purchasing'   => ['label' => 'Purchasing',   'col' => 'purchasing_approval_date'],
-            'legal'        => ['label' => 'Legal',        'col' => 'legal_approval_date'],
-            'risk_manager' => ['label' => 'Risk Manager', 'col' => 'risk_manager_approval_date'],
-            'council'      => ['label' => 'Council',      'col' => 'council_approval_date'],
-        ];
+        // $approvalMeta and $approvalStamps are built dynamically by ContractsController
+        // (keyed by approval_key; $approvalMeta has 'label', 'col', 'role_key').
+        // Fall back to legacy hardcoded set when not provided.
+        if (empty($approvalMeta)) {
+            $approvalMeta = [
+                'manager'      => ['label' => 'Manager',      'col' => 'manager_approval_date',      'role_key' => 'TOWN_MANAGER'],
+                'purchasing'   => ['label' => 'Purchasing',   'col' => 'purchasing_approval_date',   'role_key' => 'PROCUREMENT'],
+                'legal'        => ['label' => 'Legal',        'col' => 'legal_approval_date',        'role_key' => 'LEGAL_ADMIN'],
+                'risk_manager' => ['label' => 'Risk Manager', 'col' => 'risk_manager_approval_date', 'role_key' => 'RISK_MANAGER'],
+                'council'      => ['label' => 'Council',      'col' => 'council_approval_date',      'role_key' => 'TOWN_COUNCIL'],
+            ];
+        }
+        $approvalStamps    = $approvalStamps ?? [];
         $requiredApprovals = $requiredApprovals ?? [];
         $userApprovalRoles = $userApprovalRoles ?? [];
         $anyRequired = !empty($requiredApprovals);
         $pendingCount = 0;
         $pendingApprovalLabels = [];
         foreach ($requiredApprovals as $rk) {
-            if (empty($contract[$approvalMeta[$rk]['col']])) {
+            $meta = $approvalMeta[$rk] ?? null;
+            if (!$meta) continue;
+            $approvedDate = ($meta['col'] ? ($contract[$meta['col']] ?? null) : null)
+                         ?? ($approvalStamps[$rk] ?? null);
+            if (empty($approvedDate)) {
                 $pendingCount++;
-                $pendingApprovalLabels[] = $approvalMeta[$rk]['label'];
+                $pendingApprovalLabels[] = $meta['label'];
             }
         }
-        $approvalRoleLabels = [
-            'manager'      => 'Town Manager (TOWN_MANAGER)',
-            'purchasing'   => 'Procurement (PROCUREMENT)',
-            'legal'        => 'Legal Admin (LEGAL_ADMIN)',
-            'risk_manager' => null,
-            'council'      => 'Town Council (TOWN_COUNCIL)',
-        ];
       ?>
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -643,9 +646,12 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
               <?php foreach ($approvalMeta as $key => $meta): ?>
                 <?php
                   $isRequired   = in_array($key, $requiredApprovals, true);
-                  $approvedDate = $contract[$meta['col']] ?? null;
+                  // Check dedicated column first (legacy), then the stamps table
+                  $approvedDate = ($meta['col'] ? ($contract[$meta['col']] ?? null) : null)
+                               ?? ($approvalStamps[$key] ?? null);
                   $hasRole      = in_array($key, $userApprovalRoles, true);
-                  $roleLabel    = $approvalRoleLabels[$key] ?? null;
+                  $roleKey      = $meta['role_key'] ?? null;
+                  $roleLabel    = $roleKey ? h($roleKey) : null;
                 ?>
                 <tr class="<?= ($isRequired && !$approvedDate) ? 'table-warning' : '' ?>">
                   <td class="fw-semibold"><?= h($meta['label']) ?></td>

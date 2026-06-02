@@ -106,28 +106,45 @@ class DashboardController
         // For each approval type the current user's roles map to, count
         // contracts where that approval is required by current rules AND not yet stamped.
         require_once APP_ROOT . '/app/controllers/ApprovalRulesController.php';
-        $approvalRoleMap = ApprovalRulesController::APPROVAL_ROLE_MAP;
-        $approvalLabels  = ApprovalRulesController::APPROVAL_LABELS;
         $myPendingApprovals = [];
+
+        // Load all approval types from roles table (approval_key => [role_name, role_key])
+        $approvalTypeRows = $this->db->query(
+            "SELECT approval_key, role_name, role_key FROM roles
+              WHERE approval_key IS NOT NULL AND approval_key != '' AND is_active = 1"
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fall back to static constants if the column doesn't exist yet
+        if (empty($approvalTypeRows)) {
+            foreach (ApprovalRulesController::APPROVAL_LABELS as $k => $label) {
+                $approvalTypeRows[] = [
+                    'approval_key' => $k,
+                    'role_name'    => $label,
+                    'role_key'     => ApprovalRulesController::APPROVAL_ROLE_MAP[$k] ?? null,
+                ];
+            }
+        }
+
+        // Legacy date columns in contracts table
+        $legacyCols = [
+            'manager'      => 'manager_approval_date',
+            'purchasing'   => 'purchasing_approval_date',
+            'legal'        => 'legal_approval_date',
+            'risk_manager' => 'risk_manager_approval_date',
+            'council'      => 'council_approval_date',
+        ];
 
         // Determine which approval types this user can act on
         $userApprovalKeys = [];
-        foreach ($approvalRoleMap as $approvalKey => $requiredRoleKey) {
-            $holds = ($requiredRoleKey === null)
-                || (function_exists('person_has_role_key') && person_has_role_key($requiredRoleKey));
-            if ($holds) $userApprovalKeys[] = $approvalKey;
+        $approvalLabels   = [];
+        foreach ($approvalTypeRows as $at) {
+            $approvalLabels[$at['approval_key']] = $at['role_name'];
+            $holds = (function_exists('person_has_role_key') && person_has_role_key($at['role_key']));
+            if ($holds) $userApprovalKeys[] = $at['approval_key'];
         }
 
         if (!empty($userApprovalKeys)) {
-            $colMap = [
-                'manager'      => 'manager_approval_date',
-                'purchasing'   => 'purchasing_approval_date',
-                'legal'        => 'legal_approval_date',
-                'risk_manager' => 'risk_manager_approval_date',
-                'council'      => 'council_approval_date',
-            ];
-
-            // Fetch only the fields needed to evaluate rules
+            // Fetch legacy approval date columns plus contract identifiers
             $allContracts = $this->db->query("
                 SELECT contract_id, total_contract_value, renewal_term_months, contract_type_id,
                        use_standard_contract, minimum_insurance_coi,
@@ -136,14 +153,28 @@ class DashboardController
                 FROM contracts
             ")->fetchAll(PDO::FETCH_ASSOC);
 
+            // Load all stamps for dynamic approval types, keyed by contract_id => [approval_key => date]
+            $allStamps = [];
+            $stampRows = $this->db->query(
+                "SELECT contract_id, approval_key, stamp_date FROM contract_approval_stamps"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($stampRows as $sr) {
+                $allStamps[(int)$sr['contract_id']][$sr['approval_key']] = $sr['stamp_date'];
+            }
+
             $pendingCounts = array_fill_keys($userApprovalKeys, 0);
 
             foreach ($allContracts as $contract) {
+                $cid      = (int)$contract['contract_id'];
                 $required = ApprovalRulesController::requiredApprovalsFor($this->db, $contract);
                 foreach ($userApprovalKeys as $approvalKey) {
                     if (!in_array($approvalKey, $required, true)) continue;
-                    $col = $colMap[$approvalKey];
-                    if (empty($contract[$col])) {
+                    // Check legacy column first, then stamps table
+                    $approvedDate = ($legacyCols[$approvalKey] ?? null)
+                        ? ($contract[$legacyCols[$approvalKey]] ?? null)
+                        : null;
+                    $approvedDate = $approvedDate ?? ($allStamps[$cid][$approvalKey] ?? null);
+                    if (empty($approvedDate)) {
                         $pendingCounts[$approvalKey]++;
                     }
                 }
