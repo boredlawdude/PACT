@@ -76,6 +76,8 @@ class Contract
             c.total_contract_value,
             c.status_comment,
             c.owner_primary_contact_id,
+            c.contract_type_id,
+            ct.contract_type AS contract_type_name,
             d.department_name,
             d.department_code,
             co.name AS counterparty_company_name,
@@ -92,6 +94,8 @@ class Contract
             ON c.owner_primary_contact_id = op.person_id
         LEFT JOIN contract_statuses cs
             ON c.contract_status_id = cs.contract_status_id
+        LEFT JOIN contract_types ct
+            ON c.contract_type_id = ct.contract_type_id
         WHERE 1=1
     ";
 

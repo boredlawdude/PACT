@@ -453,6 +453,7 @@ class ContractsController
         $departments = $this->getDepartments();
         $responsiblePeople = $this->getResponsiblePeople();
         $contractStatuses = $this->getContractStatuses();
+        $contractTypes = $this->getContractTypes();
         require APP_ROOT . '/app/views/contracts/index.php';
     }
 
@@ -473,6 +474,7 @@ class ContractsController
         $departments = $this->getDepartments();
         $responsiblePeople = $this->getResponsiblePeople();
         $contractStatuses = $this->getContractStatuses();
+        $contractTypes = $this->getContractTypes();
         require APP_ROOT . '/app/views/contracts/index.php';
     }
 
