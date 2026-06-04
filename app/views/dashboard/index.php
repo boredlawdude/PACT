@@ -113,24 +113,24 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
 </div>
 <?php endif; ?>
 
-<!-- ── Status Radio Filter ───────────────────────────────────────────────── -->
+<!-- ── Status Checkbox Filter ───────────────────────────────────────────── -->
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
         <div class="d-flex flex-wrap gap-2 align-items-center" id="statusFilters">
             <strong class="me-1 text-nowrap">Filter by Status:</strong>
 
             <div class="form-check form-check-inline mb-0">
-                <input class="form-check-input status-radio" type="radio"
-                       name="dashStatusFilter" id="status_all" value="" checked>
+                <input class="form-check-input" type="checkbox" id="status_all" checked
+                       onchange="if(this.checked){document.querySelectorAll('.dash-status-check').forEach(cb=>cb.checked=false);} dashFilterRows();">
                 <label class="form-check-label" for="status_all">All</label>
             </div>
 
             <?php foreach ($statuses as $st): ?>
                 <div class="form-check form-check-inline mb-0">
-                    <input class="form-check-input status-radio" type="radio"
-                           name="dashStatusFilter"
+                    <input class="form-check-input dash-status-check" type="checkbox"
                            id="status_<?= (int)$st['contract_status_id'] ?>"
-                           value="<?= (int)$st['contract_status_id'] ?>">
+                           value="<?= (int)$st['contract_status_id'] ?>"
+                           onchange="document.getElementById('status_all').checked=false; dashFilterRows();">
                     <label class="form-check-label" for="status_<?= (int)$st['contract_status_id'] ?>">
                         <?= h($st['contract_status_name']) ?>
                     </label>
@@ -325,45 +325,36 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     makeResizable(document.getElementById('dashContractsTable'));
 })();
 
-// ── Status radio + Type dropdown: combined client-side row filter ─────────
-(function () {
-    const radios = document.querySelectorAll('.status-radio');
+// ── Status checkbox + Type dropdown: combined client-side row filter ───────
+function dashFilterRows() {
+    const checkedStatuses = Array.from(document.querySelectorAll('.dash-status-check:checked')).map(cb => cb.value);
+    const allChecked = document.getElementById('status_all').checked;
     const typeSelect = document.getElementById('dashTypeFilter');
+    const typeVal = typeSelect ? typeSelect.value : '';
     const noResults = document.getElementById('dashNoResults');
-
-    function filterRows() {
-        const selected = document.querySelector('.status-radio:checked');
-        const statusVal = selected ? selected.value : '';
-        const typeVal = typeSelect ? typeSelect.value : '';
-        const rows = document.querySelectorAll('#dashContractsTable tbody tr');
-        let visible = 0;
-        rows.forEach(function (row) {
-            const statusMatch = statusVal === '' || row.dataset.statusId === statusVal;
-            const typeMatch   = typeVal   === '' || row.dataset.contractTypeId === typeVal;
-            const show = statusMatch && typeMatch;
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-        if (noResults) noResults.classList.toggle('d-none', visible > 0);
-        // Uncheck hidden rows
-        document.querySelectorAll('.dash-row-check').forEach(function (cb) {
-            if (cb.closest('tr').style.display === 'none') cb.checked = false;
-        });
-        // Reset header buttons
-        document.getElementById('dashBtnView').classList.add('disabled');
-        document.getElementById('dashBtnEdit').classList.add('disabled');
-        document.getElementById('dashBtnDelete').classList.add('disabled');
-        document.getElementById('dashBtnView').href = '#';
-        document.getElementById('dashBtnEdit').href = '#';
-    }
-
-    radios.forEach(function (r) {
-        r.addEventListener('change', filterRows);
+    const rows = document.querySelectorAll('#dashContractsTable tbody tr');
+    let visible = 0;
+    rows.forEach(function (row) {
+        const statusMatch = allChecked || checkedStatuses.length === 0 || checkedStatuses.includes(row.dataset.statusId);
+        const typeMatch   = typeVal === '' || row.dataset.contractTypeId === typeVal;
+        const show = statusMatch && typeMatch;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
     });
-    if (typeSelect) {
-        typeSelect.addEventListener('change', filterRows);
-    }
-    filterRows();
+    if (noResults) noResults.classList.toggle('d-none', visible > 0);
+    document.querySelectorAll('.dash-row-check').forEach(function (cb) {
+        if (cb.closest('tr').style.display === 'none') cb.checked = false;
+    });
+    document.getElementById('dashBtnView').classList.add('disabled');
+    document.getElementById('dashBtnEdit').classList.add('disabled');
+    document.getElementById('dashBtnDelete').classList.add('disabled');
+    document.getElementById('dashBtnView').href = '#';
+    document.getElementById('dashBtnEdit').href = '#';
+}
+(function () {
+    const typeSelect = document.getElementById('dashTypeFilter');
+    if (typeSelect) typeSelect.addEventListener('change', dashFilterRows);
+    dashFilterRows();
 })();
 
 // ── Column sort ──────────────────────────────────────────────────────────

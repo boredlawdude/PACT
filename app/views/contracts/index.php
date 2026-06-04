@@ -91,22 +91,22 @@ function status_badge(string $status): string {
     </div>
 </form>
 
-<!-- ── Status Radio Filter (client-side, no page reload) ─────────────────── -->
+<!-- ── Status Checkbox Filter (client-side, no page reload) ─────────────── -->
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <strong class="me-1 text-nowrap">Filter by Status:</strong>
             <div class="form-check form-check-inline mb-0">
-                <input class="form-check-input contracts-status-radio" type="radio"
-                       name="contractsStatusFilter" id="cstatus_all" value="" checked>
+                <input class="form-check-input" type="checkbox" id="cstatus_all" checked
+                       onchange="if(this.checked){document.querySelectorAll('.contracts-status-check').forEach(cb=>cb.checked=false);} contractsFilterRows();">
                 <label class="form-check-label" for="cstatus_all">All</label>
             </div>
             <?php foreach (($contractStatuses ?? []) as $status): ?>
                 <div class="form-check form-check-inline mb-0">
-                    <input class="form-check-input contracts-status-radio" type="radio"
-                           name="contractsStatusFilter"
+                    <input class="form-check-input contracts-status-check" type="checkbox"
                            id="cstatus_<?= (int)$status['contract_status_id'] ?>"
-                           value="<?= (int)$status['contract_status_id'] ?>">
+                           value="<?= (int)$status['contract_status_id'] ?>"
+                           onchange="document.getElementById('cstatus_all').checked=false; contractsFilterRows();">
                     <label class="form-check-label" for="cstatus_<?= (int)$status['contract_status_id'] ?>">
                         <?= h($status['contract_status_name']) ?>
                     </label>
@@ -255,47 +255,38 @@ function status_badge(string $status): string {
     updateButtons();
 })();
 
-// ── Status radio + Type dropdown: combined client-side row filter ─────────
-(function () {
-    const radios = document.querySelectorAll('.contracts-status-radio');
+// ── Status checkbox + Type dropdown: combined client-side row filter ───────
+function contractsFilterRows() {
+    const checkedStatuses = Array.from(document.querySelectorAll('.contracts-status-check:checked')).map(cb => cb.value);
+    const allChecked = document.getElementById('cstatus_all').checked;
     const typeSelect = document.getElementById('contractsTypeFilter');
+    const typeVal = typeSelect ? typeSelect.value : '';
     const noResults = document.getElementById('contractsNoResults');
-
-    function filterRows() {
-        const selectedStatus = document.querySelector('.contracts-status-radio:checked');
-        const statusVal = selectedStatus ? selectedStatus.value : '';
-        const typeVal = typeSelect ? typeSelect.value : '';
-        const rows = document.querySelectorAll('#contractsTable tbody tr');
-        let visible = 0;
-        rows.forEach(function (row) {
-            const statusMatch = statusVal === '' || row.dataset.statusId === statusVal;
-            const typeMatch   = typeVal   === '' || row.dataset.contractTypeId === typeVal;
-            const show = statusMatch && typeMatch;
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-        if (noResults) noResults.classList.toggle('d-none', visible > 0);
-        const countEl = document.getElementById('contractsRowCount');
-        if (countEl) countEl.textContent = '(' + visible + ' shown)';
-        // Uncheck hidden rows
-        document.querySelectorAll('.contracts-row-check').forEach(function (cb) {
-            if (cb.closest('tr').style.display === 'none') cb.checked = false;
-        });
-        // Re-evaluate header buttons
-        document.getElementById('contractsBtnView').classList.add('disabled');
-        document.getElementById('contractsBtnEdit').classList.add('disabled');
-        document.getElementById('contractsBtnDelete').classList.add('disabled');
-        document.getElementById('contractsBtnView').href = '#';
-        document.getElementById('contractsBtnEdit').href = '#';
-    }
-
-    radios.forEach(function (r) {
-        r.addEventListener('change', filterRows);
+    const rows = document.querySelectorAll('#contractsTable tbody tr');
+    let visible = 0;
+    rows.forEach(function (row) {
+        const statusMatch = allChecked || checkedStatuses.length === 0 || checkedStatuses.includes(row.dataset.statusId);
+        const typeMatch   = typeVal === '' || row.dataset.contractTypeId === typeVal;
+        const show = statusMatch && typeMatch;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
     });
-    if (typeSelect) {
-        typeSelect.addEventListener('change', filterRows);
-    }
-    filterRows();
+    if (noResults) noResults.classList.toggle('d-none', visible > 0);
+    const countEl = document.getElementById('contractsRowCount');
+    if (countEl) countEl.textContent = '(' + visible + ' shown)';
+    document.querySelectorAll('.contracts-row-check').forEach(function (cb) {
+        if (cb.closest('tr').style.display === 'none') cb.checked = false;
+    });
+    document.getElementById('contractsBtnView').classList.add('disabled');
+    document.getElementById('contractsBtnEdit').classList.add('disabled');
+    document.getElementById('contractsBtnDelete').classList.add('disabled');
+    document.getElementById('contractsBtnView').href = '#';
+    document.getElementById('contractsBtnEdit').href = '#';
+}
+(function () {
+    const typeSelect = document.getElementById('contractsTypeFilter');
+    if (typeSelect) typeSelect.addEventListener('change', contractsFilterRows);
+    contractsFilterRows();
 })();
 
 // ── Draggable column resize (with localStorage persistence) ─────────────
