@@ -174,13 +174,13 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
                 <thead class="table-light">
                     <tr>
                         <th style="width:32px;"><input type="checkbox" id="dashSelectAll" class="form-check-input"></th>
-                        <th style="width:180px;">Contract #</th>
-                        <th style="width:120px;">Status</th>
-                        <th style="width:320px;">Name</th>
-                        <th style="width:55px;">Dept</th>
-                        <th style="width:90px;">Responsible</th>
-                        <th style="width:75px;">Value</th>
-                        <th>Comment</th>
+                        <th style="width:180px; cursor:pointer; user-select:none;" data-sort="text">Contract # <span class="sort-icon"></span></th>
+                        <th style="width:120px; cursor:pointer; user-select:none;" data-sort="text">Status <span class="sort-icon"></span></th>
+                        <th style="width:320px; cursor:pointer; user-select:none;" data-sort="text">Name <span class="sort-icon"></span></th>
+                        <th style="width:55px; cursor:pointer; user-select:none;" data-sort="text">Dept <span class="sort-icon"></span></th>
+                        <th style="width:90px; cursor:pointer; user-select:none;" data-sort="text">Responsible <span class="sort-icon"></span></th>
+                        <th style="width:75px; cursor:pointer; user-select:none;" data-sort="num">Value <span class="sort-icon"></span></th>
+                        <th data-sort="text" style="cursor:pointer; user-select:none;">Comment <span class="sort-icon"></span></th>
                         <th style="width:0;"></th>
                     </tr>
                 </thead>
@@ -364,6 +364,48 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
         typeSelect.addEventListener('change', filterRows);
     }
     filterRows();
+})();
+
+// ── Column sort ──────────────────────────────────────────────────────────
+(function () {
+    const table = document.getElementById('dashContractsTable');
+    const tbody = table.querySelector('tbody');
+    let sortCol = -1, sortAsc = true;
+
+    table.querySelectorAll('thead th[data-sort]').forEach(function (th) {
+        th.addEventListener('click', function () {
+            const ths = Array.from(table.querySelectorAll('thead th'));
+            const colIdx = ths.indexOf(th);
+            const isNum = th.dataset.sort === 'num';
+
+            if (sortCol === colIdx) {
+                sortAsc = !sortAsc;
+            } else {
+                sortCol = colIdx;
+                sortAsc = true;
+            }
+
+            table.querySelectorAll('thead th[data-sort] .sort-icon').forEach(function (icon) {
+                icon.textContent = '';
+            });
+            th.querySelector('.sort-icon').textContent = sortAsc ? ' ▲' : ' ▼';
+
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+                let aVal = a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '';
+                let bVal = b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '';
+                if (isNum) {
+                    aVal = parseFloat(aVal.replace(/[$,]/g, '')) || 0;
+                    bVal = parseFloat(bVal.replace(/[$,]/g, '')) || 0;
+                    return sortAsc ? aVal - bVal : bVal - aVal;
+                }
+                return sortAsc
+                    ? aVal.localeCompare(bVal, undefined, {numeric: true, sensitivity: 'base'})
+                    : bVal.localeCompare(aVal, undefined, {numeric: true, sensitivity: 'base'});
+            });
+            rows.forEach(function (row) { tbody.appendChild(row); });
+        });
+    });
 })();
 </script>
 
