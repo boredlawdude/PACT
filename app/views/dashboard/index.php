@@ -140,6 +140,23 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     </div>
 </div>
 
+<!-- ── Contract Type Dropdown Filter (client-side, no page reload) ────────── -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <strong class="me-1 text-nowrap">Filter by Type:</strong>
+            <select class="form-select form-select-sm" id="dashTypeFilter" style="max-width:280px;">
+                <option value="">All Types</option>
+                <?php foreach (($contractTypes ?? []) as $type): ?>
+                    <option value="<?= (int)$type['contract_type_id'] ?>">
+                        <?= h($type['contract_type']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+</div>
+
 <!-- ── Contracts Table ───────────────────────────────────────────────────── -->
 <div class="card shadow-sm">
     <div class="card-header d-flex align-items-center justify-content-between">
@@ -171,6 +188,7 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
                 <?php foreach ($contracts as $c): ?>
                     <?php $isStale = isset($staleIds[(int)($c['contract_id'] ?? 0)]); ?>
                     <tr data-status-id="<?= (int)($c['contract_status_id'] ?? 0) ?>"
+                        data-contract-type-id="<?= (int)($c['contract_type_id'] ?? 0) ?>"
                         data-contract-id="<?= (int)$c['contract_id'] ?>"
                         data-view-url="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>"
                         data-edit-url="/index.php?page=contracts_edit&contract_id=<?= (int)$c['contract_id'] ?>"
@@ -307,18 +325,22 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     makeResizable(document.getElementById('dashContractsTable'));
 })();
 
-// ── Status radio: client-side row filter ─────────────────────────────────
+// ── Status radio + Type dropdown: combined client-side row filter ─────────
 (function () {
     const radios = document.querySelectorAll('.status-radio');
+    const typeSelect = document.getElementById('dashTypeFilter');
     const noResults = document.getElementById('dashNoResults');
 
     function filterRows() {
         const selected = document.querySelector('.status-radio:checked');
-        const val = selected ? selected.value : '';
+        const statusVal = selected ? selected.value : '';
+        const typeVal = typeSelect ? typeSelect.value : '';
         const rows = document.querySelectorAll('#dashContractsTable tbody tr');
         let visible = 0;
         rows.forEach(function (row) {
-            const show = val === '' || row.dataset.statusId === val;
+            const statusMatch = statusVal === '' || row.dataset.statusId === statusVal;
+            const typeMatch   = typeVal   === '' || row.dataset.contractTypeId === typeVal;
+            const show = statusMatch && typeMatch;
             row.style.display = show ? '' : 'none';
             if (show) visible++;
         });
@@ -338,6 +360,9 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
     radios.forEach(function (r) {
         r.addEventListener('change', filterRows);
     });
+    if (typeSelect) {
+        typeSelect.addEventListener('change', filterRows);
+    }
     filterRows();
 })();
 </script>

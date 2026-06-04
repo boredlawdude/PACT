@@ -194,6 +194,9 @@ class DashboardController
         // All contracts (unfiltered); JS handles client-side filtering
         $contracts = $this->contractModel->search([]);
 
+        $ctStmt = $this->db->query("SELECT contract_type_id, contract_type FROM contract_types WHERE is_active = 1 ORDER BY contract_type ASC");
+        $contractTypes = $ctStmt ? $ctStmt->fetchAll(\PDO::FETCH_ASSOC) : [];
+
         require APP_ROOT . '/app/views/dashboard/index.php'; // $staleCount, $staleIds, $pendingCount, $reviewCount, $townCouncilCount, $outForSignatureCount passed via scope
     }
 }
