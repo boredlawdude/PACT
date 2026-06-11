@@ -73,6 +73,12 @@ class AdminSettingsController {
         // Handle logo upload
         $logoPath = trim($_POST['existing_logo_path'] ?? '') ?: null;
         if (!empty($_FILES['logo']['tmp_name'])) {
+            $uploadErr = $_FILES['logo']['error'] ?? UPLOAD_ERR_NO_FILE;
+            if ($uploadErr !== UPLOAD_ERR_OK) {
+                $_SESSION['flash_error'] = 'Logo upload error (code ' . $uploadErr . '). Max size is ' . ini_get('upload_max_filesize') . '.';
+                header('Location: /index.php?page=admin_organization');
+                exit;
+            }
             $ext     = strtolower(pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION));
             $allowed = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
             if (!in_array($ext, $allowed, true)) {
@@ -82,10 +88,23 @@ class AdminSettingsController {
             }
             $uploadDir = APP_ROOT . '/public/uploads/';
             if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
+                if (!mkdir($uploadDir, 0775, true)) {
+                    $_SESSION['flash_error'] = 'Could not create uploads directory. Check server permissions on public/uploads/.';
+                    header('Location: /index.php?page=admin_organization');
+                    exit;
+                }
+            }
+            if (!is_writable($uploadDir)) {
+                $_SESSION['flash_error'] = 'Uploads directory is not writable. Run: chmod 775 public/uploads/ on the server.';
+                header('Location: /index.php?page=admin_organization');
+                exit;
             }
             $filename = 'org_logo.' . $ext;
-            move_uploaded_file($_FILES['logo']['tmp_name'], $uploadDir . $filename);
+            if (!move_uploaded_file($_FILES['logo']['tmp_name'], $uploadDir . $filename)) {
+                $_SESSION['flash_error'] = 'Failed to save logo file. Check permissions on public/uploads/.';
+                header('Location: /index.php?page=admin_organization');
+                exit;
+            }
             $logoPath = 'uploads/' . $filename;
         }
         $fields['logo_path'] = $logoPath;
