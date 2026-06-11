@@ -23,6 +23,110 @@ class AdminSettingsController {
         require APP_ROOT . '/app/views/admin_settings/form.php';
     }
 
+    // ── Organization profile ──────────────────────────────────────────────────
+
+    public function organization(): void
+    {
+        require_login();
+        if (!function_exists('is_system_admin') || !is_system_admin()) {
+            http_response_code(403);
+            exit('Access denied. System admin required.');
+        }
+
+        $pdo = db();
+        $org = $pdo->query("SELECT * FROM organization_settings ORDER BY id ASC LIMIT 1")->fetch() ?: [];
+
+        require APP_ROOT . '/app/views/admin_settings/organization.php';
+    }
+
+    public function saveOrganization(): void
+    {
+        require_login();
+        if (!function_exists('is_system_admin') || !is_system_admin()) {
+            http_response_code(403);
+            exit('Access denied. System admin required.');
+        }
+
+        if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            http_response_code(403);
+            exit('Invalid CSRF token.');
+        }
+        unset($_SESSION['csrf_token']);
+
+        $fields = [
+            'org_name'                => trim($_POST['org_name']              ?? ''),
+            'org_type'                => $_POST['org_type']                   ?? null,
+            'website_url'             => trim($_POST['website_url']           ?? '') ?: null,
+            'primary_contact_name'    => trim($_POST['primary_contact_name']  ?? '') ?: null,
+            'primary_contact_email'   => trim($_POST['primary_contact_email'] ?? '') ?: null,
+            'finance_director_name'   => trim($_POST['finance_director_name'] ?? '') ?: null,
+            'mayor_or_exec_name'      => trim($_POST['mayor_or_exec_name']    ?? '') ?: null,
+            'fiscal_year_start_month' => (int)($_POST['fiscal_year_start_month'] ?? 7),
+        ];
+
+        if ($fields['org_name'] === '') {
+            $_SESSION['flash_error'] = 'Organization name is required.';
+            header('Location: /index.php?page=admin_organization');
+            exit;
+        }
+
+        // Handle logo upload
+        $logoPath = trim($_POST['existing_logo_path'] ?? '') ?: null;
+        if (!empty($_FILES['logo']['tmp_name'])) {
+            $ext     = strtolower(pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION));
+            $allowed = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
+            if (!in_array($ext, $allowed, true)) {
+                $_SESSION['flash_error'] = 'Logo must be a PNG, JPG, GIF, SVG, or WebP file.';
+                header('Location: /index.php?page=admin_organization');
+                exit;
+            }
+            $uploadDir = APP_ROOT . '/public/uploads/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $filename = 'org_logo.' . $ext;
+            move_uploaded_file($_FILES['logo']['tmp_name'], $uploadDir . $filename);
+            $logoPath = 'uploads/' . $filename;
+        }
+        $fields['logo_path'] = $logoPath;
+
+        $pdo      = db();
+        $existing = $pdo->query("SELECT id FROM organization_settings LIMIT 1")->fetch();
+        if ($existing) {
+            $pdo->prepare("
+                UPDATE organization_settings SET
+                    org_name = ?, org_type = ?, website_url = ?, logo_path = ?,
+                    primary_contact_name = ?, primary_contact_email = ?,
+                    finance_director_name = ?, mayor_or_exec_name = ?,
+                    fiscal_year_start_month = ?
+                WHERE id = ?
+            ")->execute([
+                $fields['org_name'], $fields['org_type'], $fields['website_url'], $fields['logo_path'],
+                $fields['primary_contact_name'], $fields['primary_contact_email'],
+                $fields['finance_director_name'], $fields['mayor_or_exec_name'],
+                $fields['fiscal_year_start_month'], $existing['id'],
+            ]);
+        } else {
+            $pdo->prepare("
+                INSERT INTO organization_settings
+                    (org_name, org_type, website_url, logo_path,
+                     primary_contact_name, primary_contact_email,
+                     finance_director_name, mayor_or_exec_name, fiscal_year_start_month)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ")->execute([
+                $fields['org_name'], $fields['org_type'], $fields['website_url'], $fields['logo_path'],
+                $fields['primary_contact_name'], $fields['primary_contact_email'],
+                $fields['finance_director_name'], $fields['mayor_or_exec_name'],
+                $fields['fiscal_year_start_month'],
+            ]);
+        }
+
+        header('Location: /index.php?page=admin_organization&saved=1');
+        exit;
+    }
+
+    // ── Save system settings ──────────────────────────────────────────────────
+
     public function update() {
         require_login();
         if (!function_exists('is_system_admin') || !is_system_admin()) {

@@ -475,6 +475,16 @@ case 'departments_store':
         (new AdminSettingsController())->update();
         break;
 
+    case 'admin_organization':
+        require_once APP_ROOT . '/app/controllers/AdminSettingsController.php';
+        (new AdminSettingsController())->organization();
+        break;
+
+    case 'admin_organization_save':
+        require_once APP_ROOT . '/app/controllers/AdminSettingsController.php';
+        (new AdminSettingsController())->saveOrganization();
+        break;
+
     case 'db_backup':
         require_once APP_ROOT . '/app/controllers/DatabaseBackupController.php';
         (new DatabaseBackupController())->index();

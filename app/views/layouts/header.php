@@ -1,14 +1,12 @@
 <?php
 declare(strict_types=1);
-
-//require_once __DIR__ . '/../../bootstrap.php';
 ?>
 <!doctype html>
 
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title><?= htmlspecialchars(defined('APP_NAME') ? APP_NAME : 'Contracts App', ENT_QUOTES, 'UTF-8') ?></title>
+  <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') . ' — ' : '' ?>PACT</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -38,10 +36,18 @@ declare(strict_types=1);
 <body class="bg-light"></body>
 <body class="bg-light">
 
+<?php
+  $_orgRow  = db()->query("SELECT org_name, logo_path FROM organization_settings ORDER BY id ASC LIMIT 1")->fetch() ?: [];
+  $_orgName = $_orgRow['org_name'] ?? '';
+?>
 <nav class="navbar navbar-expand-lg app-navbar shadow-sm mb-4">
   <div class="container">
-    <a class="navbar-brand fw-semibold" href="/index.php?page=dashboard">
-      <?= htmlspecialchars(defined('APP_NAME') ? APP_NAME : 'Contracts App', ENT_QUOTES, 'UTF-8') ?>
+    <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="/index.php?page=dashboard">
+      <?php if (!empty($_orgRow['logo_path'])): ?>
+        <img src="/<?= htmlspecialchars($_orgRow['logo_path'], ENT_QUOTES, 'UTF-8') ?>"
+             alt="logo" style="max-height:32px; max-width:80px; object-fit:contain;">
+      <?php endif; ?>
+      PACT<?= $_orgName !== '' ? ' for ' . htmlspecialchars($_orgName, ENT_QUOTES, 'UTF-8') : '' ?>
     </a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
