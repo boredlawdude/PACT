@@ -22,6 +22,10 @@ storage/__tmp/*
 storage/generated/*
 storage/uploads/*
 
+# uploaded files (logo etc.) – keep directory via .gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
+
 # logs
 *.log
 logs/

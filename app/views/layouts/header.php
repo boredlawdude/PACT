@@ -59,45 +59,7 @@ declare(strict_types=1);
     </button>
 
     <div class="collapse navbar-collapse" id="navMain">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=contracts">Contracts</a></li>
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=contracts_create">New Contract</a></li>
-        <li class="nav-item">
-          <a class="nav-link" href="/index.php?page=contract_intake_list">
-            Contract Requests
-            <?php
-            try {
-                require_once APP_ROOT . '/app/models/ContractIntakeSubmission.php';
-                $cIntakePending = (new ContractIntakeSubmission(db()))->countPending();
-                if ($cIntakePending > 0) echo '<span class="badge bg-warning text-dark ms-1">' . $cIntakePending . '</span>';
-            } catch (Throwable $e) { /* table may not exist yet */ }
-            ?>
-          </a>
-        </li>
-        <div class="d-flex align-items-center border border-light border-opacity-50 rounded px-1 mx-1" style="background:rgba(255,255,255,0.08);">
-          <li class="nav-item"><a class="nav-link" href="/index.php?page=development_agreements">Dev Agreements</a></li>
-          <li class="nav-item">
-            <a class="nav-link" href="/index.php?page=dev_agreement_submissions">
-              Intake Submissions
-              <?php
-              try {
-                  require_once APP_ROOT . '/app/models/DevelopmentAgreementSubmission.php';
-                  $pendingCount = (new DevelopmentAgreementSubmission(db()))->countPending();
-                  if ($pendingCount > 0) echo '<span class="badge bg-warning text-dark ms-1">' . $pendingCount . '</span>';
-              } catch (Throwable $e) { /* table may not exist yet */ }
-              ?>
-            </a>
-          </li>
-        </div>
-
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=companies">Companies</a></li>
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=companies_create">New Company</a></li>
-
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=people">People</a></li>
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=departments">Departments</a></li>
-
-        <?php
+      <?php
         $isSuperOrAdmin = false;
         if (function_exists('current_person') && ($p = current_person())) {
           $roles = $p['roles'] ?? [];
@@ -108,31 +70,115 @@ declare(strict_types=1);
             $isSuperOrAdmin = true;
           }
         }
-        ?>
+        // Pending badge counts
+        $cIntakePending = 0;
+        $devAgrPending  = 0;
+        try {
+            require_once APP_ROOT . '/app/models/ContractIntakeSubmission.php';
+            $cIntakePending = (new ContractIntakeSubmission(db()))->countPending();
+        } catch (Throwable $e) {}
+        try {
+            require_once APP_ROOT . '/app/models/DevelopmentAgreementSubmission.php';
+            $devAgrPending = (new DevelopmentAgreementSubmission(db()))->countPending();
+        } catch (Throwable $e) {}
+      ?>
+      <ul class="navbar-nav me-auto">
+
+        <li class="nav-item">
+          <a class="nav-link" href="/index.php?page=dashboard">Dashboard</a>
+        </li>
+
+        <!-- Contracts dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            Contracts
+            <?php if ($cIntakePending > 0): ?>
+              <span class="badge bg-warning text-dark ms-1"><?= $cIntakePending ?></span>
+            <?php endif; ?>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/index.php?page=contracts">All Contracts</a></li>
+            <li><a class="dropdown-item" href="/index.php?page=contracts_create">+ New Contract</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item" href="/index.php?page=contract_intake_list">
+                Contract Requests
+                <?php if ($cIntakePending > 0): ?>
+                  <span class="badge bg-warning text-dark ms-1"><?= $cIntakePending ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Dev Agreements dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            Dev Agreements
+            <?php if ($devAgrPending > 0): ?>
+              <span class="badge bg-warning text-dark ms-1"><?= $devAgrPending ?></span>
+            <?php endif; ?>
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/index.php?page=development_agreements">All Dev Agreements</a></li>
+            <li>
+              <a class="dropdown-item" href="/index.php?page=dev_agreement_submissions">
+                Intake Submissions
+                <?php if ($devAgrPending > 0): ?>
+                  <span class="badge bg-warning text-dark ms-1"><?= $devAgrPending ?></span>
+                <?php endif; ?>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Directory dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Directory</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/index.php?page=companies">Companies</a></li>
+            <li><a class="dropdown-item" href="/index.php?page=companies_create">+ New Company</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/index.php?page=people">People</a></li>
+            <li><a class="dropdown-item" href="/index.php?page=departments">Departments</a></li>
+          </ul>
+        </li>
+
         <?php if ($isSuperOrAdmin): ?>
-          <li class="nav-item"><a class="nav-link" href="/index.php?page=people_create">New User</a></li>
-          <li class="nav-item"><a class="nav-link" href="/index.php?page=admin_settings">System Settings</a></li>
+        <!-- Admin dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Admin</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/index.php?page=people_create">+ New User</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/index.php?page=admin_settings">System Settings</a></li>
+            <li><a class="dropdown-item" href="/index.php?page=admin_organization">Organization Profile</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/admin_password_reset.php">Admin Password Reset</a></li>
+          </ul>
+        </li>
         <?php endif; ?>
 
-        <li class="nav-item"><a class="nav-link" href="/index.php?page=user_manual">User Manual</a></li>
-        <li class="nav-item"><a class="nav-link" href="/logout.php">Logout</a></li>
+        <li class="nav-item"><a class="nav-link" href="/index.php?page=user_manual">Help</a></li>
+
       </ul>
 
-      <div class="d-flex align-items-center gap-2">
+      <ul class="navbar-nav ms-auto align-items-center">
         <?php if (function_exists('current_person') && ($p = current_person())): ?>
           <?php $displayName = $p['display_name'] ?? $p['name'] ?? $p['email'] ?? ''; ?>
           <?php if ($displayName): ?>
-            <span class="text-muted small">
-              Hello, <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
-            </span>
+            <li class="nav-item">
+              <span class="nav-link text-light opacity-75 small pe-1">
+                <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
+              </span>
+            </li>
           <?php endif; ?>
-          </span>
         <?php endif; ?>
+        <li class="nav-item">
+          <a class="nav-link" href="/logout.php">Logout</a>
+        </li>
+      </ul>
 
-        <?php if (function_exists('current_person') && ($u = current_person()) && in_array(($u['role'] ?? ''), ['superuser', 'admin'], true)): ?>
-          <a class="btn btn-outline-danger btn-sm" href="/admin_password_reset.php">Admin Reset</a>
-        <?php endif; ?>
-      </div>
     </div>
   </div>
 </nav>
