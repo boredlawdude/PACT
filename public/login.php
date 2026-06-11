@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/init.php';
 
-$_orgRow = db()->query("SELECT * FROM organization_settings ORDER BY id ASC LIMIT 1")->fetch() ?: [];
+try {
+    $_orgRow = db()->query("SELECT * FROM organization_settings ORDER BY id ASC LIMIT 1")->fetch() ?: [];
+} catch (Throwable $e) {
+    $_orgRow = [];
+}
 $orgName = $_orgRow['org_name'] ?? 'Your Organization';
 
 $email  = trim(strtolower($_POST['email'] ?? ''));

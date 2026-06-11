@@ -37,7 +37,11 @@ declare(strict_types=1);
 <body class="bg-light">
 
 <?php
-  $_orgRow  = db()->query("SELECT org_name, logo_path FROM organization_settings ORDER BY id ASC LIMIT 1")->fetch() ?: [];
+  try {
+      $_orgRow = db()->query("SELECT org_name, logo_path FROM organization_settings ORDER BY id ASC LIMIT 1")->fetch() ?: [];
+  } catch (Throwable $e) {
+      $_orgRow = [];
+  }
   $_orgName = $_orgRow['org_name'] ?? '';
 ?>
 <nav class="navbar navbar-expand-lg app-navbar shadow-sm mb-4">
