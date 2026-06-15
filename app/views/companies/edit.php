@@ -49,7 +49,7 @@ $townEmployees = $townEmployees ?? [];
         <div class="row g-3">
 
             <div class="col-md-6">
-                <label class="form-label">Company Name</label>
+                <label class="form-label">Company Name (Match to exact name on SOS website &amp; COI)</label>
                 <input class="form-control" name="name" value="<?= h($company['name'] ?? '') ?>" required>
             </div>
 
