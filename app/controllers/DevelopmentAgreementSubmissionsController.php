@@ -203,7 +203,7 @@ class DevelopmentAgreementSubmissionsController
         $changedBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
         $stmt = $this->db->prepare(
             "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-             VALUES (?, ?, ?, ?, ?, NOW(), ?)"
+             VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(), ?)"
         );
         $stmt->execute([$contractId, $eventType, $oldStatus, $newStatus, $changedBy, $notes]);
     }

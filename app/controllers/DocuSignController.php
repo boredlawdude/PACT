@@ -575,7 +575,7 @@ class DocuSignController
 
             $this->db->prepare(
                 "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-                 VALUES (?, 'docusign', ?, 'Out For Signature', ?, NOW(), ?)"
+                  VALUES (?, 'docusign', ?, 'Out For Signature', ?, UTC_TIMESTAMP(), ?)"
             )->execute([$contractId, $oldStatusName ?: null, $personId, 'Sent for signature via DocuSign (envelope ' . $envelopeId . ')']);
         }
 
@@ -653,7 +653,7 @@ class DocuSignController
             $personId = (int)($person['person_id'] ?? 0) ?: null;
             $this->db->prepare(
                 "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-                 VALUES (?, 'docusign', 'sent', 'voided', ?, NOW(), ?)"
+                  VALUES (?, 'docusign', 'sent', 'voided', ?, UTC_TIMESTAMP(), ?)"
             )->execute([$contractId, $personId, 'DocuSign envelope voided. Reason: ' . $voidReason]);
 
             $_SESSION['docusign_flash_success'] = 'Envelope voided successfully.';

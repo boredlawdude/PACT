@@ -1182,7 +1182,17 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                     <?php if ($canDeleteHistory): ?>
                     <td><input type="checkbox" class="history-cb" name="history_ids[]" value="<?= (int)$entry['history_id'] ?>"></td>
                     <?php endif; ?>
-                    <td class="text-nowrap"><?= date('m/d/y H:i', strtotime($entry['changed_at'])) ?></td>
+                    <?php
+                      $changedAtDisplay = '';
+                      try {
+                        $changedAtDisplay = (new DateTimeImmutable((string)$entry['changed_at'], new DateTimeZone('UTC')))
+                          ->setTimezone(new DateTimeZone(date_default_timezone_get()))
+                          ->format('m/d/Y g:i A');
+                      } catch (Throwable $e) {
+                        $changedAtDisplay = (string)$entry['changed_at'];
+                      }
+                    ?>
+                    <td class="text-nowrap"><?= h($changedAtDisplay) ?></td>
                     <td>
                       <?php
                         $eventLabels = [

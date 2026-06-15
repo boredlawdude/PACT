@@ -309,7 +309,7 @@ class ApprovalRulesController
 
         $this->db->prepare(
             "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-             VALUES (?, 'approval', NULL, NULL, ?, NOW(), ?)"
+               VALUES (?, 'approval', NULL, NULL, ?, UTC_TIMESTAMP(), ?)"
         )->execute([$contractId, $personId, $note]);
 
         $flashMsg = $isBypass && !$userHasRole
@@ -350,7 +350,7 @@ class ApprovalRulesController
         $this->db->prepare(
             "INSERT INTO contract_status_history
                 (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-             VALUES (?, 'signature_override', NULL, NULL, ?, NOW(), ?)"
+             VALUES (?, 'signature_override', NULL, NULL, ?, UTC_TIMESTAMP(), ?)"
         )->execute([
             $contractId,
             $personId,
@@ -607,7 +607,7 @@ class ApprovalRulesController
 
         $this->db->prepare(
             "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-             VALUES (?, 'approval_email', NULL, NULL, ?, NOW(), ?)"
+               VALUES (?, 'approval_email', NULL, NULL, ?, UTC_TIMESTAMP(), ?)"
         )->execute([$contractId, $personId, $note]);
 
         if ($sent > 0) {
@@ -835,7 +835,7 @@ class ApprovalRulesController
 
         $logStmt = $this->db->prepare(
             "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
-             VALUES (?, 'approval', NULL, NULL, ?, NOW(), ?)"
+               VALUES (?, 'approval', NULL, NULL, ?, UTC_TIMESTAMP(), ?)"
         );
 
         $stamped  = 0;
