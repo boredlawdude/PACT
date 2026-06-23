@@ -26,7 +26,7 @@ error()   { echo -e "${RED}[ERR]${NC}   $*"; exit 1; }
 
 # ── configuration (edit these before running) ─────────────────────────────────
 APP_DIR="/var/www/contracts_app"
-GITHUB_REPO="https://github.com/boredlawdude/jack.git"
+GITHUB_REPO="https://github.com/boredlawdude/PACT.git"
 APACHE_SERVERNAME="srv1476112.hstgr.cloud"   # change to your real domain once set up
 PHP_VER="8.3"
 

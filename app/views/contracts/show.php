@@ -36,9 +36,6 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
               }
           } ?>
           <span class="badge text-bg-<?= status_badge($status) ?>"><?= h($status) ?></span>
-          <?php if (!empty($contract['status_comment'])): ?>
-            <span class="text-muted small ms-1"><?= h($contract['status_comment']) ?></span>
-          <?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
@@ -551,6 +548,20 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
             <div style="white-space: pre-wrap;"><?= h($desc) ?></div>
           <?php else: ?>
             <div class="text-muted">No description entered.</div>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h2 class="h6 mb-0">Comment</h2>
+        </div>
+        <div class="card-body">
+          <?php $statusComment = trim((string)($contract['status_comment'] ?? '')); ?>
+          <?php if ($statusComment !== ''): ?>
+            <div style="white-space: pre-wrap;"><?= h($statusComment) ?></div>
+          <?php else: ?>
+            <div class="text-muted">No comment entered.</div>
           <?php endif; ?>
         </div>
       </div>
@@ -1199,6 +1210,7 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                           'contract_created' => '<span class="badge bg-success">Created</span>',
                           'contract_updated' => '<span class="badge bg-info text-dark">Updated</span>',
                           'status_change' => '<span class="badge bg-warning text-dark">Status Change</span>',
+                          'status_comment_updated' => '<span class="badge bg-secondary">Comment Updated</span>',
                           'document_generated' => '<span class="badge bg-primary">Doc Generated</span>',
                           'document_uploaded' => '<span class="badge bg-primary">Doc Uploaded</span>',
                           'document_deleted' => '<span class="badge bg-danger">Doc Deleted</span>',

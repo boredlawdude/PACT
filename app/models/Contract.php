@@ -69,6 +69,7 @@ class Contract
             c.contract_id,
             c.contract_number,
             c.name,
+            c.department_id,
             c.contract_status_id,
             cs.contract_status_name AS status_name,
             c.start_date,
@@ -320,6 +321,20 @@ class Contract
 
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
+    }
+
+    public function updateStatusComment(int $contractId, ?string $statusComment): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE contracts
+             SET status_comment = :status_comment
+             WHERE contract_id = :contract_id"
+        );
+
+        return $stmt->execute([
+            'status_comment' => $this->nullIfEmpty($statusComment),
+            'contract_id' => $contractId,
+        ]);
     }
 
     /**

@@ -756,6 +756,64 @@ class ContractsController
         exit;
     }
 
+    public function updateStatusCommentAjax(): void
+    {
+        require_login();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['ok' => false, 'message' => 'Method not allowed.'], 405);
+            return;
+        }
+
+        $contractId = (int)($_POST['contract_id'] ?? 0);
+        if ($contractId <= 0) {
+            $this->jsonResponse(['ok' => false, 'message' => 'Missing contract ID.'], 400);
+            return;
+        }
+
+        if (!can_manage_contract($contractId)) {
+            $this->jsonResponse(['ok' => false, 'message' => 'Forbidden.'], 403);
+            return;
+        }
+
+        $contract = $this->contracts->find($contractId);
+        if (!$contract) {
+            $this->jsonResponse(['ok' => false, 'message' => 'Contract not found.'], 404);
+            return;
+        }
+
+        $newComment = trim((string)($_POST['status_comment'] ?? ''));
+        $oldComment = trim((string)($contract['status_comment'] ?? ''));
+
+        if ($newComment === $oldComment) {
+            $this->jsonResponse([
+                'ok' => true,
+                'status_comment' => $newComment,
+                'message' => 'No changes saved.',
+            ]);
+            return;
+        }
+
+        $this->contracts->updateStatusComment($contractId, $newComment !== '' ? $newComment : null);
+
+        $note = 'Status comment updated';
+        if ($oldComment !== '' && $newComment !== '') {
+            $note .= ' from "' . $oldComment . '" to "' . $newComment . '"';
+        } elseif ($newComment !== '') {
+            $note .= ' to "' . $newComment . '"';
+        } elseif ($oldComment !== '') {
+            $note .= ' cleared (was "' . $oldComment . '")';
+        }
+
+        $this->logHistory($contractId, 'status_comment_updated', null, null, $note);
+
+        $this->jsonResponse([
+            'ok' => true,
+            'status_comment' => $newComment,
+            'message' => 'Comment saved.',
+        ]);
+    }
+
     public function destroy(int $contractId): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -898,6 +956,14 @@ class ContractsController
              VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(), ?)"
         );
         $stmt->execute([$contractId, $eventType, $oldStatus, $newStatus, $changedBy, $notes]);
+    }
+
+    private function jsonResponse(array $payload, int $statusCode = 200): void
+    {
+        http_response_code($statusCode);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload);
+        exit;
     }
 
     /**

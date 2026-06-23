@@ -22,6 +22,26 @@ function dashboard_status_badge(string $status): string {
 }
 
 $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
+
+$defaultDashboardStatusGroups = [
+    ['waiting on vendor for info'],
+    ['pending tc approval', 'town council', 'town council review'],
+    ['draft/negotiate', 'draft', 'negotiate'],
+    ['out for signature'],
+];
+
+$defaultDashboardStatusIds = [];
+foreach ($statuses as $st) {
+    $statusName = strtolower(trim((string)($st['contract_status_name'] ?? '')));
+    foreach ($defaultDashboardStatusGroups as $group) {
+        if (in_array($statusName, $group, true)) {
+            $defaultDashboardStatusIds[] = (int)$st['contract_status_id'];
+            break;
+        }
+    }
+}
+
+$defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusIds));
 ?>
 
 <!-- ── User Card ──────────────────────────────────────────────────────────── -->
@@ -120,7 +140,7 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
             <strong class="me-1 text-nowrap">Filter by Status:</strong>
 
             <div class="form-check form-check-inline mb-0">
-                <input class="form-check-input" type="checkbox" id="status_all" checked
+                <input class="form-check-input" type="checkbox" id="status_all" <?= empty($defaultDashboardStatusIds) ? 'checked' : '' ?>
                        onchange="if(this.checked){document.querySelectorAll('.dash-status-check').forEach(cb=>cb.checked=false);} dashFilterRows();">
                 <label class="form-check-label" for="status_all">All</label>
             </div>
@@ -130,6 +150,7 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
                     <input class="form-check-input dash-status-check" type="checkbox"
                            id="status_<?= (int)$st['contract_status_id'] ?>"
                            value="<?= (int)$st['contract_status_id'] ?>"
+                           <?= in_array((int)$st['contract_status_id'], $defaultDashboardStatusIds, true) ? 'checked' : '' ?>
                            onchange="document.getElementById('status_all').checked=false; dashFilterRows();">
                     <label class="form-check-label" for="status_<?= (int)$st['contract_status_id'] ?>">
                         <?= h($st['contract_status_name']) ?>
@@ -178,7 +199,7 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
                         <th style="width:120px; cursor:pointer; user-select:none;" data-sort="text">Status <span class="sort-icon"></span></th>
                         <th style="width:320px; cursor:pointer; user-select:none;" data-sort="text">Name <span class="sort-icon"></span></th>
                         <th style="width:55px; cursor:pointer; user-select:none;" data-sort="text">Dept <span class="sort-icon"></span></th>
-                        <th style="width:90px; cursor:pointer; user-select:none;" data-sort="text">Responsible <span class="sort-icon"></span></th>
+                        <th style="width:130px; cursor:pointer; user-select:none; white-space:nowrap;" data-sort="text">Responsible <span class="sort-icon"></span></th>
                         <th style="width:75px; cursor:pointer; user-select:none;" data-sort="num">Value <span class="sort-icon"></span></th>
                         <th data-sort="text" style="cursor:pointer; user-select:none;">Comment <span class="sort-icon"></span></th>
                         <th style="width:0;"></th>
@@ -187,6 +208,7 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
                 <tbody>
                 <?php foreach ($contracts as $c): ?>
                     <?php $isStale = isset($staleIds[(int)($c['contract_id'] ?? 0)]); ?>
+                    <?php $canEditComment = can_manage_contract_department((int)($c['department_id'] ?? 0)); ?>
                     <tr data-status-id="<?= (int)($c['contract_status_id'] ?? 0) ?>"
                         data-contract-type-id="<?= (int)($c['contract_type_id'] ?? 0) ?>"
                         data-contract-id="<?= (int)$c['contract_id'] ?>"
@@ -209,7 +231,20 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
                                 $<?= number_format((float)$c['total_contract_value'], 2) ?>
                             <?php endif; ?>
                         </td>
-                        <td class="text-muted small"><?= h($c['status_comment'] ?? '') ?></td>
+                        <td>
+                            <?php if ($canEditComment): ?>
+                                <textarea
+                                    class="form-control form-control-sm dash-comment-input"
+                                    data-contract-id="<?= (int)$c['contract_id'] ?>"
+                                    data-original-value="<?= h($c['status_comment'] ?? '') ?>"
+                                    rows="1"
+                                    placeholder="Add comment"
+                                    style="min-width:220px;resize:vertical;"><?= h($c['status_comment'] ?? '') ?></textarea>
+                                <div class="small text-muted mt-1 dash-comment-status">Click out to save</div>
+                            <?php else: ?>
+                                <div class="text-muted small"><?= h($c['status_comment'] ?? '') ?></div>
+                            <?php endif; ?>
+                        </td>
                         <td></td>
                     </tr>
                 <?php endforeach; ?>
@@ -269,6 +304,80 @@ $userName = h($person['name'] ?? $person['email'] ?? 'Unknown User');
         });
     });
     updateButtons();
+})();
+
+(function () {
+    const inputs = document.querySelectorAll('.dash-comment-input');
+
+    async function saveComment(input) {
+        if (input.dataset.saving === '1') return;
+
+        const originalValue = input.dataset.originalValue || '';
+        const nextValue = input.value.trim();
+        if (nextValue === originalValue) return;
+
+        const statusEl = input.parentElement.querySelector('.dash-comment-status');
+        input.dataset.saving = '1';
+        input.disabled = true;
+        if (statusEl) statusEl.textContent = 'Saving...';
+
+        try {
+            const response = await fetch('/index.php?page=contracts_update_status_comment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({
+                    contract_id: input.dataset.contractId,
+                    status_comment: input.value
+                })
+            });
+
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                throw new Error(payload.message || 'Unable to save comment.');
+            }
+
+            input.value = payload.status_comment || '';
+            input.dataset.originalValue = payload.status_comment || '';
+            if (statusEl) statusEl.textContent = 'Saved';
+        } catch (error) {
+            input.value = originalValue;
+            if (statusEl) statusEl.textContent = error.message || 'Save failed';
+            alert(error.message || 'Unable to save comment.');
+        } finally {
+            input.disabled = false;
+            input.dataset.saving = '0';
+        }
+    }
+
+    inputs.forEach(function (input) {
+        input.addEventListener('focus', function () {
+            const statusEl = input.parentElement.querySelector('.dash-comment-status');
+            if (statusEl) statusEl.textContent = 'Editing';
+        });
+
+        input.addEventListener('blur', function () {
+            saveComment(input);
+        });
+
+        input.addEventListener('keydown', function (event) {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                event.preventDefault();
+                input.blur();
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                input.value = input.dataset.originalValue || '';
+                const statusEl = input.parentElement.querySelector('.dash-comment-status');
+                if (statusEl) statusEl.textContent = 'Reverted';
+                input.blur();
+            }
+        });
+    });
 })();
 
 // ── Draggable column resize (with localStorage persistence) ─────────────

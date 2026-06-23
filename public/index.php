@@ -36,6 +36,12 @@ if ($page === 'api_company_contacts') {
     echo json_encode($contacts, JSON_UNESCAPED_UNICODE);
     exit;
 }
+if ($page === 'contracts_update_status_comment') {
+    ob_clean();
+    require_once APP_ROOT . '/app/controllers/ContractsController.php';
+    (new ContractsController())->updateStatusCommentAjax();
+    exit;
+}
 // ────────────────────────────────────────────────────────────────────────────
 
 // Backup download must run before any HTML output
@@ -138,6 +144,10 @@ switch ($page) {
 
     case 'contracts_update':
         $ContractsController->update((int)($_GET['contract_id'] ?? 0));
+        break;
+
+    case 'contracts_update_status_comment':
+        $ContractsController->updateStatusCommentAjax();
         break;
 
     case 'contracts_delete':
