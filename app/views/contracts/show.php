@@ -204,6 +204,14 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
         <?php if (empty($changeOrders)): ?>
           <div class="card-body text-muted">No change orders recorded yet.</div>
         <?php else: ?>
+          <?php
+          $changeOrderTotal = 0.0;
+          foreach ($changeOrders as $co) {
+            if ($co['co_amount'] !== null && $co['co_amount'] !== '') {
+              $changeOrderTotal += (float)$co['co_amount'];
+            }
+          }
+          ?>
           <div class="table-responsive">
             <table class="table table-hover table-sm mb-0">
               <thead class="table-light">
@@ -248,6 +256,13 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                   </tr>
                 <?php endforeach; ?>
               </tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <th scope="row">Total Change Orders</th>
+                  <th class="text-end">$<?= number_format($changeOrderTotal, 2) ?></th>
+                  <th colspan="3"></th>
+                </tr>
+              </tfoot>
             </table>
           </div>
         <?php endif; ?>

@@ -67,7 +67,7 @@ class ChangeOrdersController
             exit;
         }
         $this->changeOrders->create($contractId, $data);
-        header('Location: /index.php?page=contracts_edit&contract_id=' . $contractId . '#change-orders');
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#change-orders');
         exit;
     }
 
@@ -126,7 +126,7 @@ class ChangeOrdersController
             exit;
         }
         $this->changeOrders->update($changeOrderId, $data);
-        header('Location: /index.php?page=contracts_edit&contract_id=' . $contractId . '#change-orders');
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#change-orders');
         exit;
     }
 
