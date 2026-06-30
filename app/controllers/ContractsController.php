@@ -19,8 +19,9 @@ class ContractsController
         $text = str_replace(["\r\n", "\r"], "\n", $text);
         // XML 1.0 valid chars: TAB, LF, CR, U+0020..U+D7FF, U+E000..U+FFFD.
         $text = preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $text) ?? '';
-
-        return htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+        $text = htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+        // PHPWord uses regex replacement internally; escape replacement metacharacters.
+        return str_replace(['\\', '$'], ['\\\\', '\\$'], $text);
     }
 
     /**

@@ -21,8 +21,8 @@ class ChangeOrdersController
         $text = (string)$value;
         $text = str_replace(["\r\n", "\r"], "\n", $text);
         $text = preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $text) ?? '';
-
-        return htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+        $text = htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+        return str_replace(['\\', '$'], ['\\\\', '\\$'], $text);
     }
 
     public function __construct()
