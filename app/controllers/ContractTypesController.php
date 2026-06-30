@@ -255,8 +255,10 @@ class ContractTypesController
             mkdir($templateDir, 0755, true);
         }
 
-        // Use original filename as uploaded
-        $filename = basename($file['name']);
+        $filename = $this->sanitizeUploadFilename((string)($file['name'] ?? ''), $type);
+        if ($filename === '') {
+            return ['error' => 'Invalid filename for uploaded template.'];
+        }
         $filepath = $templateDir . '/' . $filename;
 
         if (!move_uploaded_file($file['tmp_name'], $filepath)) {
@@ -285,9 +287,53 @@ class ContractTypesController
 
         $hasContentTypes = $zip->locateName('[Content_Types].xml') !== false;
         $hasMainDocument = $zip->locateName('word/document.xml') !== false;
+        if (!$hasContentTypes || !$hasMainDocument) {
+            $zip->close();
+            return false;
+        }
+
+        $contentTypesXml = $zip->getFromName('[Content_Types].xml');
+        $documentXml = $zip->getFromName('word/document.xml');
         $zip->close();
 
-        return $hasContentTypes && $hasMainDocument;
+        if (!is_string($contentTypesXml) || !is_string($documentXml)) {
+            return false;
+        }
+
+        return $this->isWellFormedXml($contentTypesXml) && $this->isWellFormedXml($documentXml);
+    }
+
+    private function isWellFormedXml(string $xml): bool
+    {
+        $prev = libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $ok = $dom->loadXML($xml, LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+
+        return $ok;
+    }
+
+    private function sanitizeUploadFilename(string $originalName, string $type): string
+    {
+        $filename = basename(trim($originalName));
+        $filename = trim($filename, " \t\n\r\0\x0B\"'");
+
+        $ext = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
+        $base = (string)pathinfo($filename, PATHINFO_FILENAME);
+        $base = preg_replace('/[^A-Za-z0-9._ -]/', '_', $base) ?? '';
+        $base = preg_replace('/\s+/', ' ', $base) ?? '';
+        $base = trim($base, " ._-");
+
+        if ($base === '') {
+            $base = $type . '_template_' . time();
+        }
+
+        if ($ext === '') {
+            $ext = $type === 'docx' ? 'docx' : 'html';
+        }
+
+        return $base . '.' . $ext;
     }
 
     private function getContractType(int $contractTypeId): ?array
