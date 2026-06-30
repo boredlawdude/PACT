@@ -39,6 +39,23 @@ $contractId = (int)$doc['contract_id'];
 $filePath   = APP_ROOT . '/' . ltrim((string)$doc['file_path'], '/');
 $fileName   = $doc['file_name'] ?? basename($filePath);
 
+// Build a browser-accessible URL for the attachment so local email compose can reference it.
+$webPath = '';
+if (!empty($doc['file_path'])) {
+  $webPath = (string)$doc['file_path'];
+  if (strpos($webPath, '/storage/') === false && ($pos = strpos($webPath, 'storage/')) !== false) {
+    $webPath = '/' . substr($webPath, $pos);
+  } elseif (strpos($webPath, '/storage/') !== 0) {
+    $webPath = '/' . ltrim($webPath, '/');
+  }
+}
+
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+  || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+$scheme = $isHttps ? 'https' : 'http';
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$fileUrl = ($host !== '' && $webPath !== '') ? ($scheme . '://' . $host . $webPath) : '';
+
 $senderName = '';
 if (!empty($_SESSION['person']['first_name'])) {
     $senderName = $_SESSION['person']['first_name'] . ' ' . ($_SESSION['person']['last_name'] ?? '');
@@ -61,6 +78,10 @@ if ($emailTemplate) {
         . ($doc['contract_number'] ?? '') . " - " . ($doc['contract_name'] ?? '') . ".\n\n"
         . ($senderName ? "Regards,\n" . $senderName : '');
 }
+
+  if ($fileUrl !== '') {
+    $defaultMessage .= "\n\nDocument link: " . $fileUrl;
+  }
 
 // Build default CC: current user email + owner primary contact (if different)
 $ccEmails = [];
@@ -201,9 +222,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="mb-3">
           <label for="cc_email" class="form-label">CC</label>
-          <input type="email" class="form-control" id="cc_email" name="cc_email"
+           <input type="text" class="form-control" id="cc_email" name="cc_email"
                  value="<?= h($_POST['cc_email'] ?? $defaultCc) ?>"
-                 placeholder="cc@example.com (optional)">
+             placeholder="cc1@example.com, cc2@example.com (optional)">
         </div>
 
         <div class="mb-3">
@@ -219,9 +240,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="d-flex gap-2">
           <button type="submit" class="btn btn-primary">Send Email</button>
+          <button type="button" class="btn btn-outline-primary" id="openLocalEmailBtn">Open in Email App</button>
           <a href="/index.php?page=contracts_show&contract_id=<?= $contractId ?>" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+        <div class="form-text mt-2">
+          Local email app compose can prefill To/CC/Subject/Body, but browsers do not support auto-attaching files.
+          <?php if ($fileUrl !== ''): ?>
+            The message body includes a document link.
+          <?php endif; ?>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    const btn = document.getElementById('openLocalEmailBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+      const to = (document.getElementById('to_email')?.value || '').trim();
+      const ccRaw = (document.getElementById('cc_email')?.value || '').trim();
+      const subject = document.getElementById('subject')?.value || '';
+      const body = document.getElementById('message')?.value || '';
+
+      if (!to) {
+        alert('Please enter at least one recipient email in To.');
+        return;
+      }
+
+      const params = [];
+      if (ccRaw) {
+        const cc = ccRaw
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean)
+          .join(',');
+        if (cc) params.push('cc=' + encodeURIComponent(cc));
+      }
+      if (subject) params.push('subject=' + encodeURIComponent(subject));
+      if (body) params.push('body=' + encodeURIComponent(body));
+
+      const mailto = 'mailto:' + encodeURIComponent(to) + (params.length ? '?' + params.join('&') : '');
+      window.location.href = mailto;
+    });
+  })();
+</script>
