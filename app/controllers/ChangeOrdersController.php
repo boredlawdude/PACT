@@ -39,6 +39,44 @@ class ChangeOrdersController
         return APP_ROOT . '/' . ltrim($candidate, '/');
     }
 
+    private function expandDocxFieldAliases(array $fields): array
+    {
+        $aliases = [
+            'owner_company' => 'owner_company_name',
+            'counterparty_company' => 'counterparty_company_name',
+            'contract_name' => 'name',
+        ];
+
+        foreach ($aliases as $alias => $source) {
+            if (!array_key_exists($alias, $fields) && array_key_exists($source, $fields)) {
+                $fields[$alias] = $fields[$source];
+            }
+        }
+
+        return $fields;
+    }
+
+    private function applyDocxMergeValues(\PhpOffice\PhpWord\TemplateProcessor $processor, array $fields): void
+    {
+        $fields = $this->expandDocxFieldAliases($fields);
+
+        $processor->setMacroChars('${', '}');
+        foreach ($fields as $key => $value) {
+            $safe = $this->sanitizeDocxValue($value);
+            $processor->setValue($key, $safe);
+            $processor->setValue($key . '|upper', $this->sanitizeDocxValue(strtoupper((string)$value)));
+        }
+
+        $processor->setMacroChars('{{', '}}');
+        foreach ($fields as $key => $value) {
+            $safe = $this->sanitizeDocxValue($value);
+            $processor->setValue($key, $safe);
+            $processor->setValue($key . '|upper', $this->sanitizeDocxValue(strtoupper((string)$value)));
+        }
+
+        $processor->setMacroChars('${', '}');
+    }
+
     public function __construct()
     {
         $this->db = db();
@@ -530,12 +568,7 @@ HTML;
         if ($format === 'docx') {
             require_once APP_ROOT . '/vendor/autoload.php';
             $processor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
-            foreach ($mergeFields as $key => $value) {
-                $safe = $this->sanitizeDocxValue($value);
-                $processor->setValue($key, $safe);
-                // Support ${field|upper} modifier for uppercase output
-                $processor->setValue($key . '|upper', $this->sanitizeDocxValue(strtoupper((string)$value)));
-            }
+            $this->applyDocxMergeValues($processor, $mergeFields);
 
             // Reserve a row in contract_documents first so we have the ID for the filename
             $stmt = $this->db->prepare(
