@@ -9,6 +9,21 @@ if (session_status() === PHP_SESSION_NONE) {
 class ContractsController
 {
     /**
+     * Prepare a value for safe insertion into DOCX XML.
+     * Removes XML-invalid control characters that can corrupt generated files.
+     */
+    private function sanitizeDocxValue(mixed $value): string
+    {
+        $text = (string)$value;
+        // Normalize line endings so template output is consistent.
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        // XML 1.0 valid chars: TAB, LF, CR, U+0020..U+D7FF, U+E000..U+FFFD.
+        $text = preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $text) ?? '';
+
+        return htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    /**
      * Delete a contract draft/document by contract_document_id (POST)
      */
     public function deleteDocument(): void
@@ -314,12 +329,10 @@ class ContractsController
             require_once APP_ROOT . '/vendor/autoload.php';
             $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
             foreach ($contract as $key => $value) {
-                // Pre-encode XML special characters — PHPWord fails to escape them
-                // in certain code paths (e.g. split macros), causing corrupt DOCX.
-                $safe = htmlspecialchars((string)$value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+                $safe = $this->sanitizeDocxValue($value);
                 $templateProcessor->setValue($key, $safe);
                 // Support ${field|upper} modifier for uppercase output
-                $templateProcessor->setValue($key . '|upper', htmlspecialchars(strtoupper((string)$value), ENT_QUOTES | ENT_XML1, 'UTF-8'));
+                $templateProcessor->setValue($key . '|upper', $this->sanitizeDocxValue(strtoupper((string)$value)));
             }
 
             $relativeDir = 'storage/contracts/';

@@ -228,7 +228,7 @@ class ContractTypesController
         $maxSize = 10 * 1024 * 1024; // 10MB
         $allowedMimes = [
             'html' => ['text/html', 'text/plain'],
-            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip']
         ];
 
         if ($file['size'] > $maxSize) {
@@ -238,6 +238,16 @@ class ContractTypesController
         $mime = mime_content_type($file['tmp_name']);
         if (!in_array($mime, $allowedMimes[$type] ?? [])) {
             return ['error' => "Invalid file type for {$type} template."];
+        }
+
+        if ($type === 'docx') {
+            $ext = strtolower((string)pathinfo((string)($file['name'] ?? ''), PATHINFO_EXTENSION));
+            if ($ext !== 'docx') {
+                return ['error' => 'DOCX template must use a .docx file extension.'];
+            }
+            if (!$this->isValidDocxTemplate((string)$file['tmp_name'])) {
+                return ['error' => 'Invalid DOCX template. Please upload a valid Word .docx file.'];
+            }
         }
 
         $templateDir = APP_ROOT . '/storage/templates/' . $contractTypeId;
@@ -255,6 +265,29 @@ class ContractTypesController
 
         // Return relative path for storage in database
         return 'storage/templates/' . $contractTypeId . '/' . $filename;
+    }
+
+    private function isValidDocxTemplate(string $path): bool
+    {
+        if (!is_file($path) || !is_readable($path)) {
+            return false;
+        }
+
+        if (!class_exists('ZipArchive')) {
+            // If ZipArchive is unavailable, fall back to current checks.
+            return true;
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            return false;
+        }
+
+        $hasContentTypes = $zip->locateName('[Content_Types].xml') !== false;
+        $hasMainDocument = $zip->locateName('word/document.xml') !== false;
+        $zip->close();
+
+        return $hasContentTypes && $hasMainDocument;
     }
 
     private function getContractType(int $contractTypeId): ?array

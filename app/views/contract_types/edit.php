@@ -114,9 +114,9 @@ if (!function_exists('h')) {
               
               <label class="form-label">Upload DOCX Template</label>
               <input type="file" class="form-control" name="template_docx" accept=".docx"
-                     help="Upload a Microsoft Word file (.docx). Use {{field_name}} for template variables.">
+                     help="Upload a Microsoft Word file (.docx). Use ${field_name} for template variables.">
               <small class="form-text text-muted d-block mt-2">
-                Use template variables like {{contract_number}}, {{contract_name}}, {{owner_company}}, etc.
+                Use template variables like ${contract_number}, ${name}, ${owner_company_name}, etc.
               </small>
             </div>
           </div>

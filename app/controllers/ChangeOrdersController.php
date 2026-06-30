@@ -12,6 +12,19 @@ class ChangeOrdersController
     private ChangeOrder $changeOrders;
     private Contract $contracts;
 
+    /**
+     * Prepare a value for safe insertion into DOCX XML.
+     * Removes XML-invalid control characters that can corrupt generated files.
+     */
+    private function sanitizeDocxValue(mixed $value): string
+    {
+        $text = (string)$value;
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}]/u', '', $text) ?? '';
+
+        return htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
     public function __construct()
     {
         $this->db = db();
@@ -504,10 +517,10 @@ HTML;
             require_once APP_ROOT . '/vendor/autoload.php';
             $processor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
             foreach ($mergeFields as $key => $value) {
-                $safe = htmlspecialchars((string)$value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+                $safe = $this->sanitizeDocxValue($value);
                 $processor->setValue($key, $safe);
                 // Support ${field|upper} modifier for uppercase output
-                $processor->setValue($key . '|upper', htmlspecialchars(strtoupper((string)$value), ENT_QUOTES | ENT_XML1, 'UTF-8'));
+                $processor->setValue($key . '|upper', $this->sanitizeDocxValue(strtoupper((string)$value)));
             }
 
             // Reserve a row in contract_documents first so we have the ID for the filename
