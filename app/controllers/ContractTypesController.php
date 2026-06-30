@@ -351,7 +351,8 @@ class ContractTypesController
             return false;
         }
 
-        // Guard against placeholders split across runs/proofing tags, which prevents merges.
+        // Normalize common Word proofing tags that can split placeholder tokens.
+        $updatedParts = 0;
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $entryName = (string)$zip->getNameIndex($i);
             if (!str_starts_with($entryName, 'word/') || !str_ends_with($entryName, '.xml')) {
@@ -361,11 +362,15 @@ class ContractTypesController
             if (!is_string($xml)) {
                 continue;
             }
-            if ($this->hasSplitPlaceholderRuns($xml)) {
-                $zip->close();
-                $error = 'Template placeholders appear split across Word formatting runs in ' . $entryName
-                    . '. Re-type merge fields as plain text tokens (for DOCX use ${field_name}) and re-upload.';
-                return false;
+
+            $normalizedXml = $this->normalizeWordXmlForMergeTokens($xml);
+            if ($normalizedXml !== $xml) {
+                if (!$zip->addFromString($entryName, $normalizedXml)) {
+                    $zip->close();
+                    $error = 'Failed to normalize DOCX XML part: ' . $entryName;
+                    return false;
+                }
+                $updatedParts++;
             }
         }
 
@@ -373,15 +378,10 @@ class ContractTypesController
         return true;
     }
 
-    private function hasSplitPlaceholderRuns(string $xml): bool
+    private function normalizeWordXmlForMergeTokens(string $xml): string
     {
-        // Examples this catches:
-        // <w:t>{{</w:t> ... <w:t>field</w:t> ... <w:t>}}</w:t>
-        // <w:t>${</w:t> ... <w:t>field</w:t> ... <w:t>}</w:t>
-        $curlySplit = '/<w:t[^>]*>\{\{<\/w:t>.*?<w:t[^>]*>[A-Za-z0-9_.|:-]+<\/w:t>.*?<w:t[^>]*>\}\}<\/w:t>/s';
-        $dollarSplit = '/<w:t[^>]*>\$\{<\/w:t>.*?<w:t[^>]*>[A-Za-z0-9_.|:-]+<\/w:t>.*?<w:t[^>]*>\}<\/w:t>/s';
-
-        return preg_match($curlySplit, $xml) === 1 || preg_match($dollarSplit, $xml) === 1;
+        // Strip proofing markers that Word injects between runs and can interfere with macro matching.
+        return preg_replace('/<w:proofErr\b[^>]*\/>/i', '', $xml) ?? $xml;
     }
 
     private function isWellFormedXml(string $xml): bool
