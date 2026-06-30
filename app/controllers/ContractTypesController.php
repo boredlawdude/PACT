@@ -250,7 +250,12 @@ class ContractTypesController
             }
         }
 
-        $templateDir = APP_ROOT . '/storage/templates/' . $contractTypeId;
+        $baseDir = $this->getTemplateBaseDir($type);
+        if ($baseDir === '' || !str_starts_with($baseDir, '/')) {
+            return ['error' => 'Template directory setting is invalid. Please check Admin Settings.'];
+        }
+
+        $templateDir = rtrim($baseDir, '/') . '/' . $contractTypeId;
         if (!is_dir($templateDir)) {
             mkdir($templateDir, 0755, true);
         }
@@ -265,8 +270,41 @@ class ContractTypesController
             return ['error' => 'Failed to save uploaded file.'];
         }
 
-        // Return relative path for storage in database
-        return 'storage/templates/' . $contractTypeId . '/' . $filename;
+        return $this->toStoredTemplatePath($filepath);
+    }
+
+    private function getTemplateBaseDir(string $type): string
+    {
+        if ($type === 'docx') {
+            return $this->getSystemSetting('docx_template_dir', APP_ROOT . '/storage/templates');
+        }
+
+        if ($type === 'html') {
+            return $this->getSystemSetting('html_template_dir', APP_ROOT . '/storage/templates');
+        }
+
+        return APP_ROOT . '/storage/templates';
+    }
+
+    private function getSystemSetting(string $key, string $default): string
+    {
+        $stmt = $this->db->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
+        $stmt->execute([$key]);
+        $value = trim((string)($stmt->fetchColumn() ?: ''));
+        return $value !== '' ? $value : $default;
+    }
+
+    private function toStoredTemplatePath(string $absolutePath): string
+    {
+        $abs = str_replace('\\', '/', $absolutePath);
+        $root = rtrim(str_replace('\\', '/', APP_ROOT), '/');
+
+        if (str_starts_with($abs, $root . '/')) {
+            return ltrim(substr($abs, strlen($root)), '/');
+        }
+
+        // Fallback for paths outside APP_ROOT.
+        return $abs;
     }
 
     private function isValidDocxTemplate(string $path): bool

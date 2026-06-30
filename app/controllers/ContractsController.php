@@ -24,6 +24,20 @@ class ContractsController
         return str_replace(['\\', '$'], ['\\\\', '\\$'], $text);
     }
 
+    private function resolveTemplatePath(string $templateFile): string
+    {
+        $candidate = trim($templateFile);
+        if ($candidate === '') {
+            return '';
+        }
+
+        if (str_starts_with($candidate, '/')) {
+            return $candidate;
+        }
+
+        return APP_ROOT . '/' . ltrim($candidate, '/');
+    }
+
     /**
      * Delete a contract draft/document by contract_document_id (POST)
      */
@@ -319,7 +333,7 @@ class ContractsController
             exit;
         }
 
-        $templatePath = APP_ROOT . '/' . ltrim($templateFile, '/');
+        $templatePath = $this->resolveTemplatePath((string)$templateFile);
         if (!file_exists($templatePath)) {
             http_response_code(404);
             echo 'Template file not found: ' . htmlspecialchars($templatePath);

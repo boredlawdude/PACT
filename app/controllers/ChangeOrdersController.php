@@ -25,6 +25,20 @@ class ChangeOrdersController
         return str_replace(['\\', '$'], ['\\\\', '\\$'], $text);
     }
 
+    private function resolveTemplatePath(string $templateFile): string
+    {
+        $candidate = trim($templateFile);
+        if ($candidate === '') {
+            return '';
+        }
+
+        if (str_starts_with($candidate, '/')) {
+            return $candidate;
+        }
+
+        return APP_ROOT . '/' . ltrim($candidate, '/');
+    }
+
     public function __construct()
     {
         $this->db = db();
@@ -484,7 +498,7 @@ HTML;
             exit;
         }
 
-        $templatePath = APP_ROOT . '/' . ltrim($templateFile, '/');
+        $templatePath = $this->resolveTemplatePath((string)$templateFile);
         if (!file_exists($templatePath)) {
             $_SESSION['flash_errors'] = ['Change Order template file not found on disk: ' . $templateFile];
             header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#change-orders');
