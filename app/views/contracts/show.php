@@ -3,6 +3,24 @@ $contractTitle  = trim((string)($contract['name'] ?? 'Contract'));
 $contractNumber = trim((string)($contract['contract_number'] ?? ''));
 $status         = trim((string)($contract['status_name'] ?? ''));
 $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
+
+if (!function_exists('format_utc_to_eastern')) {
+  function format_utc_to_eastern($value, string $format = 'm/d/Y g:i A T'): string
+  {
+    $raw = trim((string)$value);
+    if ($raw === '') {
+      return '—';
+    }
+
+    try {
+      $dt = new DateTime($raw, new DateTimeZone('UTC'));
+      $dt->setTimezone(new DateTimeZone('America/New_York'));
+      return $dt->format($format);
+    } catch (Throwable $e) {
+      return h($raw);
+    }
+  }
+}
 ?>
 
 <div class="container py-4">
@@ -128,12 +146,12 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
 
             <div class="col-md-6">
               <div class="small text-muted">Created At</div>
-              <div><?= h($contract['created_at'] ?? '') ?: '—' ?></div>
+              <div><?= format_utc_to_eastern($contract['created_at'] ?? '') ?></div>
             </div>
 
             <div class="col-md-6">
               <div class="small text-muted">Updated At</div>
-              <div><?= h($contract['updated_at'] ?? '') ?: '—' ?></div>
+              <div><?= format_utc_to_eastern($contract['updated_at'] ?? '') ?></div>
             </div>
           </div>
         </div>
@@ -967,7 +985,7 @@ $isDevAgreement = isset($devAgreement) && is_array($devAgreement);
                         <input type="text" name="exhibit_label[<?= (int)$doc['contract_document_id'] ?>]" value="<?= h($doc['exhibit_label'] ?? '') ?>" class="form-control form-control-sm" style="width:140px" maxlength="50" placeholder="no stamp">
                       </td>
                       <td><?= !empty($doc['description']) ? h($doc['description']) : '—' ?></td>
-                      <td><?= !empty($doc['created_at']) ? date('m/d/y H:i', strtotime($doc['created_at'])) : '—' ?></td>
+                      <td><?= format_utc_to_eastern($doc['created_at'] ?? '') ?></td>
                       <td><?= !empty($doc['created_by_name']) ? h($doc['created_by_name']) : '—' ?></td>
                       <td class="text-end">
                         <div class="d-flex flex-column align-items-end gap-1">
