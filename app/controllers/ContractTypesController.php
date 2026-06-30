@@ -245,8 +245,11 @@ class ContractTypesController
             if ($ext !== 'docx') {
                 return ['error' => 'DOCX template must use a .docx file extension.'];
             }
-            if (!$this->isValidDocxTemplate((string)$file['tmp_name'])) {
-                return ['error' => 'Invalid DOCX template. Please upload a valid Word .docx file.'];
+            $validationError = '';
+            if (!$this->isValidDocxTemplate((string)$file['tmp_name'], $validationError)) {
+                return ['error' => $validationError !== ''
+                    ? $validationError
+                    : 'Invalid DOCX template. Please upload a valid Word .docx file.'];
             }
         }
 
@@ -307,9 +310,11 @@ class ContractTypesController
         return $abs;
     }
 
-    private function isValidDocxTemplate(string $path): bool
+    private function isValidDocxTemplate(string $path, string &$error = ''): bool
     {
+        $error = '';
         if (!is_file($path) || !is_readable($path)) {
+            $error = 'Uploaded DOCX file could not be read.';
             return false;
         }
 
@@ -320,6 +325,7 @@ class ContractTypesController
 
         $zip = new \ZipArchive();
         if ($zip->open($path) !== true) {
+            $error = 'Uploaded file is not a readable DOCX package.';
             return false;
         }
 
@@ -327,18 +333,55 @@ class ContractTypesController
         $hasMainDocument = $zip->locateName('word/document.xml') !== false;
         if (!$hasContentTypes || !$hasMainDocument) {
             $zip->close();
+            $error = 'DOCX is missing required Word XML parts.';
             return false;
         }
 
         $contentTypesXml = $zip->getFromName('[Content_Types].xml');
         $documentXml = $zip->getFromName('word/document.xml');
-        $zip->close();
-
         if (!is_string($contentTypesXml) || !is_string($documentXml)) {
+            $zip->close();
+            $error = 'DOCX package content is unreadable.';
             return false;
         }
 
-        return $this->isWellFormedXml($contentTypesXml) && $this->isWellFormedXml($documentXml);
+        if (!$this->isWellFormedXml($contentTypesXml) || !$this->isWellFormedXml($documentXml)) {
+            $zip->close();
+            $error = 'DOCX contains malformed XML. Open in Word and Save As a new .docx file, then re-upload.';
+            return false;
+        }
+
+        // Guard against placeholders split across runs/proofing tags, which prevents merges.
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = (string)$zip->getNameIndex($i);
+            if (!str_starts_with($entryName, 'word/') || !str_ends_with($entryName, '.xml')) {
+                continue;
+            }
+            $xml = $zip->getFromName($entryName);
+            if (!is_string($xml)) {
+                continue;
+            }
+            if ($this->hasSplitPlaceholderRuns($xml)) {
+                $zip->close();
+                $error = 'Template placeholders appear split across Word formatting runs in ' . $entryName
+                    . '. Re-type merge fields as plain text tokens (for DOCX use ${field_name}) and re-upload.';
+                return false;
+            }
+        }
+
+        $zip->close();
+        return true;
+    }
+
+    private function hasSplitPlaceholderRuns(string $xml): bool
+    {
+        // Examples this catches:
+        // <w:t>{{</w:t> ... <w:t>field</w:t> ... <w:t>}}</w:t>
+        // <w:t>${</w:t> ... <w:t>field</w:t> ... <w:t>}</w:t>
+        $curlySplit = '/<w:t[^>]*>\{\{<\/w:t>.*?<w:t[^>]*>[A-Za-z0-9_.|:-]+<\/w:t>.*?<w:t[^>]*>\}\}<\/w:t>/s';
+        $dollarSplit = '/<w:t[^>]*>\$\{<\/w:t>.*?<w:t[^>]*>[A-Za-z0-9_.|:-]+<\/w:t>.*?<w:t[^>]*>\}<\/w:t>/s';
+
+        return preg_match($curlySplit, $xml) === 1 || preg_match($dollarSplit, $xml) === 1;
     }
 
     private function isWellFormedXml(string $xml): bool

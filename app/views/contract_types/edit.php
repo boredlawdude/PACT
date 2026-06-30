@@ -15,8 +15,10 @@ if (!function_exists('h')) {
       <h1 class="h3 mb-1"><?= h($contractType['contract_type']) ?></h1>
       <p class="text-muted mb-0">Manage templates for this contract type</p>
     </div>
-    <a href="/index.php?page=contract_types" class="btn btn-outline-secondary btn-sm">Back to Types</a>
-    <a href="/index.php?page=merge_field_reference" class="btn btn-outline-info btn-sm">Merge Field Reference</a>
+    <div class="d-flex gap-2">
+      <a href="/index.php?page=contract_types" class="btn btn-outline-secondary btn-sm">Back to Types</a>
+      <a href="/index.php?page=merge_field_reference" class="btn btn-outline-info btn-sm">Merge Field Reference</a>
+    </div>
   </div>
 
   <?php if (!empty($flashMessages)): ?>
@@ -74,7 +76,7 @@ if (!function_exists('h')) {
                 <div class="alert alert-success alert-sm mb-3">
                   <small>
                     <strong>Current Template:</strong><br>
-                    <?= h(basename($contractType['template_file_html'])) ?>
+                    <?= h(basename((string)$contractType['template_file_html'])) ?>
                   </small>
                 </div>
               <?php else: ?>
@@ -82,12 +84,12 @@ if (!function_exists('h')) {
                   <small>No HTML template uploaded yet</small>
                 </div>
               <?php endif; ?>
-              
+
               <label class="form-label">Upload HTML Template</label>
               <input type="file" class="form-control" name="template_html" accept=".html,.htm,text/html"
                      help="Upload an HTML file (.html or .htm). Use {{field_name}} for template variables.">
               <small class="form-text text-muted d-block mt-2">
-                Use template variables like {{contract_number}}, {{contract_name}}, {{owner_company}}, etc.
+                HTML uses <code>{{field_name}}</code> placeholders.
               </small>
             </div>
           </div>
@@ -103,7 +105,7 @@ if (!function_exists('h')) {
                 <div class="alert alert-success alert-sm mb-3">
                   <small>
                     <strong>Current Template:</strong><br>
-                    <?= h(basename($contractType['template_file_docx'])) ?>
+                    <?= h(basename((string)$contractType['template_file_docx'])) ?>
                   </small>
                 </div>
               <?php else: ?>
@@ -111,13 +113,29 @@ if (!function_exists('h')) {
                   <small>No DOCX template uploaded yet</small>
                 </div>
               <?php endif; ?>
-              
+
               <label class="form-label">Upload DOCX Template</label>
               <input type="file" class="form-control" name="template_docx" accept=".docx"
                      help="Upload a Microsoft Word file (.docx). Use ${field_name} for template variables.">
               <small class="form-text text-muted d-block mt-2">
-                Use template variables like ${contract_number}, ${name}, ${owner_company_name}, etc.
+                DOCX uses <code>${field_name}</code> placeholders.
               </small>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="card mt-2">
+            <div class="card-header">
+              <h5 class="mb-0">Merge Field Syntax</h5>
+            </div>
+            <div class="card-body">
+              <p class="mb-2"><strong>DOCX templates:</strong> <code>${field_name}</code></p>
+              <p class="mb-2"><strong>HTML templates:</strong> <code>{{field_name}}</code></p>
+              <p class="mb-0 text-muted small">
+                View all available fields and examples on
+                <a href="/index.php?page=merge_field_reference">Merge Field Reference</a>.
+              </p>
             </div>
           </div>
         </div>
@@ -130,40 +148,4 @@ if (!function_exists('h')) {
       </div>
     </div>
   </form>
-
-  <div class="card mt-4">
-    <div class="card-header">
-      <h5 class="mb-0">Available Template Variables</h5>
-    </div>
-    <div class="card-body">
-      <p>Use these variables in your templates (surrounded by double braces {{ }}):</p>
-      <div class="row g-3">
-        <div class="col-md-6">
-          <strong>Contract Information:</strong>
-          <ul class="small">
-            <li>{{contract_number}}</li>
-            <li>{{contract_name}}</li>
-            <li>{{status}}</li>
-            <li>{{contract_type}}</li>
-            <li>{{department_name}}</li>
-            <li>{{start_date}}</li>
-            <li>{{end_date}}</li>
-            <li>{{governing_law}}</li>
-          </ul>
-        </div>
-        <div class="col-md-6">
-          <strong>Party Information:</strong>
-          <ul class="small">
-            <li>{{owner_company}}</li>
-            <li>{{owner_address}}</li>
-            <li>{{owner_email}}</li>
-            <li>{{counterparty_company}}</li>
-            <li>{{counterparty_address}}</li>
-            <li>{{counterparty_email}}</li>
-            <li>{{counterparty_contact_name}}</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
