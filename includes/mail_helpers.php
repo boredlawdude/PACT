@@ -4,6 +4,20 @@ declare(strict_types=1);
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+function password_reset_mail_config(string $envKey, ?string $constantName = null, ?string $default = null): string
+{
+    if ($constantName !== null && defined($constantName)) {
+        $value = constant($constantName);
+        if ($value !== '') {
+            return (string) $value;
+        }
+    }
+
+    $value = $_ENV[$envKey] ?? $default;
+
+    return $value === null ? '' : (string) $value;
+}
+
 function send_reset_email(string $toEmail, string $resetLink): void
 {
     $mail = new PHPMailer(true);
@@ -11,18 +25,36 @@ function send_reset_email(string $toEmail, string $resetLink): void
     $mail->Debugoutput = function ($str, $level) { error_log("SMTPDBG[$level] $str"); };
 
     try {
+        $host = password_reset_mail_config('SMTP_HOST', 'SMTP_HOST');
+        $username = password_reset_mail_config('SMTP_USERNAME', 'SMTP_USERNAME');
+        $password = password_reset_mail_config('SMTP_PASSWORD', 'SMTP_PASSWORD');
+        $fromEmail = password_reset_mail_config('MAIL_FROM_EMAIL', 'MAIL_FROM_EMAIL');
+        $fromName = password_reset_mail_config('MAIL_FROM_NAME', 'MAIL_FROM_NAME');
+        $port = (int) password_reset_mail_config('SMTP_PORT', 'SMTP_PORT', '587');
+        $secure = strtolower(password_reset_mail_config('SMTP_SECURE', 'SMTP_SECURE', 'tls'));
+
+        if ($host === '' || $username === '' || $password === '' || $fromEmail === '') {
+            throw new RuntimeException('Password reset email is not configured.');
+        }
+
         $mail->isSMTP();
-        $mail->Host       = $_ENV['SMTP_HOST'];
+        $mail->Host       = $host;
         $mail->SMTPAuth   = true;
-        $mail->Username   = $_ENV['SMTP_USERNAME'];
-        $mail->Password   = $_ENV['SMTP_PASSWORD'];
-        $mail->SMTPSecure = (($_ENV['SMTP_SECURE'] ?? 'tls') === 'ssl')
-            ? PHPMailer::ENCRYPTION_SMTPS
-            : PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = (int) $_ENV['SMTP_PORT'];
+        $mail->Username   = $username;
+        $mail->Password   = $password;
+        $mail->Port       = $port;
         $mail->Timeout    = 15;
 
-        $mail->setFrom($_ENV['MAIL_FROM_EMAIL'], $_ENV['MAIL_FROM_NAME'] ?? '');
+        if ($secure === 'ssl') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } elseif ($secure === 'tls') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } else {
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
+        }
+
+        $mail->setFrom($fromEmail, $fromName);
         $mail->addAddress($toEmail);
 
         $mail->isHTML(true);
@@ -45,7 +77,8 @@ function send_reset_email(string $toEmail, string $resetLink): void
 
         $mail->send();
     } catch (Exception $e) {
-        error_log("Password reset email failed: " . $mail->ErrorInfo);
-        throw new RuntimeException("Email could not be sent.");
+        $detail = $mail->ErrorInfo !== '' ? $mail->ErrorInfo : $e->getMessage();
+        error_log('Password reset email failed: ' . $detail);
+        throw new RuntimeException('Password reset email is temporarily unavailable.', 0, $e);
     }
 }

@@ -1,11 +1,15 @@
 <?php
 declare(strict_types=1);
 
-ini_set('display_errors','1');
-error_reporting(E_ALL);
-
 require_once __DIR__ . '/../includes/init.php';
 require_once __DIR__ . '/../includes/mail_helpers.php';
+
+if (($_ENV['APP_ENV'] ?? '') === 'local') {
+  ini_set('display_errors', '1');
+  error_reporting(E_ALL);
+} else {
+  ini_set('display_errors', '0');
+}
 
 header('Content-Type: text/html; charset=utf-8');
 
@@ -20,45 +24,66 @@ function request_base_url(): string {
 $pdo = pdo();
 $email = trim(strtolower($_POST['email'] ?? ''));
 $msg = '';
+$error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $msg = "If the email exists and has login access, a reset link has been sent.";
 
-  $stmt = $pdo->prepare("SELECT person_id, is_active, can_login FROM people WHERE email = ? LIMIT 1");
-  $stmt->execute([$email]);
-  $p = $stmt->fetch(PDO::FETCH_ASSOC);
+  try {
+    $stmt = $pdo->prepare("SELECT person_id, is_active, can_login FROM people WHERE email = ? LIMIT 1");
+    $stmt->execute([$email]);
+    $p = $stmt->fetch(PDO::FETCH_ASSOC);
 
-  if ($p && (int)$p['is_active'] === 1 && (int)$p['can_login'] === 1) {
-    $token = bin2hex(random_bytes(32));
-    $token_hash = hash('sha256', $token);
-    $expires_at = (new DateTime('+60 minutes'))->format('Y-m-d H:i:s');
+    if ($p && (int)$p['is_active'] === 1 && (int)$p['can_login'] === 1) {
+      $token = bin2hex(random_bytes(32));
+      $token_hash = hash('sha256', $token);
+      $expires_at = (new DateTime('+60 minutes'))->format('Y-m-d H:i:s');
 
-    // mark prior tokens used
-    $pdo->prepare("
-      UPDATE password_resets
-      SET used_at = NOW()
-      WHERE person_id = ?
-        AND used_at IS NULL
-        AND expires_at > NOW()
-    ")->execute([(int)$p['person_id']]);
+      // mark prior tokens used
+      $pdo->prepare("
+        UPDATE password_resets
+        SET used_at = NOW()
+        WHERE person_id = ?
+          AND used_at IS NULL
+          AND expires_at > NOW()
+      ")->execute([(int)$p['person_id']]);
 
-    $pdo->prepare("
-      INSERT INTO password_resets (person_id, token_hash, expires_at, requested_ip, user_agent)
-      VALUES (?, ?, ?, ?, ?)
-    ")->execute([
-      (int)$p['person_id'],
-      $token_hash,
-      $expires_at,
-      $_SERVER['REMOTE_ADDR'] ?? null,
-      substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255)
-    ]);
+      $pdo->prepare("
+        INSERT INTO password_resets (person_id, token_hash, expires_at, requested_ip, user_agent)
+        VALUES (?, ?, ?, ?, ?)
+      ")->execute([
+        (int)$p['person_id'],
+        $token_hash,
+        $expires_at,
+        $_SERVER['REMOTE_ADDR'] ?? null,
+        substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255)
+      ]);
 
-    $link = request_base_url() . "/password_reset.php?token=" . urlencode($token);
+      $passwordResetId = (int)$pdo->lastInsertId();
+      $link = request_base_url() . "/password_reset.php?token=" . urlencode($token);
 
-    error_log("PASSWORD RESET LINK for {$email}: {$link}");
+      error_log("PASSWORD RESET LINK for {$email}: {$link}");
 
-    // send email
-    send_reset_email($email, $link);
+      try {
+        send_reset_email($email, $link);
+      } catch (RuntimeException $e) {
+        $pdo->prepare("
+          UPDATE password_resets
+          SET used_at = NOW()
+          WHERE password_reset_id = ?
+            AND used_at IS NULL
+        ")->execute([$passwordResetId]);
+
+        $error = "We couldn't send a reset email right now. If the address is valid, please try again in a few minutes or contact support.";
+        $msg = '';
+        http_response_code(503);
+      }
+    }
+  } catch (Throwable $e) {
+    error_log('Password reset request failed: ' . $e->getMessage());
+    $error = "We couldn't process your request right now. Please try again in a few minutes.";
+    $msg = '';
+    http_response_code(500);
   }
 }
 ?>
@@ -76,6 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="card-body">
         <h1 class="h4 mb-1">Forgot your password?</h1>
         <p class="text-muted small mb-3">Enter your email and we'll send you a reset link.</p>
+
+        <?php if ($error): ?>
+          <div class="alert alert-danger"><?= h($error) ?></div>
+        <?php endif; ?>
 
         <?php if ($msg): ?>
           <div class="alert alert-success"><?= h($msg) ?></div>
