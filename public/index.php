@@ -485,6 +485,11 @@ case 'departments_store':
         (new AdminSettingsController())->update();
         break;
 
+    case 'admin_user_stats':
+        require_once APP_ROOT . '/app/controllers/AdminSettingsController.php';
+        (new AdminSettingsController())->userStats();
+        break;
+
     case 'admin_organization':
         require_once APP_ROOT . '/app/controllers/AdminSettingsController.php';
         (new AdminSettingsController())->organization();

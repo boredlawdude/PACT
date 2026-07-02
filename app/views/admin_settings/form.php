@@ -50,6 +50,9 @@
                     <a href="/index.php?page=people" class="btn btn-outline-primary w-100">Manage Users</a>
                 </div>
                 <div class="col-6 col-md-3">
+                    <a href="/index.php?page=admin_user_stats" class="btn btn-outline-primary w-100">User Stats</a>
+                </div>
+                <div class="col-6 col-md-3">
                     <a href="/index.php?page=departments" class="btn btn-outline-primary w-100">Departments</a>
                 </div>
                 <div class="col-6 col-md-3">

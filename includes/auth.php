@@ -160,6 +160,18 @@ function login_person(string $email, string $password): bool {
   $pdo->prepare("UPDATE people SET last_login_at = CURRENT_TIMESTAMP WHERE person_id = ?")
       ->execute([(int)$p['person_id']]);
 
+  // Track login event for reporting (safe to skip if migration has not run yet)
+  try {
+    $ip = substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    $ua = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
+    $pdo->prepare(
+      "INSERT INTO person_login_events (person_id, logged_in_at, ip_address, user_agent)
+       VALUES (?, UTC_TIMESTAMP(), ?, ?)"
+    )->execute([(int)$p['person_id'], $ip, $ua]);
+  } catch (Throwable $e) {
+    // Keep login successful even if tracking table is not present yet.
+  }
+
   // Prevent session fixation
   session_regenerate_id(true);
 

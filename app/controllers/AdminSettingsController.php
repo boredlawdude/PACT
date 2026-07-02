@@ -197,4 +197,149 @@ class AdminSettingsController {
         $this->index();
         return;
     }
+
+    public function userStats(): void
+    {
+        require_login();
+        if (!function_exists('is_system_admin') || !is_system_admin()) {
+            http_response_code(403);
+            exit('Access denied. System admin required.');
+        }
+
+        $pdo = db();
+
+        $people = $pdo->query(
+            "SELECT
+                p.person_id,
+                COALESCE(
+                    NULLIF(TRIM(p.full_name), ''),
+                    NULLIF(TRIM(p.display_name), ''),
+                    NULLIF(TRIM(CONCAT(COALESCE(p.first_name,''), ' ', COALESCE(p.last_name,''))), ''),
+                    p.email,
+                    CONCAT('User #', p.person_id)
+                ) AS name,
+                p.email,
+                p.can_login,
+                p.is_active,
+                p.last_login_at,
+                GROUP_CONCAT(DISTINCT r.role_name ORDER BY r.role_name SEPARATOR ', ') AS role_names
+             FROM people p
+             LEFT JOIN person_roles pr ON pr.person_id = p.person_id
+             LEFT JOIN roles r ON r.role_id = pr.role_id AND r.is_active = 1
+             GROUP BY p.person_id
+             ORDER BY p.last_name, p.first_name, p.email"
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $hasLoginEvents = $this->tableExists($pdo, 'person_login_events');
+
+        $login30Stmt = null;
+        if ($hasLoginEvents) {
+            $login30Stmt = $pdo->prepare(
+                "SELECT COUNT(*)
+                 FROM person_login_events
+                 WHERE person_id = ?
+                   AND logged_in_at >= (UTC_TIMESTAMP() - INTERVAL 30 DAY)"
+            );
+        }
+
+        $createdCounters = [];
+        if ($this->tableExists($pdo, 'contract_status_history')) {
+            $createdCounters[] = $pdo->prepare(
+                "SELECT COUNT(*) FROM contract_status_history
+                 WHERE changed_by = ? AND event_type = 'contract_created'"
+            );
+        }
+        if ($this->tableExists($pdo, 'contract_documents')) {
+            $createdCounters[] = $pdo->prepare(
+                "SELECT COUNT(*) FROM contract_documents WHERE created_by_person_id = ?"
+            );
+        }
+        if ($this->tableExists($pdo, 'contract_body_versions')) {
+            $createdCounters[] = $pdo->prepare(
+                "SELECT COUNT(*) FROM contract_body_versions WHERE created_by_person_id = ?"
+            );
+        }
+        if ($this->tableExists($pdo, 'company_comments')) {
+            $createdCounters[] = $pdo->prepare(
+                "SELECT COUNT(*) FROM company_comments WHERE person_id = ?"
+            );
+        }
+        if ($this->tableExists($pdo, 'contract_milestones')) {
+            $createdCounters[] = $pdo->prepare(
+                "SELECT COUNT(*) FROM contract_milestones WHERE created_by_person_id = ?"
+            );
+        }
+        if ($this->tableExists($pdo, 'bidding_compliance')) {
+            $createdCounters[] = $pdo->prepare(
+                "SELECT COUNT(*) FROM bidding_compliance WHERE created_by_person_id = ?"
+            );
+        }
+
+        $editedCounters = [];
+        if ($this->tableExists($pdo, 'contract_status_history')) {
+            $editedCounters[] = $pdo->prepare(
+                "SELECT COUNT(*) FROM contract_status_history
+                 WHERE changed_by = ?
+                   AND event_type IN ('contract_updated', 'status_change', 'status_comment_updated')"
+            );
+        }
+
+        $totals = [
+            'users' => 0,
+            'can_login' => 0,
+            'active' => 0,
+            'logins_30d' => 0,
+            'created' => 0,
+            'edited' => 0,
+        ];
+
+        foreach ($people as &$person) {
+            $personId = (int)$person['person_id'];
+
+            $logins30d = null;
+            if ($login30Stmt) {
+                $login30Stmt->execute([$personId]);
+                $logins30d = (int)$login30Stmt->fetchColumn();
+            }
+
+            $createdCount = 0;
+            foreach ($createdCounters as $stmt) {
+                $stmt->execute([$personId]);
+                $createdCount += (int)$stmt->fetchColumn();
+            }
+
+            $editedCount = 0;
+            foreach ($editedCounters as $stmt) {
+                $stmt->execute([$personId]);
+                $editedCount += (int)$stmt->fetchColumn();
+            }
+
+            $person['logins_30d'] = $logins30d;
+            $person['records_created'] = $createdCount;
+            $person['records_edited'] = $editedCount;
+
+            $totals['users']++;
+            $totals['can_login'] += ((int)$person['can_login'] === 1) ? 1 : 0;
+            $totals['active'] += ((int)$person['is_active'] === 1) ? 1 : 0;
+            $totals['logins_30d'] += (int)($logins30d ?? 0);
+            $totals['created'] += $createdCount;
+            $totals['edited'] += $editedCount;
+        }
+        unset($person);
+
+        require APP_ROOT . '/app/views/admin_settings/user_stats.php';
+    }
+
+    private function tableExists(PDO $pdo, string $tableName): bool
+    {
+        $stmt = $pdo->prepare(
+            "SELECT 1
+             FROM information_schema.tables
+             WHERE table_schema = DATABASE()
+               AND table_name = ?
+             LIMIT 1"
+        );
+        $stmt->execute([$tableName]);
+        return (bool)$stmt->fetchColumn();
+    }
 }
