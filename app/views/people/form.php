@@ -36,12 +36,12 @@
 
   <div class="col-md-6">
     <label class="form-label">Office Phone</label>
-    <input type="text" name="office_phone" class="form-control" value="<?= h($person['office_phone'] ?? '') ?>">
+    <input type="text" name="office_phone" class="form-control" value="<?= h($person['office_phone'] ?? ($person['officephone'] ?? '')) ?>">
   </div>
 
   <div class="col-md-6">
     <label class="form-label">Cell Phone</label>
-    <input type="text" name="cell_phone" class="form-control" value="<?= h($person['cell_phone'] ?? '') ?>">
+    <input type="text" name="cell_phone" class="form-control" value="<?= h($person['cell_phone'] ?? ($person['cellphone'] ?? '')) ?>">
   </div>
 
   <div class="col-md-6">
