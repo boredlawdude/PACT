@@ -18,8 +18,84 @@ if (!function_exists('h')) {
 }
 ?>
 
-<div class="d-flex align-items-center mb-3">
-    <h1 class="h4 me-auto"><?= $isEdit ? 'Edit Contract' : 'Create Contract' ?></h1>
+<style>
+    .contract-editor-shell {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), rgba(15, 23, 42, 0));
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1.25rem;
+    }
+
+    .contract-editor-banner {
+        background: linear-gradient(135deg, #14344e, #1d5b7d 55%, #3d7aa4);
+        color: #fff;
+        border-radius: 1.25rem 1.25rem 0 0;
+    }
+
+    .contract-editor-banner .text-muted {
+        color: rgba(255, 255, 255, 0.72) !important;
+    }
+
+    .contract-editor-card {
+        border: 0;
+        border-radius: 0 0 1.25rem 1.25rem;
+        overflow: hidden;
+    }
+
+    .contract-editor-card .card-body {
+        background: #fff;
+    }
+
+    .contract-editor-card .form-label {
+        font-weight: 600;
+        color: #243447;
+    }
+
+    .contract-editor-card .form-control,
+    .contract-editor-card .form-select {
+        border-radius: 0.85rem;
+        border-color: rgba(15, 23, 42, 0.14);
+    }
+
+    .contract-editor-card .form-control:focus,
+    .contract-editor-card .form-select:focus {
+        border-color: #3d7aa4;
+        box-shadow: 0 0 0 0.2rem rgba(61, 122, 164, 0.16);
+    }
+
+    .contract-editor-card .border.rounded.p-3 {
+        background: linear-gradient(180deg, #fafcff, #f7fafc);
+        border-radius: 1rem !important;
+        border-color: rgba(15, 23, 42, 0.1) !important;
+    }
+
+    .contract-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        background: linear-gradient(180deg, rgba(255,255,255,0.75), #fff 40%);
+        backdrop-filter: blur(8px);
+    }
+
+    .contract-actions .btn {
+        border-radius: 0.85rem;
+    }
+</style>
+
+<div class="contract-editor-shell shadow-sm mb-4">
+    <div class="contract-editor-banner px-4 px-lg-5 py-4 py-lg-5">
+        <div class="d-flex flex-column flex-lg-row gap-3 align-items-start align-items-lg-center">
+            <div class="me-auto">
+                <div class="small text-uppercase fw-semibold text-muted mb-1"><?= $isEdit ? 'Edit Contract' : 'New Contract' ?></div>
+                <h1 class="display-6 fw-semibold mb-2"><?= $isEdit ? 'Edit Contract' : 'Create Contract' ?></h1>
+                <div class="text-muted">A cleaner, better-aligned entry form for contract setup and updates.</div>
+            </div>
+            <?php if ($isEdit && $contractId): ?>
+                <div class="badge text-bg-light text-dark px-3 py-2">Contract #<?= h($contract['contract_number'] ?? ('ID ' . $contractId)) ?></div>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
 
 <?php if (!empty($flashErrors)): ?>
@@ -32,10 +108,10 @@ if (!function_exists('h')) {
   </div>
 <?php endif; ?>
 
-<form method="post" action="<?= h($action) ?>" class="card shadow-sm">
+<form method="post" action="<?= h($action) ?>" class="card shadow-lg contract-editor-card">
 
-    <div class="card-body">
-        <div class="row g-3">
+    <div class="card-body p-4 p-lg-5">
+        <div class="row g-4">
 
             <div class="col-md-6">
                 <label class="form-label" for="contract_name">Contract Name</label>
@@ -119,18 +195,32 @@ if (!function_exists('h')) {
                 <?php endif; ?>
             </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Payment Type</label>
-                <select class="form-select" name="payment_terms_id">
-                    <option value="">(none)</option>
-                    <?php foreach (($paymentTerms ?? []) as $pt): ?>
-                        <option value="<?= (int)$pt['payment_terms_id'] ?>"
-                            <?= ((string)($contract['payment_terms_id'] ?? '') === (string)$pt['payment_terms_id']) ? 'selected' : '' ?>>
-                            <?= h($pt['name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                        <div class="col-md-4">
+                            <div class="border rounded-4 p-3 bg-light-subtle h-100 shadow-sm">
+                                <div class="small text-uppercase fw-semibold text-muted mb-2">Payment / Contract Value</div>
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">Payment Type</label>
+                                        <select class="form-select" name="payment_terms_id">
+                                                <option value="">(none)</option>
+                                                <?php foreach (($paymentTerms ?? []) as $pt): ?>
+                                                        <option value="<?= (int)$pt['payment_terms_id'] ?>"
+                                                                <?= ((string)($contract['payment_terms_id'] ?? '') === (string)$pt['payment_terms_id']) ? 'selected' : '' ?>>
+                                                                <?= h($pt['name']) ?>
+                                                        </option>
+                                                <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold" for="total_contract_value">Contract Value</label>
+                                        <input class="form-control form-control-lg" type="text" id="total_contract_value" name="total_contract_value"
+                                                     value="<?= h($contract['total_contract_value'] ?? '') ?>"
+                                                     placeholder="Enter contract value">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
             <div class="col-md-4">
                 <label class="form-label">Department</label>
@@ -145,52 +235,59 @@ if (!function_exists('h')) {
                 </select>
             </div>
 
-            <div class="col-md-3">
-                <label class="form-label">Status</label>
-                <?php $currentStatusId = $contract['contract_status_id'] ?? ''; ?>
-                <select class="form-select" name="contract_status_id" required>
-                    <option value="">Select…</option>
-                    <?php foreach (($contractStatuses ?? []) as $status): ?>
-                        <option value="<?= (int)$status['contract_status_id'] ?>" <?= ((string)$currentStatusId === (string)$status['contract_status_id']) ? 'selected' : '' ?>>
-                            <?= h($status['contract_status_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <div class="col-md-8">
+                <div class="border rounded-4 p-3 bg-light-subtle h-100 shadow-sm">
+                    <div class="small text-uppercase fw-semibold text-muted mb-2">Workflow Status</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <?php $currentStatusId = $contract['contract_status_id'] ?? ''; ?>
+                            <select class="form-select" name="contract_status_id" required>
+                                <option value="">Select…</option>
+                                <?php foreach (($contractStatuses ?? []) as $status): ?>
+                                    <option value="<?= (int)$status['contract_status_id'] ?>" <?= ((string)$currentStatusId === (string)$status['contract_status_id']) ? 'selected' : '' ?>>
+                                        <?= h($status['contract_status_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">Status Comment</label>
+                            <input type="text" class="form-control" name="status_comment"
+                                   maxlength="255"
+                                   value="<?= h($contract['status_comment'] ?? '') ?>">
+                        </div>
+
+                        <div class="col-12">
+                            <input type="hidden" name="owner_company_id" value="<?= h($contract['owner_company_id'] ?? '') ?>">
+
+                            <label class="form-label">Responsible Person</label>
+                            <select class="form-select" name="owner_primary_contact_id">
+                                <option value="">(none)</option>
+                                <?php foreach (($ownerPeople ?? []) as $p): ?>
+                                    <?php
+                                    $nm = trim((string)($p['full_name'] ?? ''));
+                                    if ($nm === '') {
+                                        $nm = trim((string)($p['first_name'] ?? '') . ' ' . (string)($p['last_name'] ?? ''));
+                                    }
+                                    $label = $nm . (!empty($p['email']) ? ' — ' . $p['email'] : '');
+                                    ?>
+                                    <option value="<?= (int)$p['person_id'] ?>"
+                                        <?= ((string)($contract['owner_primary_contact_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                                        <?= h($label) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="col-md-5">
-                <label class="form-label">Status Comment</label>
-                <input type="text" class="form-control" name="status_comment"
-                       maxlength="255"
-                       value="<?= h($contract['status_comment'] ?? '') ?>">
-            </div>
-
-
-            <input type="hidden" name="owner_company_id" value="<?= h($contract['owner_company_id'] ?? '') ?>">
-
-            <div class="col-md-4">
-                <label class="form-label">Responsible Person</label>
-                <select class="form-select" name="owner_primary_contact_id">
-                    <option value="">(none)</option>
-                    <?php foreach (($ownerPeople ?? []) as $p): ?>
-                        <?php
-                        $nm = trim((string)($p['full_name'] ?? ''));
-                        if ($nm === '') {
-                            $nm = trim((string)($p['first_name'] ?? '') . ' ' . (string)($p['last_name'] ?? ''));
-                        }
-                        $label = $nm . (!empty($p['email']) ? ' — ' . $p['email'] : '');
-                        ?>
-                        <option value="<?= (int)$p['person_id'] ?>"
-                            <?= ((string)($contract['owner_primary_contact_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
-                            <?= h($label) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <div class="col-12">
-              <div class="border rounded p-3">
-                <div class="row g-3">
+                        <div class="col-12">
+                            <div class="border rounded-4 p-3 bg-light-subtle shadow-sm">
+                                <div class="small text-uppercase fw-semibold text-muted mb-2">Vendor Information</div>
+                                <div class="row g-3">
 
             <div class="col-md-6">
                 <label class="form-label">Vendor Company</label>
@@ -248,12 +345,6 @@ if (!function_exists('h')) {
                        value="<?= h($contract['governing_law'] ?? 'North Carolina') ?>">
             </div>
 
-
-            <div class="col-md-3">
-                <label class="form-label" for="total_contract_value">Total Contract Value</label>
-                <input class="form-control" type="text" id="total_contract_value" name="total_contract_value"
-                       value="<?= h($contract['total_contract_value'] ?? '') ?>">
-            </div>
 
             <input type="hidden" id="po_number" name="po_number" value="<?= h($contract['po_number'] ?? '') ?>">
 
@@ -344,7 +435,7 @@ if (!function_exists('h')) {
               </div>
             </div>
 
-            <div class="col-12 d-flex gap-2 mt-3">
+            <div class="col-12 contract-actions d-flex flex-wrap gap-2 mt-4">
                 <button type="submit" class="btn btn-primary">
                     <?= $isEdit ? 'Update Contract' : 'Create Contract' ?>
                 </button>

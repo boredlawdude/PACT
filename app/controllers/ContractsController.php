@@ -676,6 +676,13 @@ class ContractsController
         ];
         unset($_SESSION['old_contract_form']);
 
+        if (empty($contract['owner_primary_contact_id'])) {
+            $person = current_person();
+            if (!empty($person['person_id'])) {
+                $contract['owner_primary_contact_id'] = (int)$person['person_id'];
+            }
+        }
+
         $departments = $this->getDepartments();
         $companies = $this->getCompanies();
         $types = $this->getContractTypes();
@@ -686,6 +693,7 @@ class ContractsController
         if (!empty($contract['owner_company_id'])) {
             $ownerPeople = $this->getPeopleByCompany((int)$contract['owner_company_id']);
         }
+        $ownerPeople = $this->ensureSelectedPersonInList($ownerPeople, (int)($contract['owner_primary_contact_id'] ?? 0));
 
         $complianceInfoLink = $this->getSystemSetting('compliance_info_link');
 
@@ -769,6 +777,7 @@ class ContractsController
         if (!empty($contract['owner_company_id'])) {
             $ownerPeople = $this->getPeopleByCompany((int)$contract['owner_company_id']);
         }
+        $ownerPeople = $this->ensureSelectedPersonInList($ownerPeople, (int)($contract['owner_primary_contact_id'] ?? 0));
         $complianceInfoLink = $this->getSystemSetting('compliance_info_link');
         $riskManagerEmails  = $this->getRiskManagerEmails();
         require APP_ROOT . '/app/views/contracts/edit.php';
@@ -953,6 +962,31 @@ class ContractsController
     private function getPeopleByCompany(int $companyId): array {
         $stmt = $this->db->query("SELECT person_id, first_name, last_name, full_name FROM people WHERE is_town_employee = 1 AND is_active = 1 ORDER BY last_name, first_name");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function ensureSelectedPersonInList(array $people, int $personId): array
+    {
+        if ($personId <= 0) {
+            return $people;
+        }
+
+        foreach ($people as $person) {
+            if ((int)($person['person_id'] ?? 0) === $personId) {
+                return $people;
+            }
+        }
+
+        $person = current_person();
+        if (!empty($person['person_id']) && (int)$person['person_id'] === $personId) {
+            $people[] = [
+                'person_id' => (int)$person['person_id'],
+                'first_name' => (string)($person['first_name'] ?? ''),
+                'last_name' => (string)($person['last_name'] ?? ''),
+                'full_name' => trim((string)($person['full_name'] ?? trim((string)($person['first_name'] ?? '') . ' ' . (string)($person['last_name'] ?? '')))),
+            ];
+        }
+
+        return $people;
     }
 
     private function collectFormData(array $input): array { return $input; }
