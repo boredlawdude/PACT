@@ -18,23 +18,18 @@ declare(strict_types=1);
 </style>
 
 <div class="oo-fullbleed">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h1 class="h4 mb-1">Inline Contract Editor</h1>
-      <div class="text-muted small">OnlyOffice editing for <?= h((string)($editorConfig['document']['title'] ?? 'Document')) ?></div>
+  <div class="d-flex justify-content-between align-items-center mb-2 py-1">
+    <div class="d-flex align-items-center gap-2">
+      <h1 class="h6 mb-0">Inline Contract Editor</h1>
+      <span class="text-muted small">&mdash; <?= h((string)($editorConfig['document']['title'] ?? 'Document')) ?></span>
     </div>
-    <a href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
+    <div class="d-flex align-items-center gap-2">
+      <span id="onlyoffice-status" class="badge bg-secondary">Initializing...</span>
+      <a href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
+    </div>
   </div>
 
-  <div class="alert alert-info py-2 small">
-    Save inside the editor. Changes are written back to your stored contract document via callback.
-  </div>
-
-  <div id="onlyoffice-status" class="alert alert-secondary py-2 small">
-    Initializing OnlyOffice editor...
-  </div>
-
-  <div id="onlyoffice-editor" style="height: calc(100vh - 220px); min-height: 720px; border: 1px solid #dce3ea; border-radius: 8px; overflow: hidden;"></div>
+  <div id="onlyoffice-editor" style="height: calc(100vh - 120px); min-height: 720px; border: 1px solid #dce3ea; border-radius: 8px; overflow: hidden;"></div>
 </div>
 
 <script src="<?= h($documentServerUrl) ?>/web-apps/apps/api/documents/api.js"></script>
@@ -42,8 +37,16 @@ declare(strict_types=1);
   const statusEl = document.getElementById('onlyoffice-status');
   function setStatus(kind, message) {
     if (!statusEl) return;
-    statusEl.className = 'alert py-2 small ' + (kind === 'ok' ? 'alert-success' : kind === 'warn' ? 'alert-warning' : kind === 'error' ? 'alert-danger' : 'alert-secondary');
+    statusEl.className = 'badge ' + (kind === 'ok' ? 'bg-success' : kind === 'warn' ? 'bg-warning text-dark' : kind === 'error' ? 'bg-danger' : 'bg-secondary');
     statusEl.textContent = message;
+    if (kind === 'ok') {
+      clearTimeout(setStatus._hideTimer);
+      setStatus._hideTimer = setTimeout(function () {
+        statusEl.style.display = 'none';
+      }, 4000);
+    } else {
+      statusEl.style.display = '';
+    }
   }
 
   const cfg = <?= json_encode($editorConfig, JSON_UNESCAPED_SLASHES) ?>;
