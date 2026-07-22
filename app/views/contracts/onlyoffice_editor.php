@@ -3,37 +3,51 @@ declare(strict_types=1);
 ?>
 
 <style>
-  /* Break this page's content out of the shared fixed-width .container so the editor can use the full browser width */
-  .oo-fullbleed {
-    width: 100vw;
+  /* Pin the editor directly to the browser viewport (position: fixed ignores the
+     shared .container's max-width/padding entirely, unlike the old vw-based hack). */
+  #onlyoffice-editor-topbar {
     position: relative;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    box-sizing: border-box;
+    z-index: 20;
+    background: #fff;
+  }
+  #onlyoffice-editor {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    border: none;
+    background: #fff;
+    z-index: 10;
   }
 </style>
 
-<div class="oo-fullbleed">
-  <div class="d-flex justify-content-between align-items-center mb-2 py-1">
-    <div class="d-flex align-items-center gap-2">
-      <h1 class="h6 mb-0">Inline Contract Editor</h1>
-      <span class="text-muted small">&mdash; <?= h((string)($editorConfig['document']['title'] ?? 'Document')) ?></span>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-      <span id="onlyoffice-status" class="badge bg-secondary">Initializing...</span>
-      <a href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
-    </div>
+<div id="onlyoffice-editor-topbar" class="d-flex justify-content-between align-items-center mb-0 py-2">
+  <div class="d-flex align-items-center gap-2">
+    <h1 class="h6 mb-0">Inline Contract Editor</h1>
+    <span class="text-muted small">&mdash; <?= h((string)($editorConfig['document']['title'] ?? 'Document')) ?></span>
   </div>
-
-  <div id="onlyoffice-editor" style="height: calc(100vh - 120px); min-height: 720px; border: 1px solid #dce3ea; border-radius: 8px; overflow: hidden;"></div>
+  <div class="d-flex align-items-center gap-2">
+    <span id="onlyoffice-status" class="badge bg-secondary">Initializing...</span>
+    <a href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
+  </div>
 </div>
+
+<div id="onlyoffice-editor"></div>
 
 <script src="<?= h($documentServerUrl) ?>/web-apps/apps/api/documents/api.js"></script>
 <script>
+  function positionEditor() {
+    var topbar = document.getElementById('onlyoffice-editor-topbar');
+    var editor = document.getElementById('onlyoffice-editor');
+    if (!topbar || !editor) return;
+    var rect = topbar.getBoundingClientRect();
+    editor.style.top = Math.max(0, rect.bottom) + 'px';
+  }
+  window.addEventListener('resize', positionEditor);
+  window.addEventListener('load', positionEditor);
+  positionEditor();
+
   const statusEl = document.getElementById('onlyoffice-status');
   function setStatus(kind, message) {
     if (!statusEl) return;
