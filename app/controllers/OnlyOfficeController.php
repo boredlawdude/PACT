@@ -76,6 +76,9 @@ final class OnlyOfficeController
                 ],
                 'customization' => [
                     'forcesave' => true,
+                    // -2 = "fit to width": stretches the page to fill the available
+                    // editor width instead of opening at a fixed small zoom level.
+                    'zoom' => -2,
                 ],
             ],
         ];
