@@ -10,15 +10,23 @@ declare(strict_types=1);
     z-index: 20;
     background: #fff;
   }
-  #onlyoffice-editor {
+  /* This wrapper is the element we actually position; DocsAPI.DocEditor()
+     replaces #onlyoffice-editor itself with a bare <iframe> (dropping its id
+     entirely), so any CSS targeting #onlyoffice-editor stops applying the
+     moment the editor mounts. Positioning the WRAPPER instead survives that. */
+  #onlyoffice-editor-wrapper {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
     width: 100%;
-    border: none;
     background: #fff;
     z-index: 10;
+  }
+  #onlyoffice-editor {
+    width: 100%;
+    height: 100%;
+    border: none;
   }
 </style>
 
@@ -33,16 +41,18 @@ declare(strict_types=1);
   </div>
 </div>
 
-<div id="onlyoffice-editor"></div>
+<div id="onlyoffice-editor-wrapper">
+  <div id="onlyoffice-editor"></div>
+</div>
 
 <script src="<?= h($documentServerUrl) ?>/web-apps/apps/api/documents/api.js"></script>
 <script>
   function positionEditor() {
     var topbar = document.getElementById('onlyoffice-editor-topbar');
-    var editor = document.getElementById('onlyoffice-editor');
-    if (!topbar || !editor) return;
+    var wrapper = document.getElementById('onlyoffice-editor-wrapper');
+    if (!topbar || !wrapper) return;
     var rect = topbar.getBoundingClientRect();
-    editor.style.top = Math.max(0, rect.bottom) + 'px';
+    wrapper.style.top = Math.max(0, rect.bottom) + 'px';
   }
   window.addEventListener('resize', positionEditor);
   window.addEventListener('load', positionEditor);
