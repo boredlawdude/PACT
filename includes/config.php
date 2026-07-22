@@ -42,6 +42,12 @@ defined('MAIL_FROM_NAME')   || define('MAIL_FROM_NAME', $_ENV['MAIL_FROM_NAME'] 
 
 defined('ONLYOFFICE_JWT_SECRET') || define('ONLYOFFICE_JWT_SECRET', $_ENV['ONLYOFFICE_JWT_SECRET'] ?? '');
 defined('OO_SECRET')              || define('OO_SECRET', $_ENV['OO_SECRET'] ?? '');
+defined('MS_TENANT_ID')          || define('MS_TENANT_ID', $_ENV['MS_TENANT_ID'] ?? '');
+defined('MS_CLIENT_ID')          || define('MS_CLIENT_ID', $_ENV['MS_CLIENT_ID'] ?? '');
+defined('MS_CLIENT_SECRET')      || define('MS_CLIENT_SECRET', $_ENV['MS_CLIENT_SECRET'] ?? '');
+defined('MS_SHAREPOINT_SITE_ID') || define('MS_SHAREPOINT_SITE_ID', $_ENV['MS_SHAREPOINT_SITE_ID'] ?? '');
+defined('MS_SHAREPOINT_DRIVE_ID')|| define('MS_SHAREPOINT_DRIVE_ID', $_ENV['MS_SHAREPOINT_DRIVE_ID'] ?? '');
+defined('MS_SHAREPOINT_BASE_FOLDER') || define('MS_SHAREPOINT_BASE_FOLDER', $_ENV['MS_SHAREPOINT_BASE_FOLDER'] ?? '');
 
 /*
 |--------------------------------------------------------------------------

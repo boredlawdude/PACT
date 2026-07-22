@@ -979,6 +979,30 @@ if (!function_exists('format_utc_to_eastern')) {
                         <?php else: ?>
                           <?= !empty($doc['file_name']) ? h($doc['file_name']) : '—' ?>
                         <?php endif; ?>
+                        <div class="mt-1 d-flex flex-wrap gap-1">
+                          <?php if (!empty($doc['external_web_url'])): ?>
+                            <span class="badge text-bg-success">SharePoint</span>
+                          <?php else: ?>
+                            <span class="badge text-bg-secondary">Local</span>
+                          <?php endif; ?>
+                          <?php if (!empty($doc['sync_status']) && $doc['sync_status'] === 'error'): ?>
+                            <span class="badge text-bg-danger">Sync Error</span>
+                          <?php endif; ?>
+                        </div>
+                        <?php if (!empty($doc['external_modified_at']) || !empty($doc['external_modified_by'])): ?>
+                          <div class="small text-muted mt-1">
+                            <?php if (!empty($doc['external_modified_by'])): ?>
+                              <?= h($doc['external_modified_by']) ?>
+                            <?php endif; ?>
+                            <?php if (!empty($doc['external_modified_at'])): ?>
+                              <?php if (!empty($doc['external_modified_by'])): ?>·<?php endif; ?>
+                              <?= h(format_utc_to_eastern($doc['external_modified_at'], 'm/d/Y g:i A')) ?>
+                            <?php endif; ?>
+                          </div>
+                        <?php endif; ?>
+                        <?php if (!empty($doc['sync_error'])): ?>
+                          <div class="small text-danger mt-1"><?= h($doc['sync_error']) ?></div>
+                        <?php endif; ?>
                       </td>
                       <td><?= !empty($doc['doc_type']) ? h($doc['doc_type']) : '—' ?></td>
                       <td>
@@ -1005,6 +1029,9 @@ if (!function_exists('format_utc_to_eastern')) {
                             'correct'   => 'info',
                           ];
                           $dsBadge = $dsStatus !== null ? ($dsBadgeMap[$dsStatus] ?? 'light') : null;
+                          $docName = strtolower((string)($doc['file_name'] ?? ''));
+                          $docExt = pathinfo($docName, PATHINFO_EXTENSION);
+                          $canInlineEdit = in_array($docExt, ['docx', 'doc', 'odt', 'rtf', 'txt'], true);
                         ?>
                         <?php if ($dsStatus !== null): ?>
                           <span class="badge text-bg-<?= h($dsBadge) ?>"><?= h(ucfirst($dsStatus)) ?></span>
@@ -1027,7 +1054,28 @@ if (!function_exists('format_utc_to_eastern')) {
                           <button type="button" class="btn btn-outline-warning btn-sm w-100"
                                   onclick="if(confirm('Void this envelope? Signers will no longer be able to sign.')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=docusign_void';let i1=document.createElement('input');i1.type='hidden';i1.name='doc_id';i1.value='<?= $dsDocId ?>';let i2=document.createElement('input');i2.type='hidden';i2.name='contract_id';i2.value='<?= $dsCtrId ?>';f.appendChild(i1);f.appendChild(i2);document.body.appendChild(f);f.submit();}">Void</button>
                         <?php endif; ?>
+                        <?php if (!empty($doc['external_word_url'])): ?>
+                          <a href="<?= h($doc['external_word_url']) ?>" class="btn btn-outline-success btn-sm w-100">Open in Word</a>
+                        <?php endif; ?>
+                        <?php if (!empty($doc['external_web_url'])): ?>
+                          <a href="<?= h($doc['external_web_url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success btn-sm w-100">Open in SharePoint</a>
+                          <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                                  onclick="let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_sharepoint_refresh';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();">Refresh SharePoint</button>
+                                  <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                                    onclick="var u=prompt('Paste the SharePoint file URL for this document:', '<?= h($doc['external_web_url']) ?>'); if(u===null){return;} u=u.trim(); if(!u){alert('URL is required.'); return;} let f=document.createElement('form'); f.method='post'; f.action='/index.php?page=contract_document_sharepoint_link'; let i1=document.createElement('input'); i1.type='hidden'; i1.name='document_id'; i1.value='<?= (int)$doc['contract_document_id'] ?>'; let i2=document.createElement('input'); i2.type='hidden'; i2.name='sharepoint_url'; i2.value=u; f.appendChild(i1); f.appendChild(i2); document.body.appendChild(f); f.submit();">Update SharePoint Link</button>
+                                  <button type="button" class="btn btn-outline-danger btn-sm w-100"
+                                    onclick="if(confirm('Remove SharePoint link from this document?')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_sharepoint_unlink';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();}">Remove SharePoint Link</button>
+                        <?php elseif (!empty($sharePointConfigured)): ?>
+                          <button type="button" class="btn btn-outline-success btn-sm w-100"
+                                  onclick="let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_sharepoint_sync';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();">Sync to SharePoint</button>
+                                <?php else: ?>
+                                  <button type="button" class="btn btn-outline-success btn-sm w-100"
+                                    onclick="var u=prompt('Paste the SharePoint file URL for this document:', ''); if(u===null){return;} u=u.trim(); if(!u){alert('URL is required.'); return;} let f=document.createElement('form'); f.method='post'; f.action='/index.php?page=contract_document_sharepoint_link'; let i1=document.createElement('input'); i1.type='hidden'; i1.name='document_id'; i1.value='<?= (int)$doc['contract_document_id'] ?>'; let i2=document.createElement('input'); i2.type='hidden'; i2.name='sharepoint_url'; i2.value=u; f.appendChild(i1); f.appendChild(i2); document.body.appendChild(f); f.submit();">Attach SharePoint Link</button>
+                        <?php endif; ?>
                         <?php if (!empty($doc['contract_document_id']) && (int)$doc['contract_document_id'] > 0): ?>
+                          <?php if ($canInlineEdit): ?>
+                            <a href="/index.php?page=onlyoffice_editor&document_id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-success btn-sm w-100">Edit Inline</a>
+                          <?php endif; ?>
                           <a href="/index.php?page=contract_document_email&id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-primary btn-sm w-100">Email Doc</a>
                           <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="if(confirm('Delete this document?')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_delete';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();}">Delete</button>
                         <?php endif; ?>

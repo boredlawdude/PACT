@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once APP_ROOT . '/app/models/Contract.php';
+require_once APP_ROOT . '/app/services/SharePointGraphService.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -8,6 +9,8 @@ if (session_status() === PHP_SESSION_NONE) {
 
 class ContractsController
 {
+    private ?SharePointGraphService $sharePointService = null;
+
     /**
      * Prepare a value for safe insertion into DOCX XML.
      * Removes XML-invalid control characters that can corrupt generated files.
@@ -406,6 +409,16 @@ class ContractsController
             $stmt = $this->db->prepare("UPDATE contract_documents SET file_path = ?, file_name = ? WHERE contract_document_id = ?");
             $stmt->execute([$relativePath, $fileName, $docId]);
 
+            if ($this->isSharePointConfigured()) {
+                try {
+                    $this->syncDocumentRecordToSharePoint((int)$docId);
+                    $this->logHistory($contractId, 'document_synced_sharepoint', null, null, 'Synced DOCX draft to SharePoint: ' . $fileName);
+                } catch (Throwable $e) {
+                    error_log('SharePoint sync failed for generated document ' . $docId . ': ' . $e->getMessage());
+                    $_SESSION['flash_errors'][] = 'Generated Word document saved locally, but SharePoint sync failed for ' . $fileName . ': ' . $e->getMessage();
+                }
+            }
+
             $this->logHistory($contractId, 'document_generated', null, null, 'Generated DOCX draft: ' . $fileName);
 
             header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
@@ -559,6 +572,7 @@ class ContractsController
         );
         $historyStmt->execute([$id]);
         $history = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
+        $sharePointConfigured = $this->isSharePointConfigured();
 
         $complianceStmt = $this->db->prepare(
             "SELECT bc.*, COALESCE(p.full_name, p.display_name) AS created_by_name,
@@ -937,6 +951,205 @@ class ContractsController
         exit;
     }
 
+    public function syncDocumentToSharePoint(): void
+    {
+        require_login();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        $documentId = (int)($_POST['document_id'] ?? 0);
+        $document = $this->loadContractDocument($documentId);
+        if (!$document) {
+            http_response_code(404);
+            echo 'Document not found.';
+            return;
+        }
+
+        $contractId = (int)($document['contract_id'] ?? 0);
+        if (!can_manage_contract($contractId)) {
+            http_response_code(403);
+            echo 'Forbidden';
+            return;
+        }
+
+        try {
+            $metadata = $this->syncDocumentRecordToSharePoint($documentId);
+            $_SESSION['flash_success'] = 'Document synced to SharePoint.';
+            $this->logHistory($contractId, 'document_synced_sharepoint', null, null, 'Synced document to SharePoint: ' . ($metadata['external_web_url'] ?? ''));
+        } catch (Throwable $e) {
+            error_log('Manual SharePoint sync failed for document ' . $documentId . ': ' . $e->getMessage());
+            $this->persistSharePointMetadata($documentId, ['storage_provider' => 'local'], $e->getMessage());
+            $_SESSION['flash_errors'] = ['SharePoint sync failed: ' . $e->getMessage()];
+        }
+
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+        exit;
+    }
+
+    public function refreshDocumentSharePointMetadata(): void
+    {
+        require_login();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        $documentId = (int)($_POST['document_id'] ?? 0);
+        $document = $this->loadContractDocument($documentId);
+        if (!$document) {
+            http_response_code(404);
+            echo 'Document not found.';
+            return;
+        }
+
+        $contractId = (int)($document['contract_id'] ?? 0);
+        if (!can_manage_contract($contractId)) {
+            http_response_code(403);
+            echo 'Forbidden';
+            return;
+        }
+
+        try {
+            $itemId = trim((string)($document['external_document_id'] ?? ''));
+            if ($itemId === '') {
+                throw new RuntimeException('This document is not linked to SharePoint yet.');
+            }
+
+            $metadata = $this->getSharePointService()->fetchDocumentMetadata($itemId);
+            $this->persistSharePointMetadata($documentId, $metadata);
+            $_SESSION['flash_success'] = 'SharePoint metadata refreshed.';
+        } catch (Throwable $e) {
+            error_log('SharePoint metadata refresh failed for document ' . $documentId . ': ' . $e->getMessage());
+            $this->persistSharePointMetadata($documentId, ['storage_provider' => (string)($document['storage_provider'] ?? 'local')], $e->getMessage());
+            $_SESSION['flash_errors'] = ['SharePoint metadata refresh failed: ' . $e->getMessage()];
+        }
+
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+        exit;
+    }
+
+    public function setDocumentSharePointLink(): void
+    {
+        require_login();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        $documentId = (int)($_POST['document_id'] ?? 0);
+        $document = $this->loadContractDocument($documentId);
+        if (!$document) {
+            http_response_code(404);
+            echo 'Document not found.';
+            return;
+        }
+
+        $contractId = (int)($document['contract_id'] ?? 0);
+        if (!can_manage_contract($contractId)) {
+            http_response_code(403);
+            echo 'Forbidden';
+            return;
+        }
+
+        $url = trim((string)($_POST['sharepoint_url'] ?? ''));
+        if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL) || !str_starts_with(strtolower($url), 'https://')) {
+            $_SESSION['flash_errors'] = ['Please provide a valid https SharePoint file URL.'];
+            header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+            exit;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                'UPDATE contract_documents
+                    SET storage_provider = ?,
+                        external_web_url = ?,
+                        external_word_url = ?,
+                        sync_status = ?,
+                        sync_error = NULL
+                  WHERE contract_document_id = ?'
+            );
+            $stmt->execute([
+                'sharepoint',
+                $url,
+                'ms-word:ofe|u|' . $url,
+                'manual',
+                $documentId,
+            ]);
+
+            $_SESSION['flash_success'] = 'SharePoint link saved for this document.';
+            $this->logHistory($contractId, 'document_sharepoint_linked', null, null, 'Linked document to SharePoint URL.');
+        } catch (Throwable $e) {
+            error_log('Set SharePoint link failed for document ' . $documentId . ': ' . $e->getMessage());
+            $_SESSION['flash_errors'] = ['Could not save SharePoint link. If this is a new deployment, run sharepoint_contract_documents_migration.sql first.'];
+        }
+
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+        exit;
+    }
+
+    public function clearDocumentSharePointLink(): void
+    {
+        require_login();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        $documentId = (int)($_POST['document_id'] ?? 0);
+        $document = $this->loadContractDocument($documentId);
+        if (!$document) {
+            http_response_code(404);
+            echo 'Document not found.';
+            return;
+        }
+
+        $contractId = (int)($document['contract_id'] ?? 0);
+        if (!can_manage_contract($contractId)) {
+            http_response_code(403);
+            echo 'Forbidden';
+            return;
+        }
+
+        try {
+            $stmt = $this->db->prepare(
+                'UPDATE contract_documents
+                    SET storage_provider = ?,
+                        external_document_id = NULL,
+                        external_drive_id = NULL,
+                        external_site_id = NULL,
+                        external_web_url = NULL,
+                        external_word_url = NULL,
+                        external_path = NULL,
+                        external_version = NULL,
+                        external_modified_at = NULL,
+                        external_modified_by = NULL,
+                        sync_status = ?,
+                        sync_error = NULL
+                  WHERE contract_document_id = ?'
+            );
+            $stmt->execute(['local', 'pending', $documentId]);
+
+            $_SESSION['flash_success'] = 'SharePoint link removed for this document.';
+            $this->logHistory($contractId, 'document_sharepoint_unlinked', null, null, 'Removed SharePoint link from document.');
+        } catch (Throwable $e) {
+            error_log('Clear SharePoint link failed for document ' . $documentId . ': ' . $e->getMessage());
+            $_SESSION['flash_errors'] = ['Could not clear SharePoint link.'];
+        }
+
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+        exit;
+    }
+
     // --- Helper stubs (implement as needed or connect to models) ---
     private function getResponsiblePeople(): array {
         $stmt = $this->db->query("
@@ -962,6 +1175,90 @@ class ContractsController
     private function getPeopleByCompany(int $companyId): array {
         $stmt = $this->db->query("SELECT person_id, first_name, last_name, full_name FROM people WHERE is_town_employee = 1 AND is_active = 1 ORDER BY last_name, first_name");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function loadContractDocument(int $documentId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM contract_documents WHERE contract_document_id = ? LIMIT 1');
+        $stmt->execute([$documentId]);
+        $document = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $document ?: null;
+    }
+
+    private function syncDocumentRecordToSharePoint(int $documentId): array
+    {
+        $document = $this->loadContractDocument($documentId);
+        if (!$document) {
+            throw new RuntimeException('Document not found.');
+        }
+
+        $contractId = (int)($document['contract_id'] ?? 0);
+        if ($contractId <= 0) {
+            throw new RuntimeException('Document is missing contract context.');
+        }
+
+        $metadata = $this->getSharePointService()->uploadContractDocument($contractId, $document);
+        $this->persistSharePointMetadata($documentId, $metadata);
+
+        return $metadata;
+    }
+
+    private function persistSharePointMetadata(int $documentId, array $metadata, ?string $syncError = null): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE contract_documents
+                SET storage_provider = ?,
+                    external_document_id = ?,
+                    external_drive_id = ?,
+                    external_site_id = ?,
+                    external_web_url = ?,
+                    external_word_url = ?,
+                    external_path = ?,
+                    external_version = ?,
+                    external_modified_at = ?,
+                    external_modified_by = ?,
+                    sync_status = ?,
+                    sync_error = ?
+              WHERE contract_document_id = ?'
+        );
+
+        $isSuccess = $syncError === null;
+        $stmt->execute([
+            $metadata['storage_provider'] ?? 'local',
+            $metadata['external_document_id'] ?? null,
+            $metadata['external_drive_id'] ?? null,
+            $metadata['external_site_id'] ?? null,
+            $metadata['external_web_url'] ?? null,
+            $metadata['external_word_url'] ?? null,
+            $metadata['external_path'] ?? null,
+            $metadata['external_version'] ?? null,
+            $metadata['external_modified_at'] ?? null,
+            $metadata['external_modified_by'] ?? null,
+            $isSuccess ? 'synced' : 'error',
+            $syncError,
+            $documentId,
+        ]);
+    }
+
+    private function getSharePointService(): SharePointGraphService
+    {
+        if ($this->sharePointService === null) {
+            require_once APP_ROOT . '/app/services/SharePointGraphService.php';
+            $this->sharePointService = new SharePointGraphService();
+        }
+
+        return $this->sharePointService;
+    }
+
+    private function isSharePointConfigured(): bool
+    {
+        try {
+            return $this->getSharePointService()->isConfigured();
+        } catch (Throwable $e) {
+            error_log('SharePoint configuration check failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     private function ensureSelectedPersonInList(array $people, int $personId): array

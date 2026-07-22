@@ -74,6 +74,39 @@
       <label class="form-check-label">Town employee</label>
     </div>
   </div>
+
+<?php if (!empty($can_edit_nextcloud)): ?>
+  <div class="col-12"><hr class="my-2"></div>
+  <div class="col-12">
+    <h3 class="h6 mb-1">Nextcloud Access</h3>
+    <div class="text-muted small mb-2">Used for the in-app Nextcloud file explorer on your account.</div>
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Nextcloud Username</label>
+    <input type="text" name="nextcloud_username" class="form-control"
+           value="<?= h($person['nextcloud_username'] ?? '') ?>" autocomplete="off">
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Nextcloud App Password</label>
+    <input type="password" name="nextcloud_password" class="form-control" value="" autocomplete="new-password">
+    <div class="form-text">
+      Leave blank to keep current value.
+      <?php if (!empty($person['nextcloud_password'])): ?>
+        A password is currently saved.
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="clear_nextcloud_password" value="1" id="clear_nextcloud_password">
+      <label class="form-check-label" for="clear_nextcloud_password">Clear saved Nextcloud app password</label>
+    </div>
+  </div>
+<?php endif; ?>
+
 <?php if (isset($can_edit_roles) && $can_edit_roles && !empty($roles)): ?>
   <div class="col-12">
     <label class="form-label">User Roles</label>

@@ -9,31 +9,33 @@ declare(strict_types=1);
   <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') . ' — ' : '' ?>PACT</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
- <style>
+  <style>
     .app-navbar {
       background: linear-gradient(90deg, #1e3a5f, #2c5d8a);
     }
 
-  .app-navbar .navbar-brand {
-    color: #fff;
-    font-weight: 600;
-  }
+    .app-navbar .navbar-brand {
+      color: #fff;
+      font-weight: 600;
+    }
 
-  .app-navbar .nav-link {
-    color: rgba(255,255,255,0.85);
-  }
+    .app-navbar .nav-link {
+      color: rgba(255,255,255,0.85);
+    }
 
-  .app-navbar .nav-link:hover {
-    color: #fff;
+    .app-navbar .nav-link:hover {
+      color: #fff;
+    }
 
+    .app-navbar .navbar-toggler {
+      border-color: rgba(255, 255, 255, 0.35);
+    }
 
-</style>
- 
-
-
+    .app-navbar .navbar-toggler-icon {
+      filter: invert(1) grayscale(1) brightness(1.8);
+    }
+  </style>
 </head>
-<body class="bg-light"></body>
 <body class="bg-light">
 
 <?php
@@ -153,6 +155,7 @@ declare(strict_types=1);
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="/index.php?page=admin_settings">System Settings</a></li>
             <li><a class="dropdown-item" href="/index.php?page=admin_organization">Organization Profile</a></li>
+            <li><a class="dropdown-item" href="/index.php?page=nextcloud_files">Nextcloud Files</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="/admin_password_reset.php">Admin Password Reset</a></li>
           </ul>
@@ -166,11 +169,17 @@ declare(strict_types=1);
       <ul class="navbar-nav ms-auto align-items-center">
         <?php if (function_exists('current_person') && ($p = current_person())): ?>
           <?php $displayName = $p['display_name'] ?? $p['name'] ?? $p['email'] ?? ''; ?>
+          <?php $profileId = (int)($p['person_id'] ?? 0); ?>
           <?php if ($displayName): ?>
             <li class="nav-item">
               <span class="nav-link text-light opacity-75 small pe-1">
                 <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
               </span>
+            </li>
+          <?php endif; ?>
+          <?php if ($profileId > 0): ?>
+            <li class="nav-item">
+              <a class="nav-link" href="/index.php?page=people_edit&id=<?= $profileId ?>">My Profile</a>
             </li>
           <?php endif; ?>
         <?php endif; ?>

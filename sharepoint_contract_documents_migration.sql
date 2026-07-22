@@ -1,0 +1,15 @@
+ALTER TABLE contract_documents
+  ADD COLUMN storage_provider VARCHAR(30) NOT NULL DEFAULT 'local' AFTER mime_type,
+  ADD COLUMN external_document_id VARCHAR(190) DEFAULT NULL AFTER storage_provider,
+  ADD COLUMN external_drive_id VARCHAR(190) DEFAULT NULL AFTER external_document_id,
+  ADD COLUMN external_site_id VARCHAR(190) DEFAULT NULL AFTER external_drive_id,
+  ADD COLUMN external_web_url VARCHAR(1000) DEFAULT NULL AFTER external_site_id,
+  ADD COLUMN external_word_url VARCHAR(1000) DEFAULT NULL AFTER external_web_url,
+  ADD COLUMN external_path VARCHAR(1000) DEFAULT NULL AFTER external_word_url,
+  ADD COLUMN external_version VARCHAR(190) DEFAULT NULL AFTER external_path,
+  ADD COLUMN external_modified_at VARCHAR(80) DEFAULT NULL AFTER external_version,
+  ADD COLUMN external_modified_by VARCHAR(255) DEFAULT NULL AFTER external_modified_at,
+  ADD COLUMN sync_status VARCHAR(30) NOT NULL DEFAULT 'pending' AFTER external_modified_by,
+  ADD COLUMN sync_error TEXT DEFAULT NULL AFTER sync_status,
+  ADD KEY idx_contract_documents_storage_provider (storage_provider),
+  ADD KEY idx_contract_documents_external_document_id (external_document_id);

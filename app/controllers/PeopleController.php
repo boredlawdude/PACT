@@ -75,7 +75,9 @@ final class PeopleController
         }
         $departments = $this->people->allDepartments();
         $errors = [];
-        $can_edit_roles = (function_exists('person_has_role_key') && (person_has_role_key('SUPERUSER') || person_has_role_key('ADMIN')));
+        $isAdmin = (function_exists('person_has_role_key') && (person_has_role_key('SUPERUSER') || person_has_role_key('ADMIN')));
+        $can_edit_roles = $isAdmin;
+        $can_edit_nextcloud = ((int)current_person_id() === $id) || $isAdmin;
         $roles = [];
         $assigned_role_ids = [];
         if ($can_edit_roles) {
@@ -104,7 +106,14 @@ final class PeopleController
         $person = $this->collectFormData();
         $person['person_id'] = $id;
         $errors = $this->validate($person);
-        $can_edit_roles = (function_exists('person_has_role_key') && (person_has_role_key('SUPERUSER') || person_has_role_key('ADMIN')));
+        $isAdmin = (function_exists('person_has_role_key') && (person_has_role_key('SUPERUSER') || person_has_role_key('ADMIN')));
+        $can_edit_roles = $isAdmin;
+        $can_edit_nextcloud = ((int)current_person_id() === $id) || $isAdmin;
+
+        if (!$can_edit_nextcloud) {
+            unset($person['nextcloud_username'], $person['nextcloud_password'], $person['clear_nextcloud_password']);
+        }
+
         if ($errors) {
             $departments = $this->people->allDepartments();
             $roles = [];
@@ -187,6 +196,9 @@ final class PeopleController
             'is_active'     => isset($_POST['is_active']) ? 1 : 0,
             'is_town_employee' => isset($_POST['is_town_employee']) ? 1 : 0,
             'company_id'    => isset($_POST['company_id']) && $_POST['company_id'] !== '' ? (int)$_POST['company_id'] : null,
+            'nextcloud_username' => trim((string)($_POST['nextcloud_username'] ?? '')),
+            'nextcloud_password' => (string)($_POST['nextcloud_password'] ?? ''),
+            'clear_nextcloud_password' => isset($_POST['clear_nextcloud_password']) ? 1 : 0,
         ];
     }
 
@@ -204,6 +216,10 @@ final class PeopleController
 
         if ($data['email'] !== '' && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'Email is invalid.';
+        }
+
+        if (!empty($data['nextcloud_username']) && preg_match('/\s/', (string)$data['nextcloud_username'])) {
+            $errors[] = 'Nextcloud username cannot contain spaces.';
         }
 
         return $errors;
@@ -263,6 +279,9 @@ final class PeopleController
             'title'         => '',
             'department_id' => '',
             'is_active'     => 1,
+            'nextcloud_username' => '',
+            'nextcloud_password' => '',
+            'clear_nextcloud_password' => 0,
         ];
     }
 }

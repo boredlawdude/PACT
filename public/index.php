@@ -69,6 +69,8 @@ require_once APP_ROOT . '/app/controllers/ChangeOrdersController.php';
 require_once APP_ROOT . '/app/controllers/ContractIntakeController.php';
 require_once APP_ROOT . '/app/controllers/ContractMilestonesController.php';
 require_once APP_ROOT . '/app/controllers/ContractMilestoneTypesController.php';
+require_once APP_ROOT . '/app/controllers/NextcloudFilesController.php';
+require_once APP_ROOT . '/app/controllers/OnlyOfficeController.php';
 $ChangeOrdersController = new ChangeOrdersController();
 
 $companiesController = new CompaniesController();
@@ -94,6 +96,18 @@ switch ($page) {
 
     case 'dashboard':
         (new DashboardController())->index();
+        break;
+
+    case 'nextcloud_files':
+        (new NextcloudFilesController())->index();
+        break;
+
+    case 'nextcloud_files_download':
+        (new NextcloudFilesController())->download();
+        break;
+
+    case 'onlyoffice_editor':
+        (new OnlyOfficeController())->editor();
         break;
         
 
@@ -469,6 +483,42 @@ case 'departments_store':
     case 'contract_document_delete':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ContractsController->deleteDocument();
+        } else {
+            http_response_code(405);
+            echo 'Method not allowed.';
+        }
+        break;
+
+    case 'contract_document_sharepoint_sync':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ContractsController->syncDocumentToSharePoint();
+        } else {
+            http_response_code(405);
+            echo 'Method not allowed.';
+        }
+        break;
+
+    case 'contract_document_sharepoint_refresh':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ContractsController->refreshDocumentSharePointMetadata();
+        } else {
+            http_response_code(405);
+            echo 'Method not allowed.';
+        }
+        break;
+
+    case 'contract_document_sharepoint_link':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ContractsController->setDocumentSharePointLink();
+        } else {
+            http_response_code(405);
+            echo 'Method not allowed.';
+        }
+        break;
+
+    case 'contract_document_sharepoint_unlink':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ContractsController->clearDocumentSharePointLink();
         } else {
             http_response_code(405);
             echo 'Method not allowed.';
