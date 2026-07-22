@@ -926,3 +926,6 @@ $appName = defined('APP_NAME') ? APP_NAME : 'Contracts App';
   onScroll();
 })();
 </script>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>
+
