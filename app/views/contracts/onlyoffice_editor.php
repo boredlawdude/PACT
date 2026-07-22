@@ -2,23 +2,40 @@
 declare(strict_types=1);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h1 class="h4 mb-1">Inline Contract Editor</h1>
-    <div class="text-muted small">OnlyOffice editing for <?= h((string)($editorConfig['document']['title'] ?? 'Document')) ?></div>
+<style>
+  /* Break this page's content out of the shared fixed-width .container so the editor can use the full browser width */
+  .oo-fullbleed {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    box-sizing: border-box;
+  }
+</style>
+
+<div class="oo-fullbleed">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-1">Inline Contract Editor</h1>
+      <div class="text-muted small">OnlyOffice editing for <?= h((string)($editorConfig['document']['title'] ?? 'Document')) ?></div>
+    </div>
+    <a href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
   </div>
-  <a href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
-</div>
 
-<div class="alert alert-info py-2 small">
-  Save inside the editor. Changes are written back to your stored contract document via callback.
-</div>
+  <div class="alert alert-info py-2 small">
+    Save inside the editor. Changes are written back to your stored contract document via callback.
+  </div>
 
-<div id="onlyoffice-status" class="alert alert-secondary py-2 small">
-  Initializing OnlyOffice editor...
-</div>
+  <div id="onlyoffice-status" class="alert alert-secondary py-2 small">
+    Initializing OnlyOffice editor...
+  </div>
 
-<div id="onlyoffice-editor" style="height: calc(100vh - 260px); min-height: 640px; border: 1px solid #dce3ea; border-radius: 8px; overflow: hidden;"></div>
+  <div id="onlyoffice-editor" style="height: calc(100vh - 220px); min-height: 720px; border: 1px solid #dce3ea; border-radius: 8px; overflow: hidden;"></div>
+</div>
 
 <script src="<?= h($documentServerUrl) ?>/web-apps/apps/api/documents/api.js"></script>
 <script>
