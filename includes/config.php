@@ -25,9 +25,9 @@ require_once __DIR__ . '/bootstrap.php';
 
 defined('DB_HOST')      || define('DB_HOST', $_ENV['DB_HOST'] ?? '127.0.0.1');
 defined('DB_PORT')      || define('DB_PORT', $_ENV['DB_PORT'] ?? '3306');
-defined('DB_NAME')      || define('DB_NAME', $_ENV['DB_DATABASE'] ?? 'contract_manager');
-defined('DB_USER')      || define('DB_USER', $_ENV['DB_USERNAME'] ?? '');
-defined('DB_PASS')      || define('DB_PASS', $_ENV['DB_PASSWORD'] ?? '');
+defined('DB_NAME')      || define('DB_NAME', $_ENV['DB_NAME'] ?? $_ENV['DB_DATABASE'] ?? 'contract_manager');
+defined('DB_USER')      || define('DB_USER', $_ENV['DB_USER'] ?? $_ENV['DB_USERNAME'] ?? '');
+defined('DB_PASS')      || define('DB_PASS', $_ENV['DB_PASS'] ?? $_ENV['DB_PASSWORD'] ?? '');
 
 defined('APP_NAME')     || define('APP_NAME', $_ENV['APP_NAME'] ?? 'PACT');
 defined('SESSION_NAME') || define('SESSION_NAME', $_ENV['SESSION_NAME'] ?? 'contracts_app_sess');
@@ -93,6 +93,12 @@ if (!function_exists('db')) {
                     PDO::ATTR_EMULATE_PREPARES => false,
                 ]
             );
+
+            try {
+                $pdo->exec("SET time_zone = 'America/New_York'");
+            } catch (PDOException $tzEx) {
+                // Named timezone tables not loaded; leave MySQL on its system timezone
+            }
         }
 
         return $pdo;
