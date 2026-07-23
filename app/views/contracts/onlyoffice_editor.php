@@ -37,7 +37,7 @@ declare(strict_types=1);
   </div>
   <div class="d-flex align-items-center gap-2">
     <span id="onlyoffice-status" class="badge bg-secondary">Initializing...</span>
-    <a href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
+    <a id="onlyoffice-back-link" href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
   </div>
 </div>
 
@@ -77,6 +77,34 @@ declare(strict_types=1);
   <?php if (!empty($editorToken)): ?>
   cfg.token = <?= json_encode($editorToken, JSON_UNESCAPED_SLASHES) ?>;
   <?php endif; ?>
+
+  const forceSaveUrl = <?= json_encode($forceSaveUrl, JSON_UNESCAPED_SLASHES) ?>;
+
+  // OnlyOffice only pushes edits back to the server when it detects the
+  // editing session truly ended (or an explicit Ctrl+S). Just navigating
+  // away doesn't wait for that, so the document list can show a stale
+  // version for a bit. Force a synchronous save via the Command Service
+  // before leaving the page.
+  function forceSaveDocument() {
+    var url = forceSaveUrl + '&key=' + encodeURIComponent(cfg.document.key);
+    return fetch(url, { method: 'POST' }).catch(function () { /* best effort */ });
+  }
+
+  document.getElementById('onlyoffice-back-link').addEventListener('click', function (e) {
+    e.preventDefault();
+    var dest = e.currentTarget.href;
+    setStatus('warn', 'Saving before leaving...');
+    forceSaveDocument().finally(function () {
+      window.location.href = dest;
+    });
+  });
+
+  // Best-effort save if the tab is closed/refreshed instead of using the button.
+  window.addEventListener('pagehide', function () {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(forceSaveUrl + '&key=' + encodeURIComponent(cfg.document.key));
+    }
+  });
 
   cfg.events = Object.assign({}, cfg.events || {}, {
     onAppReady: function () {

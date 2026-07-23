@@ -971,6 +971,13 @@ if (!function_exists('format_utc_to_eastern')) {
                           } elseif (strpos($webPath, '/storage/') !== 0) {
                             $webPath = '/' . ltrim($webPath, '/');
                           }
+                          // Cache-bust with the file's mtime so browsers never show a
+                          // stale cached copy after an inline edit updates the same path.
+                          $absForMtime = APP_ROOT . '/' . ltrim((string)$doc['file_path'], '/');
+                          $docMtime = @filemtime($absForMtime);
+                          if ($docMtime !== false) {
+                            $webPath .= '?v=' . $docMtime;
+                          }
                         }
                       ?>
                       <td style="white-space:normal;min-width:140px">

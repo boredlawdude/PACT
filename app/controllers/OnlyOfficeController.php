@@ -48,9 +48,11 @@ final class OnlyOfficeController
         $appBaseUrl = rtrim($this->appBaseUrl(), '/');
         $docSig = oo_sign(['id' => $docId]);
         $cbSig = oo_sign(['doc_id' => $docId]);
+        $fsSig = oo_sign(['doc_id' => $docId, 'action' => 'forcesave']);
 
         $docUrl = $appBaseUrl . '/onlyoffice_download.php?id=' . $docId . '&sig=' . urlencode($docSig);
         $callbackUrl = $appBaseUrl . '/onlyoffice_callback.php?doc_id=' . $docId . '&sig=' . urlencode($cbSig);
+        $forceSaveUrl = $appBaseUrl . '/onlyoffice_forcesave.php?doc_id=' . $docId . '&sig=' . urlencode($fsSig);
 
         $mtime = $this->documentMtime($doc);
         $keyMaterial = $docId . '|' . ((string)$doc['file_path']) . '|' . (string)$mtime;
