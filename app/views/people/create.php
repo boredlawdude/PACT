@@ -17,3 +17,4 @@
     </div>
   </div>
 </div>
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

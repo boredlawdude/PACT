@@ -252,3 +252,5 @@ function row(string $label, mixed $value, bool $money = false): void {
   <?php endif; ?>
 
 </div>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

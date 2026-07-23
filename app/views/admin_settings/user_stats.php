@@ -118,3 +118,5 @@
         "Records Created" and "Records Edited" are based on tracked activity tables (history, comments, documents, milestones, and related audit entries).
     </p>
 </div>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

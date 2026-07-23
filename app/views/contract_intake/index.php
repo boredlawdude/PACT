@@ -112,3 +112,5 @@ $currentStatus = $status ?? 'pending';
   <?php endif; ?>
 
 </div>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

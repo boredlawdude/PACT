@@ -54,3 +54,5 @@
     </table>
     <a href="/index.php?page=admin_settings" class="btn btn-outline-secondary mt-3">Back to System Settings</a>
 </div>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

@@ -77,3 +77,5 @@ $statusBadge = function(string $s): string {
   <strong>Share this link with external developers:</strong><br>
   <code><?= h((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'your-domain.com') . '/dev_agreement_intake.php') ?></code>
 </div>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

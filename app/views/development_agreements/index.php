@@ -70,3 +70,5 @@ if (!function_exists('h')) {
   </div>
 </div>
 <?php endif; ?>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

@@ -82,3 +82,4 @@ unset($_SESSION['people_set_password_errors'], $_SESSION['people_set_password_su
   </div>
 <?php endif; ?>
 </div>
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

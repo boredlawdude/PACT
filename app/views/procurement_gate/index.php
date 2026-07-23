@@ -136,3 +136,4 @@ document.getElementById('gateForm').addEventListener('submit', async function (e
     `;
 });
 </script>
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

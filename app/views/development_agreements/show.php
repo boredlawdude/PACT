@@ -159,3 +159,5 @@ $dt = fn($field) => (!empty($agreement[$field])) ? date('m/d/Y', strtotime($agre
     </div>
   </div>
 </div>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

@@ -123,3 +123,5 @@ if (!function_exists('format_nextcloud_datetime')) {
     </div>
   </div>
 <?php endif; ?>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

@@ -180,3 +180,5 @@ $badge = match($submission['status']) {
   </div>
 </div>
 <?php endif; ?>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

@@ -63,3 +63,5 @@ function toggleExhibitFields() {
     document.getElementById('exhibit_letter').required = (cat === 'exhibit');
 }
 </script>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

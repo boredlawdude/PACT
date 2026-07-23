@@ -254,3 +254,5 @@ $defaultSubject = 'Please sign a contract for: ' . ($contractName !== '' ? $cont
     });
 })();
 </script>
+
+<?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>
