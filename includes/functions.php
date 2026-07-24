@@ -414,6 +414,71 @@ if (!function_exists('get_full_generated_contracts_dir')) {
     }
 }
 
+if (!function_exists('get_contract_doc_subpath')) {
+    /**
+     * Returns a filesystem-safe "{Department}/{ContractNumber}" path segment
+     * for a contract, used to group ALL of its documents (generated drafts,
+     * uploads, exhibits, change orders, procurement docs, etc.) into a single
+     * folder instead of scattering them across numeric contract_id folders.
+     */
+    function get_contract_doc_subpath(int $contractId): string
+    {
+        static $cache = [];
+        if (array_key_exists($contractId, $cache)) {
+            return $cache[$contractId];
+        }
+
+        $stmt = db()->prepare(
+            "SELECT c.contract_number, d.department_name
+               FROM contracts c
+               LEFT JOIN departments d ON d.department_id = c.department_id
+              WHERE c.contract_id = ?
+              LIMIT 1"
+        );
+        $stmt->execute([$contractId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $sanitize = static function (string $value, string $fallback): string {
+            $value = str_replace(['/', '\\'], '-', trim($value));
+            $value = preg_replace('/[^A-Za-z0-9 ._-]/', '', $value) ?? '';
+            $value = trim($value, " .-");
+            return $value !== '' ? $value : $fallback;
+        };
+
+        $dept = $sanitize((string)($row['department_name'] ?? ''), 'Unassigned');
+        $num  = $sanitize((string)($row['contract_number'] ?? ''), 'contract_' . $contractId);
+
+        return $cache[$contractId] = $dept . '/' . $num;
+    }
+}
+
+if (!function_exists('get_contract_document_dir')) {
+    /** Absolute filesystem directory (under the configured storage root) for a contract's documents. */
+    function get_contract_document_dir(int $contractId): string
+    {
+        return get_storage_base_dir() . '/' . get_contract_doc_subpath($contractId);
+    }
+}
+
+if (!function_exists('get_contract_document_rel_dir')) {
+    /**
+     * Path suitable for storing in contract_documents.file_path (resolvable
+     * as APP_ROOT . '/' . $relPath, matching how the rest of the app reads
+     * files back). Assumes storage_base_dir lives under APP_ROOT, which is
+     * true by default; if it's pointed outside APP_ROOT, this falls back to
+     * returning an absolute path.
+     */
+    function get_contract_document_rel_dir(int $contractId): string
+    {
+        $abs  = get_contract_document_dir($contractId);
+        $root = rtrim(APP_ROOT, '/');
+        if (strpos($abs, $root . '/') === 0) {
+            return substr($abs, strlen($root) + 1);
+        }
+        return $abs;
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | Template directory helpers

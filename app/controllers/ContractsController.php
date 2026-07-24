@@ -389,10 +389,10 @@ class ContractsController
             $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
             $this->applyDocxMergeValues($templateProcessor, $contract);
 
-            $relativeDir = 'storage/contracts/';
+            $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';
             $outputDir = APP_ROOT . '/' . $relativeDir;
             if (!is_dir($outputDir)) {
-                mkdir($outputDir, 0777, true);
+                mkdir($outputDir, 0775, true);
             }
 
             // Insert row with created_by_person_id
@@ -1527,10 +1527,10 @@ class ContractsController
         $ext = pathinfo($originalName, PATHINFO_EXTENSION);
         $safeDocType = preg_replace('/[^A-Za-z0-9_-]/', '_', $docType);
 
-        $relativeDir = 'storage/contracts/';
+        $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';
         $outputDir = APP_ROOT . '/' . $relativeDir;
         if (!is_dir($outputDir)) {
-            mkdir($outputDir, 0777, true);
+            mkdir($outputDir, 0775, true);
         }
 
         $createdBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;

@@ -24,9 +24,10 @@ class DocumentsController
         $safeLabel = preg_replace('/[^a-zA-Z0-9._-]/', '_', $exhibitLabel ?: 'Exhibit');
         $safeContract = preg_replace('/[^a-zA-Z0-9._-]/', '_', $contractName ?: 'Contract');
         $finalName = $safeLabel . '_to_' . $safeContract . ($ext ? ('.' . $ext) : '');
-        $storageDir = APP_ROOT . "/storage/generated_docs/{$contractId}";
+        $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/');
+        $storageDir = APP_ROOT . '/' . $relativeDir;
         if (!is_dir($storageDir)) {
-            mkdir($storageDir, 0777, true);
+            mkdir($storageDir, 0775, true);
         }
         $targetPath = $storageDir . "/" . $finalName;
         if (!move_uploaded_file($_FILES['exhibit_file']['tmp_name'], $targetPath)) {
@@ -34,7 +35,7 @@ class DocumentsController
             echo 'Failed to move uploaded file.';
             return;
         }
-        $webPath = "/storage/generated_docs/{$contractId}/{$finalName}";
+        $webPath = "/{$relativeDir}/{$finalName}";
         $stmt = $this->db->prepare("INSERT INTO contract_documents (contract_id, file_path, doc_type, file_name, created_by_person_id, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
         $stmt->execute([
             $contractId,

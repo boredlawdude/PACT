@@ -68,7 +68,8 @@ class BiddingComplianceController
                 exit;
             }
 
-            $storageDir  = APP_ROOT . '/storage/contracts/' . $contractId . '/procurement';
+            $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/procurement';
+            $storageDir  = APP_ROOT . '/' . $relativeDir;
             if (!is_dir($storageDir)) {
                 mkdir($storageDir, 0755, true);
             }
@@ -84,7 +85,7 @@ class BiddingComplianceController
 
             $safeEvent      = preg_replace('/[^A-Za-z0-9_-]/', '_', $eventType);
             $fileName       = $contractId . '_procurement_' . $safeEvent . '_' . $docId . '.' . $ext;
-            $relPath        = 'storage/contracts/' . $contractId . '/procurement/' . $fileName;
+            $relPath        = $relativeDir . '/' . $fileName;
             $fullPath       = $storageDir . '/' . $fileName;
 
             if (!move_uploaded_file($file['tmp_name'], $fullPath)) {

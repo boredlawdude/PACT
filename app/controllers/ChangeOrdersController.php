@@ -560,9 +560,10 @@ HTML;
         $mergeFields = array_merge($contract, $coFormatted);
 
         $createdBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
-        $outputDir = APP_ROOT . '/storage/contracts/';
+        $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';
+        $outputDir = APP_ROOT . '/' . $relativeDir;
         if (!is_dir($outputDir)) {
-            mkdir($outputDir, 0777, true);
+            mkdir($outputDir, 0775, true);
         }
 
         if ($format === 'docx') {
@@ -578,7 +579,7 @@ HTML;
             $stmt->execute([$contractId, $createdBy]);
             $docId    = (int)$this->db->lastInsertId();
             $fileName = $contractId . '_CO' . $changeOrderId . '_v' . $docId . '.docx';
-            $relPath  = 'storage/contracts/' . $fileName;
+            $relPath  = $relativeDir . $fileName;
             $processor->saveAs($outputDir . $fileName);
 
             $this->db->prepare(
@@ -606,7 +607,7 @@ HTML;
             $stmt->execute([$contractId, $createdBy]);
             $docId    = (int)$this->db->lastInsertId();
             $fileName = $contractId . '_CO' . $changeOrderId . '_v' . $docId . '.html';
-            $relPath  = 'storage/contracts/' . $fileName;
+            $relPath  = $relativeDir . $fileName;
             file_put_contents($outputDir . $fileName, $content);
 
             $this->db->prepare(
