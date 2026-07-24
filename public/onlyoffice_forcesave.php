@@ -33,6 +33,20 @@ if (!function_exists('oo_verify') || !oo_verify(['doc_id' => $docId, 'action' =>
     exit;
 }
 
+// Look up the document's current file so we can detect (by mtime) once
+// onlyoffice_callback.php has actually finished writing the new content —
+// CommandService.ashx only acknowledges that the save was *requested*; the
+// real write happens moments later via an async callback from the document
+// server. Without waiting for that, "Back to Contract" can navigate before
+// the file on disk has actually changed, so Download/Email still see the
+// previous version until the next request.
+$stmt = db()->prepare('SELECT file_path FROM contract_documents WHERE contract_document_id = ? LIMIT 1');
+$stmt->execute([$docId]);
+$filePath = (string)($stmt->fetchColumn() ?: '');
+$abs = $filePath !== '' ? APP_ROOT . '/' . ltrim($filePath, '/') : '';
+clearstatcache(true, $abs);
+$beforeMtime = ($abs !== '' && is_file($abs)) ? filemtime($abs) : false;
+
 $documentServerUrl = rtrim((string)($_ENV['ONLYOFFICE_DOCUMENT_SERVER_URL'] ?? ''), '/');
 if ($documentServerUrl === '') {
     http_response_code(500);
@@ -72,11 +86,26 @@ if ($raw === false) {
 }
 
 $result = json_decode((string)$raw, true);
-// Command Service returns {"error":0} on success (0 = ok, other codes = failure).
-if (!is_array($result) || (int)($result['error'] ?? 1) !== 0) {
+$commandError = is_array($result) ? (int)($result['error'] ?? 1) : 1;
+
+// error 4 = "no changes were made" — nothing to wait for, the file on disk
+// is already current.
+if ($commandError !== 0 && $commandError !== 4) {
     http_response_code($status >= 400 ? $status : 502);
     echo json_encode(['error' => 1, 'message' => 'Force save failed', 'raw' => $result ?? $raw]);
     exit;
+}
+
+if ($commandError === 0 && $abs !== '') {
+    // Poll for up to ~5 seconds for the callback to actually write the file.
+    for ($i = 0; $i < 20; $i++) {
+        usleep(250000);
+        clearstatcache(true, $abs);
+        $nowMtime = is_file($abs) ? filemtime($abs) : false;
+        if ($nowMtime !== false && $nowMtime !== $beforeMtime) {
+            break;
+        }
+    }
 }
 
 echo json_encode(['error' => 0]);
