@@ -104,13 +104,18 @@ class Contract
 
 
     if (!empty($filters['company_id'])) {
-        $sql .= " AND (c.owner_company_id = :company_id OR c.counterparty_company_id = :company_id)";
-        $params['company_id'] = (int)$filters['company_id'];
+        $sql .= " AND (c.owner_company_id = :company_id_owner OR c.counterparty_company_id = :company_id_counterparty)";
+        $params['company_id_owner'] = (int)$filters['company_id'];
+        $params['company_id_counterparty'] = (int)$filters['company_id'];
     }
 
     if (!empty($filters['q'])) {
-        $sql .= " AND (c.contract_number LIKE :q OR c.name LIKE :q OR c.description LIKE :q OR co.name LIKE :q)";
-        $params['q'] = '%' . trim((string)$filters['q']) . '%';
+        $sql .= " AND (c.contract_number LIKE :q_number OR c.name LIKE :q_name OR c.description LIKE :q_description OR co.name LIKE :q_company)";
+        $qLike = '%' . trim((string)$filters['q']) . '%';
+        $params['q_number'] = $qLike;
+        $params['q_name'] = $qLike;
+        $params['q_description'] = $qLike;
+        $params['q_company'] = $qLike;
     }
 
     if (!empty($filters['contract_status_id'])) {
