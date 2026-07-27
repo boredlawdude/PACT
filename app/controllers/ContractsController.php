@@ -485,7 +485,10 @@ class ContractsController
 
     public function index(): void
     {
-        $contracts = $this->contracts->search([]);
+        $projectId = (isset($_GET['project_id']) && $_GET['project_id'] !== '' && $_GET['project_id'] !== '0')
+            ? (int)$_GET['project_id'] : null;
+        $contracts = $this->contracts->search($projectId ? ['project_id' => $projectId] : []);
+        $projectFilter = $this->getProjectFilterInfo($projectId);
 
         // Handle ?pending_approval=manager|purchasing|legal|risk_manager|council
         $pendingApprovalFilter = null;
@@ -545,6 +548,7 @@ class ContractsController
             'end_date_from' => isset($_GET['end_date_from']) && $_GET['end_date_from'] !== '' ? $_GET['end_date_from'] : null,
             'end_date_to' => isset($_GET['end_date_to']) && $_GET['end_date_to'] !== '' ? $_GET['end_date_to'] : null,
             'company_id' => (isset($_GET['company_id']) && $_GET['company_id'] !== '' && $_GET['company_id'] !== '0') ? (int)$_GET['company_id'] : null,
+            'project_id' => (isset($_GET['project_id']) && $_GET['project_id'] !== '' && $_GET['project_id'] !== '0') ? (int)$_GET['project_id'] : null,
         ];
         // Pass filters directly — the model uses !empty() guards so nulls are safely ignored
         $contracts = $this->contracts->search($filters);
@@ -552,7 +556,29 @@ class ContractsController
         $responsiblePeople = $this->getResponsiblePeople();
         $contractStatuses = $this->getContractStatuses();
         $contractTypes = $this->getContractTypes();
+        $projectFilter = $this->getProjectFilterInfo($filters['project_id']);
         require APP_ROOT . '/app/views/contracts/index.php';
+    }
+
+    /**
+     * Looks up basic display info for a project_id filter passed in from the
+     * project_manager_app (shared database, separate codebase). Returns null
+     * if no project_id given, the `projects` table doesn't exist yet, or the
+     * project isn't found — callers should treat this as optional/best-effort.
+     */
+    private function getProjectFilterInfo(?int $projectId): ?array
+    {
+        if (!$projectId) {
+            return null;
+        }
+        try {
+            $stmt = $this->db->prepare("SELECT project_id, project_code, project_name FROM projects WHERE project_id = ? LIMIT 1");
+            $stmt->execute([$projectId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        } catch (Throwable $e) {
+            return null;
+        }
     }
 
     public function show(): void

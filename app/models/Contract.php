@@ -128,6 +128,11 @@ class Contract
         $params['department_id'] = (int)$filters['department_id'];
     }
 
+    if (!empty($filters['project_id'])) {
+        $sql .= " AND c.project_id = :project_id";
+        $params['project_id'] = (int)$filters['project_id'];
+    }
+
     if (!empty($filters['owner_primary_contact_id'])) {
         $sql .= " AND c.owner_primary_contact_id = :owner_primary_contact_id";
         $params['owner_primary_contact_id'] = (int)$filters['owner_primary_contact_id'];

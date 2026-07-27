@@ -34,6 +34,13 @@ function status_badge(string $status): string {
         <a href="/index.php?page=contracts" class="btn btn-sm btn-outline-secondary me-2">Clear Filter</a>
     <?php endif; ?>
 
+    <?php if (!empty($projectFilter)): ?>
+        <span class="badge text-bg-info me-2 fs-6">
+            Project: <?= h($projectFilter['project_name']) ?>
+        </span>
+        <a href="/index.php?page=contracts" class="btn btn-sm btn-outline-secondary me-2">Clear Filter</a>
+    <?php endif; ?>
+
     <a href="/index.php?page=contracts_create" class="btn btn-primary">
         + New Contract
     </a>
@@ -41,6 +48,9 @@ function status_badge(string $status): string {
 
 <form method="get" action="/index.php" class="card shadow-sm mb-3" id="contractsFilterForm">
     <input type="hidden" name="page" value="contracts_search">
+    <?php if (!empty($projectFilter)): ?>
+        <input type="hidden" name="project_id" value="<?= (int)$projectFilter['project_id'] ?>">
+    <?php endif; ?>
 
     <div class="card-body">
         <div class="row g-2">
