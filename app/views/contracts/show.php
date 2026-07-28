@@ -88,6 +88,23 @@ if (!function_exists('format_utc_to_eastern')) {
               <?php endif; ?>
             </div>
             <div class="col-md-6">
+              <div class="small text-muted">Project</div>
+              <div>
+                <?php $projectUrl = $linkedProject ? project_manager_app_url((int)($linkedProject['project_id'] ?? 0)) : null; ?>
+                <?php if (!empty($linkedProject)): ?>
+                  <?php if ($projectUrl): ?>
+                    <a href="<?= h($projectUrl) ?>" target="_blank" rel="noopener">
+                      <?= h($linkedProject['project_code'] ?? '') ?> — <?= h($linkedProject['project_name'] ?? '') ?> &#8599;
+                    </a>
+                  <?php else: ?>
+                    <?= h($linkedProject['project_code'] ?? '') ?> — <?= h($linkedProject['project_name'] ?? '') ?>
+                  <?php endif; ?>
+                <?php else: ?>
+                  —
+                <?php endif; ?>
+              </div>
+            </div>
+            <div class="col-md-6">
               <div class="small text-muted">Counterparty Company</div>
               <div><?= h($contract['counterparty_company_name'] ?? '') ?: '—' ?></div>
             </div>

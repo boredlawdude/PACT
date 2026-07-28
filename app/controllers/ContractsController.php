@@ -461,6 +461,17 @@ class ContractsController
         return $this->people->allDepartments();
     }
 
+    /** Projects from project_manager_app's shared `projects` table (optional/best-effort). */
+    private function getProjects(): array
+    {
+        try {
+            $stmt = $this->db->query("SELECT project_id, project_code, project_name FROM projects ORDER BY project_name ASC");
+            return $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
     private function getSystemSetting(string $key): string
     {
         $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1");
@@ -585,6 +596,7 @@ class ContractsController
     {
         $id = (int)($_GET['contract_id'] ?? 0);
         $contract = $this->contracts->find($id);
+        $linkedProject = $this->getProjectFilterInfo((int)($contract['project_id'] ?? 0) ?: null);
         $docsStmt = $this->db->prepare("SELECT cd.*, CONCAT(p.first_name, ' ', p.last_name) AS created_by_name FROM contract_documents cd LEFT JOIN people p ON cd.created_by_person_id = p.person_id WHERE cd.contract_id = :id ORDER BY cd.sort_order ASC, cd.created_at DESC");
         $docsStmt->execute(['id' => $id]);
         $documents = $docsStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -723,11 +735,16 @@ class ContractsController
             }
         }
 
+        if (empty($contract['project_id']) && !empty($_GET['project_id'])) {
+            $contract['project_id'] = (int)$_GET['project_id'];
+        }
+
         $departments = $this->getDepartments();
         $companies = $this->getCompanies();
         $types = $this->getContractTypes();
         $paymentTerms = $this->getPaymentTerms();
         $contractStatuses = $this->getContractStatuses();
+        $projects = $this->getProjects();
 
         $ownerPeople = [];
         if (!empty($contract['owner_company_id'])) {
@@ -813,6 +830,7 @@ class ContractsController
         $types = $this->getContractTypes();
         $paymentTerms = $this->getPaymentTerms();
         $contractStatuses = $this->getContractStatuses();
+        $projects = $this->getProjects();
         $ownerPeople = [];
         if (!empty($contract['owner_company_id'])) {
             $ownerPeople = $this->getPeopleByCompany((int)$contract['owner_company_id']);

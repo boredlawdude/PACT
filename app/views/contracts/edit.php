@@ -235,6 +235,20 @@ if (!function_exists('h')) {
                 </select>
             </div>
 
+            <div class="col-md-4">
+                <label class="form-label">Project</label>
+                <select class="form-select" name="project_id">
+                    <option value="">(none)</option>
+                    <?php foreach (($projects ?? []) as $proj): ?>
+                        <option value="<?= (int)$proj['project_id'] ?>"
+                            <?= ((string)($contract['project_id'] ?? '') === (string)$proj['project_id']) ? 'selected' : '' ?>>
+                            <?= h($proj['project_code']) ?> — <?= h($proj['project_name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text text-muted">Links this contract to a project in the Project Manager app.</div>
+            </div>
+
             <div class="col-md-8">
                 <div class="border rounded-4 p-3 bg-light-subtle h-100 shadow-sm">
                     <div class="small text-uppercase fw-semibold text-muted mb-2">Workflow Status</div>

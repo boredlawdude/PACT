@@ -31,6 +31,25 @@ if (!function_exists('app_env')) {
     }
 }
 
+if (!function_exists('project_manager_app_url')) {
+    /**
+     * Builds a URL into the sibling project_manager_app for a given project,
+     * e.g. to link back to a project's detail page from a linked contract.
+     * Returns null if no project id was given or the base URL isn't configured.
+     */
+    function project_manager_app_url(?int $projectId): ?string
+    {
+        if (!$projectId) {
+            return null;
+        }
+        $base = rtrim((string)app_env('PROJECT_MANAGER_APP_URL', ''), '/');
+        if ($base === '') {
+            return null;
+        }
+        return $base . '/index.php?page=projects_show&project_id=' . $projectId;
+    }
+}
+
 if (!function_exists('app_path')) {
     function app_path(string $path = ''): string
     {

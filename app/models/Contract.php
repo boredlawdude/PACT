@@ -234,7 +234,8 @@ class Contract
                 procurement_notes,
                 date_approved_by_procurement,
                 date_approved_by_manager,
-                date_approved_by_council
+                date_approved_by_council,
+                project_id
             ) VALUES (
                 :contract_number,
                 :name,
@@ -270,7 +271,8 @@ class Contract
                 :procurement_notes,
                 :date_approved_by_procurement,
                 :date_approved_by_manager,
-                :date_approved_by_council
+                :date_approved_by_council,
+                :project_id
             )
         ";
 
@@ -322,7 +324,8 @@ class Contract
                 procurement_notes = :procurement_notes,
                 date_approved_by_procurement = :date_approved_by_procurement,
                 date_approved_by_manager = :date_approved_by_manager,
-                date_approved_by_council = :date_approved_by_council
+                date_approved_by_council = :date_approved_by_council,
+                project_id = :project_id
             WHERE contract_id = :contract_id
         ";
 
@@ -405,6 +408,7 @@ class Contract
             'date_approved_by_procurement' => $this->nullIfEmpty($data['date_approved_by_procurement'] ?? null),
             'date_approved_by_manager' => $this->nullIfEmpty($data['date_approved_by_manager'] ?? null),
             'date_approved_by_council' => $this->nullIfEmpty($data['date_approved_by_council'] ?? null),
+            'project_id' => $this->nullIfEmpty($data['project_id'] ?? null),
         ];
     }
 
