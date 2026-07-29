@@ -68,8 +68,9 @@ if (!function_exists('h')) {
 
         <div class="col-md-6">
           <div class="card border-primary">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
               <h5 class="mb-0">HTML Template</h5>
+              <button type="button" class="btn btn-sm btn-light" id="html-template-edit-toggle">Edit Inline</button>
             </div>
             <div class="card-body">
               <?php if (!empty($contractType['template_file_html'])): ?>
@@ -91,6 +92,17 @@ if (!function_exists('h')) {
               <small class="form-text text-muted d-block mt-2">
                 HTML uses <code>{{field_name}}</code> placeholders.
               </small>
+
+              <div id="html-template-inline-editor" class="mt-3 d-none">
+                <hr>
+                <label class="form-label fw-semibold" for="html-template-content">Edit Template Content</label>
+                <textarea class="form-control font-monospace" id="html-template-content" rows="16" spellcheck="false"></textarea>
+                <div class="d-flex align-items-center gap-2 mt-2">
+                  <button type="button" class="btn btn-success btn-sm" id="html-template-save">Save Template</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="html-template-cancel">Cancel</button>
+                  <span id="html-template-status" class="small text-muted"></span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -149,5 +161,88 @@ if (!function_exists('h')) {
     </div>
   </form>
 </div>
+
+<script>
+(function () {
+  const toggleBtn = document.getElementById('html-template-edit-toggle');
+  const editor = document.getElementById('html-template-inline-editor');
+  const textarea = document.getElementById('html-template-content');
+  const saveBtn = document.getElementById('html-template-save');
+  const cancelBtn = document.getElementById('html-template-cancel');
+  const statusEl = document.getElementById('html-template-status');
+  const contractTypeId = <?= (int)$contractType['contract_type_id'] ?>;
+  const csrfToken = <?= json_encode(csrf_token()) ?>;
+  let loaded = false;
+
+  if (!toggleBtn) return;
+
+  async function loadContent() {
+    statusEl.textContent = 'Loading...';
+    try {
+      const response = await fetch('/index.php?page=contract_types_template_content&contract_type_id=' + contractTypeId, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || 'Unable to load template.');
+      }
+      textarea.value = payload.content || '';
+      loaded = true;
+      statusEl.textContent = '';
+    } catch (error) {
+      statusEl.textContent = error.message || 'Failed to load template.';
+    }
+  }
+
+  toggleBtn.addEventListener('click', async function () {
+    const isHidden = editor.classList.contains('d-none');
+    if (isHidden) {
+      editor.classList.remove('d-none');
+      toggleBtn.textContent = 'Hide Editor';
+      if (!loaded) await loadContent();
+    } else {
+      editor.classList.add('d-none');
+      toggleBtn.textContent = 'Edit Inline';
+    }
+  });
+
+  cancelBtn.addEventListener('click', function () {
+    editor.classList.add('d-none');
+    toggleBtn.textContent = 'Edit Inline';
+  });
+
+  saveBtn.addEventListener('click', async function () {
+    if (saveBtn.dataset.saving === '1') return;
+    saveBtn.dataset.saving = '1';
+    saveBtn.disabled = true;
+    statusEl.textContent = 'Saving...';
+
+    try {
+      const response = await fetch('/index.php?page=contract_types_template_update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: new URLSearchParams({
+          contract_type_id: String(contractTypeId),
+          content: textarea.value,
+          csrf_token: csrfToken
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || 'Unable to save template.');
+      }
+      statusEl.textContent = payload.message || 'Saved.';
+    } catch (error) {
+      statusEl.textContent = error.message || 'Save failed.';
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.dataset.saving = '0';
+    }
+  });
+})();
+</script>
 
 <?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

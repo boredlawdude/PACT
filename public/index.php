@@ -42,6 +42,18 @@ if ($page === 'contracts_update_status_comment') {
     (new ContractsController())->updateStatusCommentAjax();
     exit;
 }
+if ($page === 'contract_types_template_content') {
+    ob_clean();
+    require_once APP_ROOT . '/app/controllers/ContractTypesController.php';
+    (new ContractTypesController())->templateContentAjax((int)($_GET['contract_type_id'] ?? 0));
+    exit;
+}
+if ($page === 'contract_types_template_update') {
+    ob_clean();
+    require_once APP_ROOT . '/app/controllers/ContractTypesController.php';
+    (new ContractTypesController())->updateTemplateContentAjax();
+    exit;
+}
 // ────────────────────────────────────────────────────────────────────────────
 
 // Backup download must run before any HTML output

@@ -12,6 +12,8 @@ class ContractTypesController
 
     public function index(): void
     {
+        require_system_admin();
+
         $stmt = $this->db->query("
             SELECT * FROM contract_types 
             WHERE is_active = 1 
@@ -24,6 +26,8 @@ class ContractTypesController
 
     public function edit(int $contractTypeId): void
     {
+        require_system_admin();
+
         $stmt = $this->db->prepare("SELECT * FROM contract_types WHERE contract_type_id = ? LIMIT 1");
         $stmt->execute([$contractTypeId]);
         $contractType = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -44,6 +48,8 @@ class ContractTypesController
 
     public function create(): void
     {
+        require_system_admin();
+
         $flashErrors = $_SESSION['flash_errors'] ?? [];
         $flashOld    = $_SESSION['flash_old'] ?? [];
         unset($_SESSION['flash_errors'], $_SESSION['flash_old']);
@@ -53,6 +59,8 @@ class ContractTypesController
 
     public function store(): void
     {
+        require_system_admin();
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed';
@@ -103,6 +111,8 @@ class ContractTypesController
 
     public function delete(int $contractTypeId): void
     {
+        require_system_admin();
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed';
@@ -132,6 +142,8 @@ class ContractTypesController
 
     public function update(int $contractTypeId): void
     {
+        require_system_admin();
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed';
@@ -422,5 +434,119 @@ class ContractTypesController
         $stmt = $this->db->prepare("SELECT * FROM contract_types WHERE contract_type_id = ? LIMIT 1");
         $stmt->execute([$contractTypeId]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /**
+     * AJAX: return the raw content of the HTML template file for inline editing.
+     */
+    public function templateContentAjax(int $contractTypeId): void
+    {
+        require_system_admin();
+
+        $contractType = $this->getContractType($contractTypeId);
+        if (!$contractType) {
+            $this->jsonResponse(['ok' => false, 'message' => 'Contract type not found.'], 404);
+            return;
+        }
+
+        $relPath = (string)($contractType['template_file_html'] ?? '');
+        $content = '';
+        if ($relPath !== '') {
+            $absPath = $this->resolveTemplateAbsolutePath($relPath);
+            if ($absPath !== '' && is_file($absPath) && is_readable($absPath)) {
+                $content = (string)file_get_contents($absPath);
+            }
+        }
+
+        $this->jsonResponse(['ok' => true, 'content' => $content]);
+    }
+
+    /**
+     * AJAX: save inline-edited HTML template content back to disk (and create the
+     * template file/DB reference if one doesn't exist yet).
+     */
+    public function updateTemplateContentAjax(): void
+    {
+        require_system_admin();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->jsonResponse(['ok' => false, 'message' => 'Method not allowed.'], 405);
+            return;
+        }
+
+        if (!verify_csrf((string)($_POST['csrf_token'] ?? ''))) {
+            $this->jsonResponse(['ok' => false, 'message' => 'Invalid CSRF token. Please reload the page and try again.'], 403);
+            return;
+        }
+
+        $contractTypeId = (int)($_POST['contract_type_id'] ?? 0);
+        $contractType = $this->getContractType($contractTypeId);
+        if (!$contractType) {
+            $this->jsonResponse(['ok' => false, 'message' => 'Contract type not found.'], 404);
+            return;
+        }
+
+        $content = (string)($_POST['content'] ?? '');
+        if (trim($content) === '') {
+            $this->jsonResponse(['ok' => false, 'message' => 'Template content cannot be empty.'], 400);
+            return;
+        }
+
+        $relPath = (string)($contractType['template_file_html'] ?? '');
+        $absPath = $relPath !== '' ? $this->resolveTemplateAbsolutePath($relPath) : '';
+
+        if ($absPath === '' || !is_file($absPath)) {
+            $baseDir = $this->getTemplateBaseDir('html');
+            if ($baseDir === '' || !str_starts_with($baseDir, '/')) {
+                $this->jsonResponse(['ok' => false, 'message' => 'Template directory setting is invalid. Please check Admin Settings.'], 500);
+                return;
+            }
+
+            $templateDir = rtrim($baseDir, '/') . '/' . $contractTypeId;
+            if (!is_dir($templateDir) && !mkdir($templateDir, 0755, true) && !is_dir($templateDir)) {
+                $this->jsonResponse(['ok' => false, 'message' => 'Failed to create template directory.'], 500);
+                return;
+            }
+
+            $absPath = $templateDir . '/template.html';
+        }
+
+        if (file_put_contents($absPath, $content) === false) {
+            $this->jsonResponse(['ok' => false, 'message' => 'Failed to save template file.'], 500);
+            return;
+        }
+
+        $storedPath = $this->toStoredTemplatePath($absPath);
+        if ($storedPath !== $relPath) {
+            try {
+                $stmt = $this->db->prepare("UPDATE contract_types SET template_file_html = ? WHERE contract_type_id = ?");
+                $stmt->execute([$storedPath, $contractTypeId]);
+            } catch (Throwable $e) {
+                $this->jsonResponse(['ok' => false, 'message' => 'Saved file but failed to update database: ' . $e->getMessage()], 500);
+                return;
+            }
+        }
+
+        $this->jsonResponse(['ok' => true, 'message' => 'Template saved successfully.']);
+    }
+
+    private function resolveTemplateAbsolutePath(string $relOrAbs): string
+    {
+        $p = trim($relOrAbs);
+        if ($p === '') {
+            return '';
+        }
+        if ($p[0] === '/') {
+            return $p;
+        }
+        return rtrim(APP_ROOT, '/') . '/' . ltrim($p, '/');
+    }
+
+    private function jsonResponse(array $payload, int $statusCode = 200): void
+    {
+        http_response_code($statusCode);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($payload);
+        exit;
     }
 }
