@@ -20,6 +20,7 @@ header('Content-Type: application/json; charset=utf-8');
 $docId = (int)($_GET['doc_id'] ?? 0);
 $sig = (string)($_GET['sig'] ?? '');
 $key = trim((string)($_POST['key'] ?? ($_GET['key'] ?? '')));
+$type = (string)($_GET['type'] ?? 'contract_document');
 
 if ($docId <= 0 || $sig === '' || $key === '') {
     http_response_code(400);
@@ -27,7 +28,12 @@ if ($docId <= 0 || $sig === '' || $key === '') {
     exit;
 }
 
-if (!function_exists('oo_verify') || !oo_verify(['doc_id' => $docId, 'action' => 'forcesave'], $sig)) {
+$sigParams = ['doc_id' => $docId, 'action' => 'forcesave'];
+if ($type === 'contract_type_template') {
+    $sigParams['type'] = $type;
+}
+
+if (!function_exists('oo_verify') || !oo_verify($sigParams, $sig)) {
     http_response_code(403);
     echo json_encode(['error' => 1, 'message' => 'Bad signature']);
     exit;
@@ -40,7 +46,11 @@ if (!function_exists('oo_verify') || !oo_verify(['doc_id' => $docId, 'action' =>
 // server. Without waiting for that, "Back to Contract" can navigate before
 // the file on disk has actually changed, so Download/Email still see the
 // previous version until the next request.
-$stmt = db()->prepare('SELECT file_path FROM contract_documents WHERE contract_document_id = ? LIMIT 1');
+if ($type === 'contract_type_template') {
+    $stmt = db()->prepare('SELECT template_file_docx FROM contract_types WHERE contract_type_id = ? LIMIT 1');
+} else {
+    $stmt = db()->prepare('SELECT file_path FROM contract_documents WHERE contract_document_id = ? LIMIT 1');
+}
 $stmt->execute([$docId]);
 $filePath = (string)($stmt->fetchColumn() ?: '');
 $abs = $filePath !== '' ? APP_ROOT . '/' . ltrim($filePath, '/') : '';

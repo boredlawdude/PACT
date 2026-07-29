@@ -37,7 +37,7 @@ declare(strict_types=1);
   </div>
   <div class="d-flex align-items-center gap-2">
     <span id="onlyoffice-status" class="badge bg-secondary">Initializing...</span>
-    <a id="onlyoffice-back-link" href="/index.php?page=contracts_show&contract_id=<?= (int)$contractId ?>" class="btn btn-outline-secondary btn-sm">Back to Contract</a>
+    <a id="onlyoffice-back-link" href="<?= h((string)($backUrl ?? ('/index.php?page=contracts_show&contract_id=' . (int)($contractId ?? 0)))) ?>" class="btn btn-outline-secondary btn-sm"><?= h((string)($backLabel ?? 'Back to Contract')) ?></a>
   </div>
 </div>
 

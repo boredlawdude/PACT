@@ -121,6 +121,10 @@ switch ($page) {
     case 'onlyoffice_editor':
         (new OnlyOfficeController())->editor();
         break;
+
+    case 'contract_types_template_edit_online':
+        (new OnlyOfficeController())->templateEditor();
+        break;
         
 
         case 'contract_documents_create':

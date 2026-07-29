@@ -109,8 +109,12 @@ if (!function_exists('h')) {
 
         <div class="col-md-6">
           <div class="card border-success">
-            <div class="card-header bg-success text-white">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
               <h5 class="mb-0">DOCX Template</h5>
+              <?php if (!empty($contractType['template_file_docx'])): ?>
+                <a href="/index.php?page=contract_types_template_edit_online&contract_type_id=<?= (int)$contractType['contract_type_id'] ?>"
+                   class="btn btn-sm btn-light">Edit Inline</a>
+              <?php endif; ?>
             </div>
             <div class="card-body">
               <?php if (!empty($contractType['template_file_docx'])): ?>
@@ -131,6 +135,9 @@ if (!function_exists('h')) {
                      help="Upload a Microsoft Word file (.docx). Use ${field_name} for template variables.">
               <small class="form-text text-muted d-block mt-2">
                 DOCX uses <code>${field_name}</code> placeholders.
+                <?php if (!empty($contractType['template_file_docx'])): ?>
+                  Or use <strong>Edit Inline</strong> above to edit the uploaded template directly in the browser.
+                <?php endif; ?>
               </small>
             </div>
           </div>

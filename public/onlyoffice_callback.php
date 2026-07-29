@@ -7,6 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 $docId = (int)($_GET['doc_id'] ?? 0);
 $sig = (string)($_GET['sig'] ?? '');
+$type = (string)($_GET['type'] ?? 'contract_document');
 
 if ($docId <= 0 || $sig === '') {
     http_response_code(400);
@@ -14,7 +15,12 @@ if ($docId <= 0 || $sig === '') {
     exit;
 }
 
-if (!function_exists('oo_verify') || !oo_verify(['doc_id' => $docId], $sig)) {
+$sigParams = ['doc_id' => $docId];
+if ($type === 'contract_type_template') {
+    $sigParams['type'] = $type;
+}
+
+if (!function_exists('oo_verify') || !oo_verify($sigParams, $sig)) {
     http_response_code(403);
     echo json_encode(['error' => 1, 'message' => 'Bad signature']);
     exit;
@@ -42,21 +48,34 @@ if ($fileUrl === '') {
     exit;
 }
 
-$stmt = db()->prepare(
-    'SELECT contract_document_id, file_path
-     FROM contract_documents
-     WHERE contract_document_id = ?
-     LIMIT 1'
-);
-$stmt->execute([$docId]);
-$doc = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($type === 'contract_type_template') {
+    $stmt = db()->prepare(
+        'SELECT contract_type_id, template_file_docx
+         FROM contract_types
+         WHERE contract_type_id = ?
+         LIMIT 1'
+    );
+    $stmt->execute([$docId]);
+    $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+    $filePath = $doc ? trim((string)($doc['template_file_docx'] ?? '')) : '';
+} else {
+    $stmt = db()->prepare(
+        'SELECT contract_document_id, file_path
+         FROM contract_documents
+         WHERE contract_document_id = ?
+         LIMIT 1'
+    );
+    $stmt->execute([$docId]);
+    $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+    $filePath = $doc ? trim((string)($doc['file_path'] ?? '')) : '';
+}
+
 if (!$doc) {
     http_response_code(404);
     echo json_encode(['error' => 1, 'message' => 'Document not found']);
     exit;
 }
 
-$filePath = trim((string)($doc['file_path'] ?? ''));
 if ($filePath === '') {
     http_response_code(500);
     echo json_encode(['error' => 1, 'message' => 'Empty file path']);
