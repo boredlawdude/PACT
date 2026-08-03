@@ -435,10 +435,10 @@ if (!function_exists('get_full_generated_contracts_dir')) {
 
 if (!function_exists('get_contract_doc_subpath')) {
     /**
-     * Returns a filesystem-safe "{Department}/{ContractNumber}" path segment
-     * for a contract, used to group ALL of its documents (generated drafts,
-     * uploads, exhibits, change orders, procurement docs, etc.) into a single
-     * folder instead of scattering them across numeric contract_id folders.
+     * Returns a filesystem-safe "{Department}/{CounterpartyCompanyName}" path
+     * segment for a contract, used to group ALL of its documents (generated
+     * drafts, uploads, exhibits, change orders, procurement docs, etc.) into a
+     * single folder instead of scattering them across numeric contract_id folders.
      */
     function get_contract_doc_subpath(int $contractId): string
     {
@@ -448,9 +448,10 @@ if (!function_exists('get_contract_doc_subpath')) {
         }
 
         $stmt = db()->prepare(
-            "SELECT c.contract_number, d.department_name
+            "SELECT co.name AS counterparty_name, d.department_name
                FROM contracts c
                LEFT JOIN departments d ON d.department_id = c.department_id
+               LEFT JOIN companies co ON co.company_id = c.counterparty_company_id
               WHERE c.contract_id = ?
               LIMIT 1"
         );
@@ -465,9 +466,9 @@ if (!function_exists('get_contract_doc_subpath')) {
         };
 
         $dept = $sanitize((string)($row['department_name'] ?? ''), 'Unassigned');
-        $num  = $sanitize((string)($row['contract_number'] ?? ''), 'contract_' . $contractId);
+        $name = $sanitize((string)($row['counterparty_name'] ?? ''), 'contract_' . $contractId);
 
-        return $cache[$contractId] = $dept . '/' . $num;
+        return $cache[$contractId] = $dept . '/' . $name;
     }
 }
 
