@@ -267,6 +267,17 @@ function require_system_admin(): void {
   }
 }
 
+/** Any logged-in Town employee (people.is_town_employee = 1), regardless of role/department. */
+function is_town_user(): bool {
+  require_login();
+  $pid = current_person_id();
+  if ($pid <= 0) return false;
+
+  $stmt = db()->prepare("SELECT is_town_employee FROM people WHERE person_id = ? LIMIT 1");
+  $stmt->execute([$pid]);
+  return (bool)$stmt->fetchColumn();
+}
+
 /* ============================================================
    Contract permissions (dept-scoped)
    ============================================================ */

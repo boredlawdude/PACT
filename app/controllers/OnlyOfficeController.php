@@ -27,7 +27,12 @@ final class OnlyOfficeController
         }
 
         $contractId = (int)($doc['contract_id'] ?? 0);
-        if ($contractId <= 0 || !can_manage_contract($contractId)) {
+        if ($contractId <= 0) {
+            http_response_code(404);
+            echo 'Contract not found.';
+            return;
+        }
+        if (!is_town_user() && !can_manage_contract($contractId)) {
             http_response_code(403);
             echo 'Forbidden.';
             return;
