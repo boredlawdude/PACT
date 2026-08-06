@@ -791,22 +791,100 @@ class ContractsController
         $statusName = $this->getStatusName((int)($data['contract_status_id'] ?? 0));
         $this->logHistory($contractId, 'contract_created', null, $statusName, 'Contract created');
 
-        // If created from an intake submission, mark it as imported
+        // If created from an intake submission, mark it as imported and copy
+        // any uploaded exhibits into the contract's Documents section.
         if (!empty($_SESSION['intake_import_id'])) {
             $intakeId = (int)$_SESSION['intake_import_id'];
             unset($_SESSION['intake_import_id']);
             require_once APP_ROOT . '/app/models/ContractIntakeSubmission.php';
             $person = current_person();
+            $personId = (int)($person['person_id'] ?? 0);
             (new ContractIntakeSubmission($this->db))->markImported(
                 $intakeId,
                 $contractId,
-                (int)($person['person_id'] ?? 0)
+                $personId
             );
+            $this->importIntakeExhibitsToContract($intakeId, $contractId, $personId);
         }
 
         unset($_SESSION['old_contract_form']);
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;
+    }
+
+    /**
+     * Copy the files attached to a contract intake submission (Scope of
+     * Work/Proposal, Certificate of Insurance, Other Documents) into the
+     * new contract's Documents section (contract_documents). Infected files
+     * (per the ClamAV scan) are skipped. Failures for individual files are
+     * swallowed so one bad file can't block contract creation.
+     */
+    private function importIntakeExhibitsToContract(int $submissionId, int $contractId, int $personId): void
+    {
+        $stmt = $this->db->prepare("
+            SELECT exhibit_id, original_filename, stored_filename, mime_type, doc_category, scan_status
+            FROM   contract_intake_exhibits
+            WHERE  submission_id = ?
+            ORDER  BY uploaded_at ASC
+        ");
+        $stmt->execute([$submissionId]);
+        $exhibits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$exhibits) return;
+
+        $docTypeLabels = [
+            'sow_proposal'             => 'Scope of Work / Proposal',
+            'certificate_of_insurance' => 'Certificate of Insurance',
+            'other'                    => 'Supporting Document',
+        ];
+
+        $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';
+        $outputDir   = APP_ROOT . '/' . $relativeDir;
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0775, true);
+        }
+
+        $importedCount = 0;
+        foreach ($exhibits as $ex) {
+            if ($ex['scan_status'] === 'infected') continue; // never copy quarantined files
+
+            $sourcePath = APP_ROOT . '/storage/intake_exhibits/' . $ex['stored_filename'];
+            if (!is_file($sourcePath)) continue;
+
+            $docType = $docTypeLabels[$ex['doc_category']] ?? 'Supporting Document';
+            $safeDocType = preg_replace('/[^A-Za-z0-9_-]/', '_', $docType);
+            $ext = pathinfo($ex['original_filename'], PATHINFO_EXTENSION);
+
+            try {
+                $stmtIns = $this->db->prepare(
+                    "INSERT INTO contract_documents (contract_id, doc_type, file_name, file_path, mime_type, created_by_person_id, created_at)
+                     VALUES (?, ?, '', '', ?, ?, NOW())"
+                );
+                $stmtIns->execute([$contractId, $docType, $ex['mime_type'], $personId ?: null]);
+                $docId = (int)$this->db->lastInsertId();
+
+                $fileName   = $contractId . '_' . $safeDocType . '_v' . $docId . ($ext ? '.' . $ext : '');
+                $outputPath = $outputDir . $fileName;
+
+                if (!copy($sourcePath, $outputPath)) {
+                    $this->db->prepare("DELETE FROM contract_documents WHERE contract_document_id = ?")->execute([$docId]);
+                    continue;
+                }
+
+                $relativePath = $relativeDir . $fileName;
+                $this->db->prepare("UPDATE contract_documents SET file_name = ?, file_path = ? WHERE contract_document_id = ?")
+                    ->execute([$fileName, $relativePath, $docId]);
+
+                $importedCount++;
+            } catch (Throwable $e) {
+                // Skip this file, keep processing the rest.
+                continue;
+            }
+        }
+
+        if ($importedCount > 0) {
+            $this->logHistory($contractId, 'document_uploaded', null, null,
+                'Imported ' . $importedCount . ' document(s) from contract intake submission #' . $submissionId);
+        }
     }
 
     public function edit(int $contractId): void

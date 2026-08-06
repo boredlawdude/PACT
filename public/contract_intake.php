@@ -10,7 +10,6 @@ $contractTypes = db()->query(
 
 // ── File upload helpers ──────────────────────────────────────────────────────
 define('INTAKE_EXHIBIT_DIR', APP_ROOT . '/storage/intake_exhibits/');
-define('INTAKE_EXHIBIT_MAX_FILES', 5);
 define('INTAKE_EXHIBIT_MAX_BYTES', 10 * 1024 * 1024); // 10 MB
 define('INTAKE_EXHIBIT_ALLOWED_MIMES', [
     'application/pdf',
@@ -24,52 +23,65 @@ define('INTAKE_EXHIBIT_ALLOWED_MIMES', [
     'text/plain',
 ]);
 
+// The 3 upload boxes shown on the form: field name => [category key, label, max files]
+define('INTAKE_EXHIBIT_FIELDS', [
+    'exhibit_sow'   => ['category' => 'sow_proposal',             'label' => 'Scope of Work / Proposal',  'max' => 1],
+    'exhibit_coi'   => ['category' => 'certificate_of_insurance', 'label' => 'Certificate of Insurance',  'max' => 1],
+    'exhibit_other' => ['category' => 'other',                    'label' => 'Other Documents',           'max' => 2],
+]);
+
 /**
- * Validate the multifile upload field 'exhibits[]'.
- * Returns ['errors' => [...], 'valid_files' => [['tmp_name','name','size','mime'], ...]]
+ * Validate the 3 upload fields (exhibit_sow, exhibit_coi, exhibit_other[]).
+ * Returns ['errors' => [...], 'valid_files' => [['tmp_name','name','size','mime','category'], ...]]
  */
 function validateIntakeExhibits(): array {
     $errors = [];
     $valid  = [];
+    $finfo  = new finfo(FILEINFO_MIME_TYPE);
 
-    if (empty($_FILES['exhibits']['name'][0])) {
-        return ['errors' => [], 'valid_files' => []];
-    }
+    foreach (INTAKE_EXHIBIT_FIELDS as $field => $cfg) {
+        if (empty($_FILES[$field]) || empty($_FILES[$field]['name'])) continue;
 
-    $names  = (array)$_FILES['exhibits']['name'];
-    $tmps   = (array)$_FILES['exhibits']['tmp_name'];
-    $sizes  = (array)$_FILES['exhibits']['size'];
-    $errs   = (array)$_FILES['exhibits']['error'];
+        // Single-file inputs come back as scalars; the "other" input is multi.
+        $names = (array)$_FILES[$field]['name'];
+        $tmps  = (array)$_FILES[$field]['tmp_name'];
+        $sizes = (array)$_FILES[$field]['size'];
+        $errs  = (array)$_FILES[$field]['error'];
 
-    // Filter out blank entries
-    $count = 0;
-    foreach ($names as $i => $name) {
-        if ($name === '' || $errs[$i] === UPLOAD_ERR_NO_FILE) continue;
-        $count++;
-    }
-    if ($count > INTAKE_EXHIBIT_MAX_FILES) {
-        $errors[] = 'You may attach a maximum of ' . INTAKE_EXHIBIT_MAX_FILES . ' files per submission.';
-        return ['errors' => $errors, 'valid_files' => []];
-    }
-
-    $finfo = new finfo(FILEINFO_MIME_TYPE);
-    foreach ($names as $i => $name) {
-        if ($name === '' || $errs[$i] === UPLOAD_ERR_NO_FILE) continue;
-        $safeName = htmlspecialchars(basename($name), ENT_QUOTES, 'UTF-8');
-        if ($errs[$i] !== UPLOAD_ERR_OK) {
-            $errors[] = "Upload error for \u201c{$safeName}\u201d (code {$errs[$i]}).";
+        $count = 0;
+        foreach ($names as $i => $name) {
+            if ($name === '' || $errs[$i] === UPLOAD_ERR_NO_FILE) continue;
+            $count++;
+        }
+        if ($count > $cfg['max']) {
+            $errors[] = 'You may attach a maximum of ' . $cfg['max'] . ' file(s) for "' . $cfg['label'] . '".';
             continue;
         }
-        if ($sizes[$i] > INTAKE_EXHIBIT_MAX_BYTES) {
-            $errors[] = "\u201c{$safeName}\u201d exceeds the 10\u00a0MB size limit.";
-            continue;
+
+        foreach ($names as $i => $name) {
+            if ($name === '' || $errs[$i] === UPLOAD_ERR_NO_FILE) continue;
+            $safeName = htmlspecialchars(basename($name), ENT_QUOTES, 'UTF-8');
+            if ($errs[$i] !== UPLOAD_ERR_OK) {
+                $errors[] = "Upload error for \u201c{$safeName}\u201d (code {$errs[$i]}).";
+                continue;
+            }
+            if ($sizes[$i] > INTAKE_EXHIBIT_MAX_BYTES) {
+                $errors[] = "\u201c{$safeName}\u201d exceeds the 10\u00a0MB size limit.";
+                continue;
+            }
+            $mime = $finfo->file($tmps[$i]);
+            if (!in_array($mime, INTAKE_EXHIBIT_ALLOWED_MIMES, true)) {
+                $errors[] = "\u201c{$safeName}\u201d is not an allowed file type ({$mime}).";
+                continue;
+            }
+            $valid[] = [
+                'tmp_name' => $tmps[$i],
+                'name'     => $name,
+                'size'     => $sizes[$i],
+                'mime'     => $mime,
+                'category' => $cfg['category'],
+            ];
         }
-        $mime = $finfo->file($tmps[$i]);
-        if (!in_array($mime, INTAKE_EXHIBIT_ALLOWED_MIMES, true)) {
-            $errors[] = "\u201c{$safeName}\u201d is not an allowed file type ({$mime}).";
-            continue;
-        }
-        $valid[] = ['tmp_name' => $tmps[$i], 'name' => $name, 'size' => $sizes[$i], 'mime' => $mime];
     }
     return ['errors' => $errors, 'valid_files' => $valid];
 }
@@ -120,9 +132,9 @@ function saveIntakeExhibit(int $submissionId, array $file, PDO $db): void {
     [$scanStatus, $scanOutput] = scanFileWithClamAV($dest);
     $db->prepare("
         INSERT INTO contract_intake_exhibits
-            (submission_id, original_filename, stored_filename, file_size, mime_type, scan_status, scan_output)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ")->execute([$submissionId, basename($file['name']), $storedName, $file['size'], $file['mime'], $scanStatus, $scanOutput]);
+            (submission_id, original_filename, stored_filename, file_size, mime_type, doc_category, scan_status, scan_output)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ")->execute([$submissionId, basename($file['name']), $storedName, $file['size'], $file['mime'], $file['category'], $scanStatus, $scanOutput]);
 }
 
 // ── Handle submission ─────────────────────────────────────────────────────────
@@ -451,12 +463,28 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
     <div class="card-body">
       <p class="section-label">Supporting Documents <span class="fw-normal text-muted">(optional)</span></p>
       <p class="text-muted small mb-3">
-        You may attach up to <?= INTAKE_EXHIBIT_MAX_FILES ?> files (PDF, Word, Excel, images, or plain text &mdash; max 10&nbsp;MB each).
-        Typical documents include scopes of work, quotes, insurance certificates, or draft agreements.
+        Accepted formats: PDF, Word, Excel, images, or plain text &mdash; max 10&nbsp;MB each.
       </p>
-      <input class="form-control" type="file" name="exhibits[]" id="exhibits"
-             multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
-      <div class="form-text mt-1">Hold <kbd>Ctrl</kbd> (Windows) or <kbd>&#8984;</kbd> (Mac) to select multiple files at once.</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Scope of Work / Proposal</label>
+          <input class="form-control" type="file" name="exhibit_sow" id="exhibit_sow"
+                 accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
+          <div class="form-text">1 file</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Certificate of Insurance</label>
+          <input class="form-control" type="file" name="exhibit_coi" id="exhibit_coi"
+                 accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
+          <div class="form-text">1 file</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Other Documents</label>
+          <input class="form-control" type="file" name="exhibit_other[]" id="exhibit_other"
+                 multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
+          <div class="form-text mt-1">Up to 2 additional files. Hold <kbd>Ctrl</kbd> (Windows) or <kbd>&#8984;</kbd> (Mac) to select multiple files at once.</div>
+        </div>
+      </div>
     </div>
   </div>
 

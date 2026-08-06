@@ -69,7 +69,7 @@ class ContractIntakeController
         }
 
         $exhibitStmt = $this->db->prepare("
-            SELECT exhibit_id, original_filename, file_size, mime_type, scan_status, uploaded_at
+            SELECT exhibit_id, original_filename, file_size, mime_type, doc_category, scan_status, uploaded_at
             FROM   contract_intake_exhibits
             WHERE  submission_id = ?
             ORDER  BY uploaded_at ASC

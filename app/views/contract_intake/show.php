@@ -158,6 +158,7 @@ function row(string $label, mixed $value, bool $money = false): void {
           <thead class="table-light">
             <tr>
               <th>Filename</th>
+              <th>Category</th>
               <th>Size</th>
               <th>Type</th>
               <th>Scan</th>
@@ -173,11 +174,17 @@ function row(string $label, mixed $value, bool $money = false): void {
                   'error'    => ['bg-warning text-dark', 'Scan Error'],
                   default    => ['bg-secondary', 'Pending Scan'],
               };
+              $categoryLabel = match($ex['doc_category'] ?? 'other') {
+                  'sow_proposal'             => 'Scope of Work / Proposal',
+                  'certificate_of_insurance' => 'Certificate of Insurance',
+                  default                    => 'Other',
+              };
               $canDownload = $ex['scan_status'] !== 'infected';
               $kb = number_format($ex['file_size'] / 1024, 1);
             ?>
             <tr>
               <td class="align-middle"><?= h($ex['original_filename']) ?></td>
+              <td class="align-middle text-muted small"><?= h($categoryLabel) ?></td>
               <td class="align-middle text-muted small"><?= $kb ?>&nbsp;KB</td>
               <td class="align-middle text-muted small"><?= h($ex['mime_type']) ?></td>
               <td class="align-middle">
