@@ -274,6 +274,20 @@ if (!function_exists('h')) {
                             </select>
                             <div class="form-text text-muted">Links this contract to a project in the Project Manager app.</div>
                         </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Town Location for Shipping or Work</label>
+                            <select class="form-select" name="town_location_id">
+                                <option value="">(none)</option>
+                                <?php foreach (($townLocations ?? []) as $loc): ?>
+                                    <option value="<?= (int)$loc['location_id'] ?>"
+                                        <?= ((string)($contract['town_location_id'] ?? '') === (string)$loc['location_id']) ? 'selected' : '' ?>>
+                                        <?= h($loc['location_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text text-muted">Where deliveries (FOB) or on-site work for this contract should go.</div>
+                        </div>
                     </div>
                 </div>
             </div>

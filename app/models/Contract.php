@@ -172,7 +172,13 @@ class Contract
                    COALESCE(op.full_name, op.display_name) AS owner_primary_contact_name,
                    COALESCE(c.counterparty_contact_email, cp.email) AS counterparty_primary_contact_email,
                    COALESCE(c.counterparty_contact_name, cp.full_name, cp.display_name) AS counterparty_primary_contact_name,
-                   cs.contract_status_name AS status_name
+                   cs.contract_status_name AS status_name,
+                   tl.location_name AS town_location_name,
+                   tl.address_line1 AS town_location_address_line1,
+                   tl.address_line2 AS town_location_address_line2,
+                   tl.city AS town_location_city,
+                   tl.state_region AS town_location_state,
+                   tl.postal_code AS town_location_postal_code
             FROM contracts c
             LEFT JOIN contract_types ct ON c.contract_type_id = ct.contract_type_id
             LEFT JOIN payment_terms pt ON c.payment_terms_id = pt.payment_terms_id
@@ -181,6 +187,7 @@ class Contract
             LEFT JOIN people op ON c.owner_primary_contact_id = op.person_id
             LEFT JOIN people cp ON c.counterparty_primary_contact_id = cp.person_id
             LEFT JOIN contract_statuses cs ON c.contract_status_id = cs.contract_status_id
+            LEFT JOIN town_locations tl ON c.town_location_id = tl.location_id
             WHERE c.contract_id = :contract_id
             LIMIT 1
         ";
@@ -213,6 +220,7 @@ class Contract
                 counterparty_contact_email,
                 owner_company_id,
                 owner_primary_contact_id,
+                town_location_id,
                 department_id,
                 governing_law,
                 currency,
@@ -250,6 +258,7 @@ class Contract
                 :counterparty_contact_email,
                 :owner_company_id,
                 :owner_primary_contact_id,
+                :town_location_id,
                 :department_id,
                 :governing_law,
                 :currency,
@@ -303,6 +312,7 @@ class Contract
                 counterparty_contact_email = :counterparty_contact_email,
                 owner_company_id = :owner_company_id,
                 owner_primary_contact_id = :owner_primary_contact_id,
+                town_location_id = :town_location_id,
                 department_id = :department_id,
                 governing_law = :governing_law,
                 currency = :currency,
@@ -386,6 +396,7 @@ class Contract
             'counterparty_contact_email' => $this->nullIfEmpty($data['counterparty_contact_email'] ?? null),
             'owner_company_id' => $this->nullIfEmpty($data['owner_company_id'] ?? 3),
             'owner_primary_contact_id' => $this->nullIfEmpty($data['owner_primary_contact_id'] ?? null),
+            'town_location_id' => $this->nullIfEmpty($data['town_location_id'] ?? null),
             'department_id' => $this->nullIfEmpty($data['department_id'] ?? null),
             'governing_law' => $this->nullIfEmpty($data['governing_law'] ?? 'North Carolina'),
             'currency' => $this->nullIfEmpty($data['currency'] ?? 'USD'),

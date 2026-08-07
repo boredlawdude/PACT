@@ -117,6 +117,10 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
             ['department_code',                  'Department code / abbreviation'],
             ['payment_terms_name',               'Payment terms label (e.g. Net 30)'],
             ['payment_terms_description',        'Payment terms description / detail'],
+            ['town_location',                    'Town Location for shipping/work — name + full address in one line (e.g. "Public Works Garage — 45 Shop Rd, Springfield, ST 12345")'],
+            ['town_location_name',               'Town Location name only (e.g. Public Works Garage)'],
+            ['town_location_address',            'Town Location street address + city/state/zip, comma-separated'],
+            ['town_location_city_state_zip',     'Town Location city, state ZIP — formatted as "City, ST 00000"'],
           ];
           foreach ($partyFields as [$name, $desc]): ?>
           <tr>

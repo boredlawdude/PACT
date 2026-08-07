@@ -35,6 +35,13 @@ class AdminSettingsController {
 
         $pdo = db();
         $org = $pdo->query("SELECT * FROM organization_settings ORDER BY id ASC LIMIT 1")->fetch() ?: [];
+        $people = $pdo->query("
+            SELECT person_id,
+                COALESCE(NULLIF(full_name,''), TRIM(CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,'')))) AS display_name
+            FROM people
+            WHERE is_active = 1
+            ORDER BY display_name
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
         require APP_ROOT . '/app/views/admin_settings/organization.php';
     }
@@ -62,6 +69,10 @@ class AdminSettingsController {
             'finance_director_name'   => trim($_POST['finance_director_name'] ?? '') ?: null,
             'mayor_or_exec_name'      => trim($_POST['mayor_or_exec_name']    ?? '') ?: null,
             'fiscal_year_start_month' => (int)($_POST['fiscal_year_start_month'] ?? 7),
+            'town_manager_person_id'      => !empty($_POST['town_manager_person_id']) ? (int)$_POST['town_manager_person_id'] : null,
+            'town_clerk_person_id'        => !empty($_POST['town_clerk_person_id']) ? (int)$_POST['town_clerk_person_id'] : null,
+            'town_attorney_person_id'     => !empty($_POST['town_attorney_person_id']) ? (int)$_POST['town_attorney_person_id'] : null,
+            'finance_director_person_id'  => !empty($_POST['finance_director_person_id']) ? (int)$_POST['finance_director_person_id'] : null,
         ];
 
         if ($fields['org_name'] === '') {
@@ -117,26 +128,35 @@ class AdminSettingsController {
                     org_name = ?, org_type = ?, website_url = ?, logo_path = ?,
                     primary_contact_name = ?, primary_contact_email = ?,
                     finance_director_name = ?, mayor_or_exec_name = ?,
-                    fiscal_year_start_month = ?
+                    fiscal_year_start_month = ?,
+                    town_manager_person_id = ?, town_clerk_person_id = ?,
+                    town_attorney_person_id = ?, finance_director_person_id = ?
                 WHERE id = ?
             ")->execute([
                 $fields['org_name'], $fields['org_type'], $fields['website_url'], $fields['logo_path'],
                 $fields['primary_contact_name'], $fields['primary_contact_email'],
                 $fields['finance_director_name'], $fields['mayor_or_exec_name'],
-                $fields['fiscal_year_start_month'], $existing['id'],
+                $fields['fiscal_year_start_month'],
+                $fields['town_manager_person_id'], $fields['town_clerk_person_id'],
+                $fields['town_attorney_person_id'], $fields['finance_director_person_id'],
+                $existing['id'],
             ]);
         } else {
             $pdo->prepare("
                 INSERT INTO organization_settings
                     (org_name, org_type, website_url, logo_path,
                      primary_contact_name, primary_contact_email,
-                     finance_director_name, mayor_or_exec_name, fiscal_year_start_month)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     finance_director_name, mayor_or_exec_name, fiscal_year_start_month,
+                     town_manager_person_id, town_clerk_person_id,
+                     town_attorney_person_id, finance_director_person_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ")->execute([
                 $fields['org_name'], $fields['org_type'], $fields['website_url'], $fields['logo_path'],
                 $fields['primary_contact_name'], $fields['primary_contact_email'],
                 $fields['finance_director_name'], $fields['mayor_or_exec_name'],
                 $fields['fiscal_year_start_month'],
+                $fields['town_manager_person_id'], $fields['town_clerk_person_id'],
+                $fields['town_attorney_person_id'], $fields['finance_director_person_id'],
             ]);
         }
 

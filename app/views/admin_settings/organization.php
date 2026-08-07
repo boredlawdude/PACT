@@ -108,9 +108,52 @@
                    value="<?= h($org['mayor_or_exec_name'] ?? '') ?>">
           </div>
           <div class="col-md-6">
-            <label class="form-label fw-semibold" for="finance_director_name">Finance Director</label>
-            <input type="text" class="form-control" id="finance_director_name" name="finance_director_name"
-                   value="<?= h($org['finance_director_name'] ?? '') ?>">
+            <label class="form-label fw-semibold" for="town_manager_person_id">Town Manager</label>
+            <select class="form-select" id="town_manager_person_id" name="town_manager_person_id">
+              <option value="">&#8212; Select &#8212;</option>
+              <?php foreach (($people ?? []) as $p): ?>
+                <option value="<?= (int)$p['person_id'] ?>"
+                  <?= ((string)($org['town_manager_person_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                  <?= h($p['display_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="town_clerk_person_id">Town Clerk</label>
+            <select class="form-select" id="town_clerk_person_id" name="town_clerk_person_id">
+              <option value="">&#8212; Select &#8212;</option>
+              <?php foreach (($people ?? []) as $p): ?>
+                <option value="<?= (int)$p['person_id'] ?>"
+                  <?= ((string)($org['town_clerk_person_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                  <?= h($p['display_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="town_attorney_person_id">Town Attorney</label>
+            <select class="form-select" id="town_attorney_person_id" name="town_attorney_person_id">
+              <option value="">&#8212; Select &#8212;</option>
+              <?php foreach (($people ?? []) as $p): ?>
+                <option value="<?= (int)$p['person_id'] ?>"
+                  <?= ((string)($org['town_attorney_person_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                  <?= h($p['display_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="finance_director_person_id">Finance Director</label>
+            <select class="form-select" id="finance_director_person_id" name="finance_director_person_id">
+              <option value="">&#8212; Select &#8212;</option>
+              <?php foreach (($people ?? []) as $p): ?>
+                <option value="<?= (int)$p['person_id'] ?>"
+                  <?= ((string)($org['finance_director_person_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                  <?= h($p['display_name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-semibold" for="primary_contact_name">Primary Contact Name</label>

@@ -614,6 +614,27 @@ case 'departments_store':
         }
         break;
 
+    case 'admin_town_locations':
+        require_once APP_ROOT . '/app/controllers/TownLocationsController.php';
+        (new TownLocationsController())->index();
+        break;
+    case 'admin_town_locations_create':
+        require_once APP_ROOT . '/app/controllers/TownLocationsController.php';
+        (new TownLocationsController())->create();
+        break;
+    case 'admin_town_locations_update':
+        require_once APP_ROOT . '/app/controllers/TownLocationsController.php';
+        (new TownLocationsController())->update();
+        break;
+    case 'admin_town_locations_delete':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_once APP_ROOT . '/app/controllers/TownLocationsController.php';
+            (new TownLocationsController())->delete();
+        } else {
+            http_response_code(405);
+        }
+        break;
+
     // ── User Roles ────────────────────────────────────────────────────────────
 
     case 'admin_roles':

@@ -238,6 +238,21 @@ class ContractsController
         // No dedicated address on the person record — use the owner/municipality company's address.
         $contract['town_contact_address']      = $contract['owner_company_address'] ?? '';
 
+        // Town Location for shipping/work (town_location_id) — single merge field with
+        // the location name and full address, plus individual pieces for flexibility.
+        $tlName    = $contract['town_location_name'] ?? '';
+        $tlLine1   = $contract['town_location_address_line1'] ?? '';
+        $tlLine2   = $contract['town_location_address_line2'] ?? '';
+        $tlCity    = $contract['town_location_city'] ?? '';
+        $tlState   = $contract['town_location_state'] ?? '';
+        $tlZip     = $contract['town_location_postal_code'] ?? '';
+        $tlCsz     = trim(implode(', ', array_filter([$tlCity, $tlState])));
+        if (!empty($tlZip)) $tlCsz .= ' ' . $tlZip;
+        $tlAddressLines = array_filter([$tlLine1, $tlLine2, $tlCsz]);
+        $contract['town_location_city_state_zip'] = $tlCsz;
+        $contract['town_location_address']        = implode(', ', $tlAddressLines);
+        $contract['town_location'] = trim(implode(' — ', array_filter([$tlName, implode(', ', $tlAddressLines)])));
+
         if (!empty($contract['counterparty_company_id'])) {
             $stmt = $this->db->prepare("
                 SELECT name, address, address_line1, address_line2, city, state_region, postal_code,
@@ -761,6 +776,8 @@ class ContractsController
         }
         $ownerPeople = $this->ensureSelectedPersonInList($ownerPeople, (int)($contract['owner_primary_contact_id'] ?? 0));
 
+        $townLocations = $this->getTownLocations();
+
         $complianceInfoLink = $this->getSystemSetting('compliance_info_link');
 
         require APP_ROOT . '/app/views/contracts/edit.php';
@@ -923,6 +940,7 @@ class ContractsController
             $ownerPeople = $this->getPeopleByCompany((int)$contract['owner_company_id']);
         }
         $ownerPeople = $this->ensureSelectedPersonInList($ownerPeople, (int)($contract['owner_primary_contact_id'] ?? 0));
+        $townLocations = $this->getTownLocations();
         $complianceInfoLink = $this->getSystemSetting('compliance_info_link');
         $riskManagerEmails  = $this->getRiskManagerEmails();
         require APP_ROOT . '/app/views/contracts/edit.php';
@@ -1305,6 +1323,11 @@ class ContractsController
 
     private function getPeopleByCompany(int $companyId): array {
         $stmt = $this->db->query("SELECT person_id, first_name, last_name, full_name FROM people WHERE is_town_employee = 1 AND is_active = 1 ORDER BY last_name, first_name");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function getTownLocations(): array {
+        $stmt = $this->db->query("SELECT location_id, location_name, address_line1, address_line2, city, state_region, postal_code FROM town_locations WHERE is_active = 1 ORDER BY location_name ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
