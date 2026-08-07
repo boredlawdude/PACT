@@ -43,6 +43,12 @@ class AdminSettingsController {
             ORDER BY display_name
         ")->fetchAll(PDO::FETCH_ASSOC);
 
+        require_once APP_ROOT . '/app/models/TownLocation.php';
+        $townLocations = (new TownLocation($pdo))->all();
+        $townLocationErrors = $_SESSION['town_location_errors'] ?? [];
+        $townLocationSuccess = $_SESSION['town_location_success'] ?? false;
+        unset($_SESSION['town_location_errors'], $_SESSION['town_location_success']);
+
         require APP_ROOT . '/app/views/admin_settings/organization.php';
     }
 

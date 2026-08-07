@@ -15,6 +15,16 @@ class TownLocationsController {
         }
     }
 
+    // Only allow redirecting back to known internal pages (avoid open redirect).
+    private function redirectBackTarget(): string {
+        $target = $_POST['redirect_to'] ?? 'admin_town_locations';
+        $allowed = ['admin_town_locations', 'admin_organization'];
+        if (!in_array($target, $allowed, true)) {
+            $target = 'admin_town_locations';
+        }
+        return '/index.php?page=' . $target;
+    }
+
     public function index(): void {
         $this->requireAdmin();
         $locations = $this->model->all();
@@ -48,7 +58,7 @@ class TownLocationsController {
         }
         $_SESSION['town_location_errors'] = $errors;
         $_SESSION['town_location_success'] = empty($errors);
-        header('Location: /index.php?page=admin_town_locations');
+        header('Location: ' . $this->redirectBackTarget());
         exit;
     }
 
@@ -68,7 +78,7 @@ class TownLocationsController {
         }
         $_SESSION['town_location_errors'] = $errors;
         $_SESSION['town_location_success'] = empty($errors);
-        header('Location: /index.php?page=admin_town_locations');
+        header('Location: ' . $this->redirectBackTarget());
         exit;
     }
 
@@ -77,7 +87,7 @@ class TownLocationsController {
         $id = (int)($_POST['location_id'] ?? 0);
         if ($id <= 0) {
             $_SESSION['town_location_errors'] = ['Invalid location ID.'];
-            header('Location: /index.php?page=admin_town_locations');
+            header('Location: ' . $this->redirectBackTarget());
             exit;
         }
         try {
@@ -90,7 +100,7 @@ class TownLocationsController {
                 $_SESSION['town_location_errors'] = ['Delete failed. Please try again.'];
             }
         }
-        header('Location: /index.php?page=admin_town_locations');
+        header('Location: ' . $this->redirectBackTarget());
         exit;
     }
 }
