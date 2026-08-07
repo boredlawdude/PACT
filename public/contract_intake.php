@@ -489,7 +489,10 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
   </div>
 
   <div class="d-flex gap-2 mb-5">
-    <button type="submit" class="btn btn-primary px-4">Submit Contract Request</button>
+    <button type="submit" class="btn btn-primary px-4" id="submitBtn">
+      <span id="submitSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+      <span id="submitBtnText">Submit Contract Request</span>
+    </button>
   </div>
 
 </form>
@@ -497,5 +500,22 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function () {
+    var form = document.querySelector('form[action="/contract_intake.php"]');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+      // Let native required/validation checks run first; if the form is
+      // actually invalid the browser won't fire this 'submit' event at all.
+      var btn = document.getElementById('submitBtn');
+      var spinner = document.getElementById('submitSpinner');
+      var text = document.getElementById('submitBtnText');
+      if (!btn) return;
+      btn.disabled = true;
+      if (spinner) spinner.classList.remove('d-none');
+      if (text) text.textContent = 'Submitting\u2026';
+    });
+  })();
+</script>
 </body>
 </html>
