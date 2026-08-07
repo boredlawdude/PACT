@@ -223,52 +223,59 @@ if (!function_exists('h')) {
                         </div>
 
             <div class="col-md-4">
-                <label class="form-label">Department</label>
-                <select class="form-select" name="department_id">
-                    <option value="">(none)</option>
-                    <?php foreach (($departments ?? []) as $d): ?>
-                        <option value="<?= (int)$d['department_id'] ?>"
-                            <?= ((string)($contract['department_id'] ?? '') === (string)$d['department_id']) ? 'selected' : '' ?>>
-                            <?= h($d['department_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="border rounded-4 p-3 bg-light-subtle h-100 shadow-sm">
+                    <div class="small text-uppercase fw-semibold text-muted mb-2">Department &amp; Assignment</div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Department</label>
+                            <select class="form-select" name="department_id">
+                                <option value="">(none)</option>
+                                <?php foreach (($departments ?? []) as $d): ?>
+                                    <option value="<?= (int)$d['department_id'] ?>"
+                                        <?= ((string)($contract['department_id'] ?? '') === (string)$d['department_id']) ? 'selected' : '' ?>>
+                                        <?= h($d['department_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
 
-            <div class="col-md-4">
-                <input type="hidden" name="owner_company_id" value="<?= h($contract['owner_company_id'] ?? '') ?>">
+                        <div class="col-12">
+                            <input type="hidden" name="owner_company_id" value="<?= h($contract['owner_company_id'] ?? '') ?>">
 
-                <label class="form-label">Town Contact</label>
-                <select class="form-select" name="owner_primary_contact_id">
-                    <option value="">(none)</option>
-                    <?php foreach (($ownerPeople ?? []) as $p): ?>
-                        <?php
-                        $nm = trim((string)($p['full_name'] ?? ''));
-                        if ($nm === '') {
-                            $nm = trim((string)($p['first_name'] ?? '') . ' ' . (string)($p['last_name'] ?? ''));
-                        }
-                        $label = $nm . (!empty($p['email']) ? ' — ' . $p['email'] : '');
-                        ?>
-                        <option value="<?= (int)$p['person_id'] ?>"
-                            <?= ((string)($contract['owner_primary_contact_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
-                            <?= h($label) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                            <label class="form-label fw-semibold">Town Contact</label>
+                            <select class="form-select" name="owner_primary_contact_id">
+                                <option value="">(none)</option>
+                                <?php foreach (($ownerPeople ?? []) as $p): ?>
+                                    <?php
+                                    $nm = trim((string)($p['full_name'] ?? ''));
+                                    if ($nm === '') {
+                                        $nm = trim((string)($p['first_name'] ?? '') . ' ' . (string)($p['last_name'] ?? ''));
+                                    }
+                                    $label = $nm . (!empty($p['email']) ? ' — ' . $p['email'] : '');
+                                    ?>
+                                    <option value="<?= (int)$p['person_id'] ?>"
+                                        <?= ((string)($contract['owner_primary_contact_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                                        <?= h($label) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
 
-            <div class="col-md-4">
-                <label class="form-label">Project</label>
-                <select class="form-select" name="project_id">
-                    <option value="">(none)</option>
-                    <?php foreach (($projects ?? []) as $proj): ?>
-                        <option value="<?= (int)$proj['project_id'] ?>"
-                            <?= ((string)($contract['project_id'] ?? '') === (string)$proj['project_id']) ? 'selected' : '' ?>>
-                            <?= h($proj['project_code']) ?> — <?= h($proj['project_name']) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <div class="form-text text-muted">Links this contract to a project in the Project Manager app.</div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Project</label>
+                            <select class="form-select" name="project_id">
+                                <option value="">(none)</option>
+                                <?php foreach (($projects ?? []) as $proj): ?>
+                                    <option value="<?= (int)$proj['project_id'] ?>"
+                                        <?= ((string)($contract['project_id'] ?? '') === (string)$proj['project_id']) ? 'selected' : '' ?>>
+                                        <?= h($proj['project_code']) ?> — <?= h($proj['project_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text text-muted">Links this contract to a project in the Project Manager app.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="col-md-8">
