@@ -236,6 +236,28 @@ if (!function_exists('h')) {
             </div>
 
             <div class="col-md-4">
+                <input type="hidden" name="owner_company_id" value="<?= h($contract['owner_company_id'] ?? '') ?>">
+
+                <label class="form-label">Town Contact</label>
+                <select class="form-select" name="owner_primary_contact_id">
+                    <option value="">(none)</option>
+                    <?php foreach (($ownerPeople ?? []) as $p): ?>
+                        <?php
+                        $nm = trim((string)($p['full_name'] ?? ''));
+                        if ($nm === '') {
+                            $nm = trim((string)($p['first_name'] ?? '') . ' ' . (string)($p['last_name'] ?? ''));
+                        }
+                        $label = $nm . (!empty($p['email']) ? ' — ' . $p['email'] : '');
+                        ?>
+                        <option value="<?= (int)$p['person_id'] ?>"
+                            <?= ((string)($contract['owner_primary_contact_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                            <?= h($label) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="col-md-4">
                 <label class="form-label">Project</label>
                 <select class="form-select" name="project_id">
                     <option value="">(none)</option>
@@ -271,28 +293,6 @@ if (!function_exists('h')) {
                             <input type="text" class="form-control" name="status_comment"
                                    maxlength="255"
                                    value="<?= h($contract['status_comment'] ?? '') ?>">
-                        </div>
-
-                        <div class="col-12">
-                            <input type="hidden" name="owner_company_id" value="<?= h($contract['owner_company_id'] ?? '') ?>">
-
-                            <label class="form-label">Responsible Person</label>
-                            <select class="form-select" name="owner_primary_contact_id">
-                                <option value="">(none)</option>
-                                <?php foreach (($ownerPeople ?? []) as $p): ?>
-                                    <?php
-                                    $nm = trim((string)($p['full_name'] ?? ''));
-                                    if ($nm === '') {
-                                        $nm = trim((string)($p['first_name'] ?? '') . ' ' . (string)($p['last_name'] ?? ''));
-                                    }
-                                    $label = $nm . (!empty($p['email']) ? ' — ' . $p['email'] : '');
-                                    ?>
-                                    <option value="<?= (int)$p['person_id'] ?>"
-                                        <?= ((string)($contract['owner_primary_contact_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
-                                        <?= h($label) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
                         </div>
                     </div>
                 </div>

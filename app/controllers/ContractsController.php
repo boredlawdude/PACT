@@ -229,6 +229,15 @@ class ContractsController
                 $contract[$k] = '';
             }
         }
+
+        // Town Contact — the owner/municipality's responsible person (owner_primary_contact_id)
+        $contract['town_contact_name']         = $contract['owner_primary_contact_name'] ?? '';
+        $contract['town_contact_email']        = $contract['owner_primary_contact_email'] ?? '';
+        $contract['town_contact_office_phone'] = $contract['owner_primary_contact_office_phone'] ?? '';
+        $contract['town_contact_cell_phone']   = $contract['owner_primary_contact_cell_phone'] ?? '';
+        // No dedicated address on the person record — use the owner/municipality company's address.
+        $contract['town_contact_address']      = $contract['owner_company_address'] ?? '';
+
         if (!empty($contract['counterparty_company_id'])) {
             $stmt = $this->db->prepare("
                 SELECT name, address, address_line1, address_line2, city, state_region, postal_code,

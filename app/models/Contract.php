@@ -167,6 +167,8 @@ class Contract
                    d.department_name, d.department_code,
                    co.name AS counterparty_company_name,
                    op.email AS owner_primary_contact_email,
+                   op.officephone AS owner_primary_contact_office_phone,
+                   op.cellphone AS owner_primary_contact_cell_phone,
                    COALESCE(op.full_name, op.display_name) AS owner_primary_contact_name,
                    COALESCE(c.counterparty_contact_email, cp.email) AS counterparty_primary_contact_email,
                    COALESCE(c.counterparty_contact_name, cp.full_name, cp.display_name) AS counterparty_primary_contact_name,
