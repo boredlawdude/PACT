@@ -11,7 +11,7 @@
     <?php if (empty($hasLoginEvents)): ?>
         <div class="alert alert-warning">
             <strong>Login event tracking is not enabled yet.</strong><br>
-            Run <code>user_login_events_migration.sql</code> to enable "Logins (Last 30 Days)" counts.
+            Run <code>migrations/user_login_events_migration.sql</code> to enable "Logins (Last 30 Days)" counts.
         </div>
     <?php endif; ?>
 

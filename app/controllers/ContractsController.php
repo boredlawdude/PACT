@@ -1282,7 +1282,7 @@ class ContractsController
             $this->logHistory($contractId, 'document_sharepoint_linked', null, null, 'Linked document to SharePoint URL.');
         } catch (Throwable $e) {
             error_log('Set SharePoint link failed for document ' . $documentId . ': ' . $e->getMessage());
-            $_SESSION['flash_errors'] = ['Could not save SharePoint link. If this is a new deployment, run sharepoint_contract_documents_migration.sql first.'];
+            $_SESSION['flash_errors'] = ['Could not save SharePoint link. If this is a new deployment, run migrations/sharepoint_contract_documents_migration.sql first.'];
         }
 
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);

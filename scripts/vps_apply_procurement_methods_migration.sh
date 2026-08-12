@@ -13,7 +13,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/var/www/contracts_app}"
 MIGRATION_FILE="${MIGRATION_FILE:-procurement_methods_migration.sql}"
 ENV_FILE="$APP_DIR/.env"
-SQL_FILE="$APP_DIR/$MIGRATION_FILE"
+SQL_FILE="$APP_DIR/migrations/$MIGRATION_FILE"
 
 info() { printf '[INFO] %s\n' "$*"; }
 err() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }

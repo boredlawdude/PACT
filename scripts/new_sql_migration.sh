@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate a new SQL migration scaffold in the repo root.
+# Generate a new SQL migration scaffold in migrations/.
 # Usage:
 #   scripts/new_sql_migration.sh add_nextcloud_tokens
 # Output:
-#   add_nextcloud_tokens_migration.sql
+#   migrations/add_nextcloud_tokens_migration.sql
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <migration_name>"
@@ -23,7 +23,10 @@ if [[ -z "$name" ]]; then
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-file_path="$repo_root/${name}_migration.sql"
+migrations_dir="$repo_root/migrations"
+file_path="$migrations_dir/${name}_migration.sql"
+
+mkdir -p "$migrations_dir"
 
 if [[ -e "$file_path" ]]; then
   echo "Error: migration already exists: $file_path"
@@ -35,7 +38,7 @@ cat > "$file_path" <<SQL
 -- Date: $(date '+%Y-%m-%d %H:%M:%S %Z')
 -- Database: contract_manager
 -- Run with:
---   mysql -u root -p contract_manager < ${name}_migration.sql
+--   mysql -u root -p contract_manager < migrations/${name}_migration.sql
 
 START TRANSACTION;
 
