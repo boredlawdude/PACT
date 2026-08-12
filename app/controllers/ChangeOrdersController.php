@@ -56,6 +56,24 @@ class ChangeOrdersController
         return $fields;
     }
 
+    /**
+     * Reformat any plain "YYYY-MM-DD" date value in a merge-fields array to "MM/DD/YYYY".
+     * Only touches values that are exactly a bare date (no time component), so timestamps
+     * like created_at/updated_at and already-formatted long-form dates are left untouched.
+     */
+    private function formatDateFieldsForMerge(array $fields): array
+    {
+        foreach ($fields as $key => $value) {
+            if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                $ts = strtotime($value);
+                if ($ts !== false) {
+                    $fields[$key] = date('m/d/Y', $ts);
+                }
+            }
+        }
+        return $fields;
+    }
+
     private function applyDocxMergeValues(\PhpOffice\PhpWord\TemplateProcessor $processor, array $fields): void
     {
         $fields = $this->expandDocxFieldAliases($fields);
@@ -558,6 +576,10 @@ HTML;
                                         ? date('m/d/Y', strtotime((string)$changeOrder['approval_date'])) : '',
         ];
         $mergeFields = array_merge($contract, $coFormatted);
+
+        // Reformat any plain YYYY-MM-DD date merge fields as MM/DD/YYYY for templates.
+        $mergeFields = $this->formatDateFieldsForMerge($mergeFields);
+
 
         $createdBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
         $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';

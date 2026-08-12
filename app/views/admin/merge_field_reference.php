@@ -46,8 +46,8 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
             ['status_name',              'Current status label (e.g. Active, Out For Signature)'],
             ['status_comment',           'Optional comment on the current status'],
             ['contract_type_name',       'Contract type (e.g. Development Agreement, Service Contract)'],
-            ['start_date',               'Contract start / effective date (YYYY-MM-DD)'],
-            ['end_date',                 'Contract end / expiration date (YYYY-MM-DD)'],
+            ['start_date',               'Contract start / effective date (MM/DD/YYYY)'],
+            ['end_date',                 'Contract end / expiration date (MM/DD/YYYY)'],
             ['exhibit_list',              'Auto-generated list of all exhibits (e.g. Exhibit A - Scope of Work; Exhibit B - Certificate of Insurance). Drawn from documents that have a PDF Stamp set, in sort order.'],
             ['total_contract_value',     'Contract dollar amount — formatted with commas (e.g. 20,000.00)'],
             ['total_contract_value_dollars', 'Contract dollar amount with $ sign (e.g. $20,000.00)'],
@@ -64,14 +64,14 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
             ['procurement_method',       'Procurement method (e.g. Open Market, Formal Bid)'],
             ['bid_rfp_number',           'Bid or RFP reference number'],
             ['procurement_notes',        'Procurement narrative / notes'],
-            ['date_approved_by_procurement', 'Date approved by procurement (YYYY-MM-DD)'],
-            ['date_approved_by_manager', 'Date approved by manager (YYYY-MM-DD)'],
-            ['date_approved_by_council', 'Date approved by council (YYYY-MM-DD)'],
-            ['manager_approval_date',    'Manager approval date (YYYY-MM-DD)'],
-            ['purchasing_approval_date', 'Purchasing approval date (YYYY-MM-DD)'],
-            ['legal_approval_date',      'Legal approval date (YYYY-MM-DD)'],
-            ['risk_manager_approval_date','Risk manager approval date (YYYY-MM-DD)'],
-            ['council_approval_date',    'Council approval date (YYYY-MM-DD)'],
+            ['date_approved_by_procurement', 'Date approved by procurement (MM/DD/YYYY)'],
+            ['date_approved_by_manager', 'Date approved by manager (MM/DD/YYYY)'],
+            ['date_approved_by_council', 'Date approved by council (MM/DD/YYYY)'],
+            ['manager_approval_date',    'Manager approval date (MM/DD/YYYY)'],
+            ['purchasing_approval_date', 'Purchasing approval date (MM/DD/YYYY)'],
+            ['legal_approval_date',      'Legal approval date (MM/DD/YYYY)'],
+            ['risk_manager_approval_date','Risk manager approval date (MM/DD/YYYY)'],
+            ['council_approval_date',    'Council approval date (MM/DD/YYYY)'],
             ['created_at',               'Record creation timestamp'],
             ['updated_at',               'Record last-updated timestamp'],
           ];
@@ -161,7 +161,7 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
             ['counterparty_contact_name',     'Counterparty primary contact name (from company record)'],
             ['counterparty_website',          'Counterparty website URL'],
             ['counterparty_tax_id',           'Counterparty tax ID / EIN'],
-            ['counterparty_coi_exp_date',     'Counterparty COI expiration date (YYYY-MM-DD raw)'],
+            ['counterparty_coi_exp_date',     'Counterparty COI expiration date (MM/DD/YYYY)'],
             ['counterparty_coi_exp_date_formatted', 'Counterparty COI expiration date — long format (e.g. May 7, 2026)'],
             ['counterparty_signer1_name',     'Counterparty authorized signer 1 — name'],
             ['counterparty_signer1_title',    'Counterparty authorized signer 1 — title'],
@@ -299,7 +299,7 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
         <li>In <strong>Word (.docx)</strong>: type <code>${field_name}</code> directly in the document. Use <em>Find &amp; Replace</em> to verify the placeholder wasn't split across runs.</li>
         <li>In <strong>HTML templates</strong>: use <code>{{field_name}}</code> (double curly braces).</li>
         <li>If a field is blank or null, the placeholder is replaced with an empty string.</li>
-        <li>Date fields are stored as <code>YYYY-MM-DD</code>. Format them in Word with a date-format switch if needed.</li>
+        <li>Date fields (start_date, end_date, approval dates, etc.) are output as <code>MM/DD/YYYY</code>.</li>
         <li><code>da_daily_flow_maximum</code> is pre-formatted with commas and "gpd" suffix.</li>
         <li><code>co_amount_formatted</code> is pre-formatted with a $ sign and commas (e.g. <code>$1,500.00</code>).</li>
         <li>All DA fields are also available <em>without</em> the <code>da_</code> prefix unless a core contract field has the same name.</li>

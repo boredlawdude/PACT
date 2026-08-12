@@ -58,6 +58,24 @@ class ContractsController
         return $fields;
     }
 
+    /**
+     * Reformat any plain "YYYY-MM-DD" date value in a merge-fields array to "MM/DD/YYYY".
+     * Only touches values that are exactly a bare date (no time component), so timestamps
+     * like created_at/updated_at and already-formatted long-form dates are left untouched.
+     */
+    private function formatDateFieldsForMerge(array $fields): array
+    {
+        foreach ($fields as $key => $value) {
+            if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                $ts = strtotime($value);
+                if ($ts !== false) {
+                    $fields[$key] = date('m/d/Y', $ts);
+                }
+            }
+        }
+        return $fields;
+    }
+
     private function applyDocxMergeValues(\PhpOffice\PhpWord\TemplateProcessor $templateProcessor, array $fields): void
     {
         $fields = $this->expandDocxFieldAliases($fields);
@@ -372,6 +390,9 @@ class ContractsController
         }
         $contract['exhibit_list'] = implode('; ', $exhibitParts);
         // ─────────────────────────────────────────────────────────────────────────────
+
+        // Reformat any plain YYYY-MM-DD date merge fields as MM/DD/YYYY for templates.
+        $contract = $this->formatDateFieldsForMerge($contract);
 
         // Get contract type info (including template paths) — use override if provided
         $lookupTypeId = $overrideContractTypeId > 0 ? $overrideContractTypeId : ($contract['contract_type_id'] ?? 0);
