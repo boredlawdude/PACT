@@ -1145,7 +1145,7 @@ if (!function_exists('format_utc_to_eastern')) {
             <div class="alert alert-success py-2 mb-3"><?= h($_SESSION['flash_success']) ?></div>
             <?php unset($_SESSION['flash_success']); ?>
           <?php endif; ?>
-          <form method="post" action="/index.php?page=bidding_compliance_store" enctype="multipart/form-data">
+          <form method="post" action="/index.php?page=bidding_compliance_store" enctype="multipart/form-data" id="biddingComplianceForm">
             <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
             <div class="row g-2 align-items-end">
               <div class="col-md-2">
@@ -1262,6 +1262,7 @@ if (!function_exists('format_utc_to_eastern')) {
   (function () {
     const contractId = <?= (int)$contract['contract_id'] ?>;
     const contractProcurementMethodId = <?= (int)($contract['procurement_method_id'] ?? 0) ?>;
+    const form = document.getElementById('biddingComplianceForm');
     const eventSel = document.getElementById('bc_event_type');
     const commentField = document.getElementById('bc_comment');
     const consortiumFields = document.getElementById('bc_consortium_fields');
@@ -1283,15 +1284,16 @@ if (!function_exists('format_utc_to_eastern')) {
 
     eventSel.addEventListener('change', function () {
       const selectedLabel = this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : '';
+      const isApprovalEvent = /approval/i.test(selectedLabel);
+      const isConsortiumEvent = /consortium/i.test(selectedLabel);
 
-      // Show/hide consortium fields automatically based on the selected event type
-      if (consortiumFields && isConsortiumField) {
-        const isConsortiumEvent = /consortium/i.test(selectedLabel);
-        consortiumFields.classList.toggle('d-none', !isConsortiumEvent);
-        isConsortiumField.value = isConsortiumEvent ? '1' : '0';
+      // Show consortium fields for consortium-type events, and also for approval-type
+      // events so the consortium info can be reviewed/entered and appended below.
+      if (consortiumFields) {
+        consortiumFields.classList.toggle('d-none', !isConsortiumEvent && !isApprovalEvent);
       }
 
-      if (!/approval/i.test(selectedLabel)) {
+      if (!isApprovalEvent) {
         approvalAlreadyLogged = false;
         return;
       }
@@ -1324,6 +1326,16 @@ if (!function_exists('format_utc_to_eastern')) {
         }).catch(() => {});
       }
     });
+
+    // Determine the actual is_consortium flag from the entered field values at
+    // submit time, rather than relying solely on the selected event type label.
+    if (form && isConsortiumField) {
+      form.addEventListener('submit', function () {
+        const name = consortiumNameField ? consortiumNameField.value.trim() : '';
+        const contractNum = consortiumContractNumberField ? consortiumContractNumberField.value.trim() : '';
+        isConsortiumField.value = (name || contractNum) ? '1' : '0';
+      });
+    }
   })();
   </script>
   <?php endif; /* !$isDevAgreement */ ?>
