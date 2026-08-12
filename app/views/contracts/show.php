@@ -1272,20 +1272,32 @@ if (!function_exists('format_utc_to_eastern')) {
     if (!eventSel) return;
 
     let approvalAlreadyLogged = false;
+    let isApprovalActive = false;
+    let approvalLongDesc = '';
 
     function buildConsortiumSuffix() {
       const name = consortiumNameField ? consortiumNameField.value.trim() : '';
       const contractNum = consortiumContractNumberField ? consortiumContractNumberField.value.trim() : '';
       if (!name && !contractNum) return '';
       let suffix = 'Consortium: ' + (name || '—');
-      if (contractNum) suffix += ' (Contract# ' + contractNum + ')';
+      if (contractNum) suffix += ' (Master Contract #' + contractNum + ')';
       return suffix;
+    }
+
+    // Combine the Procurement Method Long Description with the Consortium Name /
+    // Master Contract Number into a single Comment value, so the whole thing can
+    // later be inserted into a contract as one field.
+    function updateApprovalComment() {
+      if (!commentField || !isApprovalActive) return;
+      const consortiumSuffix = buildConsortiumSuffix();
+      commentField.value = consortiumSuffix ? (approvalLongDesc + '\n' + consortiumSuffix) : approvalLongDesc;
     }
 
     eventSel.addEventListener('change', function () {
       const selectedLabel = this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : '';
       const isApprovalEvent = /approval/i.test(selectedLabel);
       const isConsortiumEvent = /consortium/i.test(selectedLabel);
+      isApprovalActive = isApprovalEvent;
 
       // Show consortium fields for consortium-type events, and also for approval-type
       // events so the consortium info can be reviewed/entered and appended below.
@@ -1298,16 +1310,14 @@ if (!function_exists('format_utc_to_eastern')) {
         return;
       }
 
-      // Auto-fill the comment from the contract's Procurement Method long description,
-      // appending any Consortium info already entered on the form.
+      // Fetch the Procurement Method long description, then combine it with
+      // whatever Consortium Name / Master Contract Number are currently entered.
       if (commentField && contractProcurementMethodId) {
         fetch('/index.php?page=api_procurement_method&procurement_method_id=' + encodeURIComponent(contractProcurementMethodId))
           .then(r => r.json())
           .then(data => {
-            if (data.long_desc) {
-              const consortiumSuffix = buildConsortiumSuffix();
-              commentField.value = consortiumSuffix ? data.long_desc + '\n' + consortiumSuffix : data.long_desc;
-            }
+            approvalLongDesc = data.long_desc || '';
+            updateApprovalComment();
           })
           .catch(() => {});
       }
@@ -1326,6 +1336,11 @@ if (!function_exists('format_utc_to_eastern')) {
         }).catch(() => {});
       }
     });
+
+    // As the user fills in Consortium Name / Master Contract Number after selecting
+    // Approval, keep the Comment field's combined value up to date live.
+    if (consortiumNameField) consortiumNameField.addEventListener('input', updateApprovalComment);
+    if (consortiumContractNumberField) consortiumContractNumberField.addEventListener('input', updateApprovalComment);
 
     // Determine the actual is_consortium flag from the entered field values at
     // submit time, rather than relying solely on the selected event type label.
