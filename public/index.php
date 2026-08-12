@@ -60,6 +60,12 @@ if ($page === 'api_procurement_method') {
     (new ProcurementMethodController())->lookupAjax();
     exit;
 }
+if ($page === 'api_log_bidding_approval') {
+    ob_clean();
+    require_once APP_ROOT . '/app/controllers/ContractsController.php';
+    (new ContractsController())->logBiddingApprovalAjax();
+    exit;
+}
 // ────────────────────────────────────────────────────────────────────────────
 
 // Backup download must run before any HTML output

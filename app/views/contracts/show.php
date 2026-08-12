@@ -1170,12 +1170,9 @@ if (!function_exists('format_utc_to_eastern')) {
                 <input type="file" name="compliance_file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg">
               </div>
               <div class="col-12">
-                <div class="form-check mt-1">
-                  <input class="form-check-input" type="checkbox" name="is_consortium" id="bc_is_consortium" value="1"
-                         onchange="document.getElementById('bc_consortium_fields').classList.toggle('d-none', !this.checked)">
-                  <label class="form-check-label small" for="bc_is_consortium">Bidding Consortium used</label>
-                </div>
+                <input type="hidden" name="is_consortium" id="bc_is_consortium" value="0">
                 <div id="bc_consortium_fields" class="d-none mt-2">
+                  <div class="small text-muted mb-1">Consortium fields shown automatically for consortium-related event types.</div>
                   <div class="row g-2">
                     <div class="col-md-5">
                       <label class="form-label form-label-sm mb-1">Consortium / Group Name</label>
@@ -1263,23 +1260,56 @@ if (!function_exists('format_utc_to_eastern')) {
 
   <script>
   (function () {
+    const contractId = <?= (int)$contract['contract_id'] ?>;
     const contractProcurementMethodId = <?= (int)($contract['procurement_method_id'] ?? 0) ?>;
     const eventSel = document.getElementById('bc_event_type');
     const commentField = document.getElementById('bc_comment');
-    if (!eventSel || !commentField) return;
+    const consortiumFields = document.getElementById('bc_consortium_fields');
+    const isConsortiumField = document.getElementById('bc_is_consortium');
+    if (!eventSel) return;
+
+    let approvalAlreadyLogged = false;
 
     eventSel.addEventListener('change', function () {
       const selectedLabel = this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : '';
-      if (!/approval/i.test(selectedLabel) || !contractProcurementMethodId) return;
 
-      fetch('/index.php?page=api_procurement_method&procurement_method_id=' + encodeURIComponent(contractProcurementMethodId))
-        .then(r => r.json())
-        .then(data => {
-          if (data.long_desc) {
-            commentField.value = data.long_desc;
-          }
-        })
-        .catch(() => {});
+      // Show/hide consortium fields automatically based on the selected event type
+      if (consortiumFields && isConsortiumField) {
+        const isConsortiumEvent = /consortium/i.test(selectedLabel);
+        consortiumFields.classList.toggle('d-none', !isConsortiumEvent);
+        isConsortiumField.value = isConsortiumEvent ? '1' : '0';
+      }
+
+      if (!/approval/i.test(selectedLabel)) {
+        approvalAlreadyLogged = false;
+        return;
+      }
+
+      // Auto-fill the comment from the contract's Procurement Method long description
+      if (commentField && contractProcurementMethodId) {
+        fetch('/index.php?page=api_procurement_method&procurement_method_id=' + encodeURIComponent(contractProcurementMethodId))
+          .then(r => r.json())
+          .then(data => {
+            if (data.long_desc) {
+              commentField.value = data.long_desc;
+            }
+          })
+          .catch(() => {});
+      }
+
+      // Record who selected the approval event and when, in the Contract History log
+      if (!approvalAlreadyLogged) {
+        approvalAlreadyLogged = true;
+        const body = new URLSearchParams({
+          contract_id: contractId,
+          event_label: selectedLabel
+        });
+        fetch('/index.php?page=api_log_bidding_approval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString()
+        }).catch(() => {});
+      }
     });
   })();
   </script>
@@ -1353,6 +1383,7 @@ if (!function_exists('format_utc_to_eastern')) {
                           'document_deleted' => '<span class="badge bg-danger">Doc Deleted</span>',
                           'document_emailed' => '<span class="badge bg-info text-dark">Doc Emailed</span>',
                           'manual_note' => '<span class="badge bg-dark">Note</span>',
+                          'bidding_approval_selected' => '<span class="badge bg-success">Bidding Approval</span>',
                         ];
                         echo $eventLabels[$entry['event_type']] ?? '<span class="badge bg-secondary">' . h($entry['event_type']) . '</span>';
                       ?>

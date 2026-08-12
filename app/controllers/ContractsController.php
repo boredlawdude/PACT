@@ -1597,6 +1597,41 @@ class ContractsController
         exit;
     }
 
+    /**
+     * AJAX: record in Contract History that the user selected an approval-type
+     * event in the Bidding Compliance Log (who/when come from logHistory()).
+     */
+    public function logBiddingApprovalAjax(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['ok' => false, 'error' => 'Method not allowed.']);
+            exit;
+        }
+
+        $contractId = (int)($_POST['contract_id'] ?? 0);
+        $eventLabel = trim($_POST['event_label'] ?? '');
+
+        if ($contractId <= 0 || $eventLabel === '') {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'Missing contract ID or event label.']);
+            exit;
+        }
+
+        $this->logHistory(
+            $contractId,
+            'bidding_approval_selected',
+            null,
+            null,
+            'Bidding Compliance Log event selected: ' . $eventLabel
+        );
+
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
     public function deleteHistoryNote(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

@@ -32,7 +32,7 @@ class BiddingComplianceController
         $eventDate  = trim($_POST['event_date'] ?? '');
         $eventType  = trim($_POST['event_type'] ?? '');
         $comment    = trim($_POST['comment'] ?? '');
-        $isConsortium       = isset($_POST['is_consortium']) ? 1 : 0;
+        $isConsortium       = !empty($_POST['is_consortium']) && $_POST['is_consortium'] !== '0' ? 1 : 0;
         $consortiumName     = trim($_POST['consortium_name'] ?? '');
         $consortiumContractNumber = trim($_POST['consortium_contract_number'] ?? '');
         $createdBy  = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
