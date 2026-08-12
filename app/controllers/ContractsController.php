@@ -157,6 +157,11 @@ class ContractsController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    private function getProcurementMethods(): array {
+        require_once APP_ROOT . '/app/models/ProcurementMethod.php';
+        return (new ProcurementMethod($this->db))->active();
+    }
+
     /**
      * Generate contract number: YY-DEPTINIT-XXX_YYY-SEQ
      */
@@ -351,6 +356,20 @@ class ContractsController
                 $contract['da_number_of_units']           = $da['number_of_units'] ?? '';
                 $contract['da_daily_flow_maximum']        = $da['daily_flow_maximum'] !== null
                     ? number_format((int)$da['daily_flow_maximum']) . ' gpd' : '';
+            }
+        }
+
+        // ── Procurement Method merge fields (short_desc kept in sync on the legacy
+        //    `procurement_method` text column by the model; long_desc looked up here) ──
+        $contract['procurement_method_long_desc'] = '';
+        if (!empty($contract['procurement_method_id'])) {
+            $stmt = $this->db->prepare("SELECT short_desc, long_desc FROM procurement_methods WHERE procurement_method_id = ? LIMIT 1");
+            $stmt->execute([(int)$contract['procurement_method_id']]);
+            $pmRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $contract['procurement_method_long_desc'] = $pmRow['long_desc'] ?? '';
+            // Guard against a stale/out-of-sync text column.
+            if (!empty($pmRow['short_desc'])) {
+                $contract['procurement_method'] = $pmRow['short_desc'];
             }
         }
 
@@ -788,6 +807,7 @@ class ContractsController
         $companies = $this->getCompanies();
         $types = $this->getContractTypes();
         $paymentTerms = $this->getPaymentTerms();
+        $procurementMethods = $this->getProcurementMethods();
         $contractStatuses = $this->getContractStatuses();
         $projects = $this->getProjects();
 
@@ -954,6 +974,7 @@ class ContractsController
         $companies = $this->getCompanies();
         $types = $this->getContractTypes();
         $paymentTerms = $this->getPaymentTerms();
+        $procurementMethods = $this->getProcurementMethods();
         $contractStatuses = $this->getContractStatuses();
         $projects = $this->getProjects();
         $ownerPeople = [];

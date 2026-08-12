@@ -614,6 +614,27 @@ case 'departments_store':
         }
         break;
 
+    case 'admin_procurement_methods':
+        require_once APP_ROOT . '/app/controllers/ProcurementMethodController.php';
+        (new ProcurementMethodController())->index();
+        break;
+    case 'admin_procurement_methods_create':
+        require_once APP_ROOT . '/app/controllers/ProcurementMethodController.php';
+        (new ProcurementMethodController())->create();
+        break;
+    case 'admin_procurement_methods_update':
+        require_once APP_ROOT . '/app/controllers/ProcurementMethodController.php';
+        (new ProcurementMethodController())->update();
+        break;
+    case 'admin_procurement_methods_delete':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_once APP_ROOT . '/app/controllers/ProcurementMethodController.php';
+            (new ProcurementMethodController())->delete();
+        } else {
+            http_response_code(405);
+        }
+        break;
+
     case 'admin_town_locations':
         require_once APP_ROOT . '/app/controllers/TownLocationsController.php';
         (new TownLocationsController())->index();

@@ -239,6 +239,7 @@ class Contract
                 minimum_insurance_coi,
                 documents_path,
                 procurement_method,
+                procurement_method_id,
                 bid_rfp_number,
                 bid_documents_path,
                 procurement_notes,
@@ -277,6 +278,7 @@ class Contract
                 :minimum_insurance_coi,
                 :documents_path,
                 :procurement_method,
+                :procurement_method_id,
                 :bid_rfp_number,
                 :bid_documents_path,
                 :procurement_notes,
@@ -331,6 +333,7 @@ class Contract
                 minimum_insurance_coi = :minimum_insurance_coi,
                 documents_path = :documents_path,
                 procurement_method = :procurement_method,
+                procurement_method_id = :procurement_method_id,
                 bid_rfp_number = :bid_rfp_number,
                 bid_documents_path = :bid_documents_path,
                 procurement_notes = :procurement_notes,
@@ -414,7 +417,8 @@ class Contract
             'use_standard_contract' => !empty($data['use_standard_contract']) ? 1 : 0,
             'minimum_insurance_coi' => !empty($data['minimum_insurance_coi']) ? 1 : 0,
             'documents_path' => $this->nullIfEmpty($data['documents_path'] ?? null),
-            'procurement_method' => $this->nullIfEmpty($data['procurement_method'] ?? null),
+            'procurement_method' => $this->resolveProcurementMethodText($data),
+            'procurement_method_id' => $this->nullIfEmpty($data['procurement_method_id'] ?? null),
             'bid_rfp_number' => $this->nullIfEmpty($data['bid_rfp_number'] ?? null),
             'bid_documents_path' => $this->nullIfEmpty($data['bid_documents_path'] ?? null),
             'procurement_notes' => $this->nullIfEmpty($data['procurement_notes'] ?? null),
@@ -436,6 +440,27 @@ class Contract
             return null;
         }
         return $cleaned;
+    }
+
+    /**
+     * Resolve the legacy `procurement_method` text column value from the submitted
+     * `procurement_method_id` (looked up from the procurement_methods table), so it
+     * stays in sync automatically for anything that still reads the raw text column
+     * (e.g. merge-field generation, list views). Falls back to a raw `procurement_method`
+     * value in $data if no ID was submitted (legacy/API callers).
+     */
+    private function resolveProcurementMethodText(array $data): ?string
+    {
+        $procurementMethodId = $this->nullIfEmpty($data['procurement_method_id'] ?? null);
+        if ($procurementMethodId !== null) {
+            $stmt = $this->db->prepare("SELECT short_desc FROM procurement_methods WHERE procurement_method_id = ?");
+            $stmt->execute([(int)$procurementMethodId]);
+            $shortDesc = $stmt->fetchColumn();
+            if ($shortDesc !== false) {
+                return $shortDesc;
+            }
+        }
+        return $this->nullIfEmpty($data['procurement_method'] ?? null);
     }
 
     private function nullIfEmpty(mixed $value): mixed

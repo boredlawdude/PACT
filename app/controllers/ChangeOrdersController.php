@@ -506,6 +506,19 @@ HTML;
             }
         }
 
+        // Procurement Method merge fields (short_desc kept in sync on the legacy
+        // `procurement_method` text column by the model; long_desc looked up here)
+        $contract['procurement_method_long_desc'] = '';
+        if (!empty($contract['procurement_method_id'])) {
+            $stmt = $this->db->prepare("SELECT short_desc, long_desc FROM procurement_methods WHERE procurement_method_id = ? LIMIT 1");
+            $stmt->execute([(int)$contract['procurement_method_id']]);
+            $pmRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $contract['procurement_method_long_desc'] = $pmRow['long_desc'] ?? '';
+            if (!empty($pmRow['short_desc'])) {
+                $contract['procurement_method'] = $pmRow['short_desc'];
+            }
+        }
+
         // Merge Development Agreement fields if this contract is a DA
         $stmt = $this->db->prepare(
             "SELECT contract_type FROM contract_types WHERE contract_type_id = ? LIMIT 1"

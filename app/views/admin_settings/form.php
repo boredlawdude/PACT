@@ -32,6 +32,9 @@
                     <a href="/index.php?page=admin_payment_terms" class="btn btn-outline-primary w-100">Payment Types</a>
                 </div>
                 <div class="col-6 col-md-3">
+                    <a href="/index.php?page=admin_procurement_methods" class="btn btn-outline-primary w-100">Procurement Methods</a>
+                </div>
+                <div class="col-6 col-md-3">
                     <a href="/index.php?page=admin_roles" class="btn btn-outline-primary w-100">User Roles</a>
                 </div>
                 <div class="col-6 col-md-3">

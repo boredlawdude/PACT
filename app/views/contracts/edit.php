@@ -429,27 +429,22 @@ if (!function_exists('h')) {
               <div class="row g-3">
 
                 <div class="col-md-4">
-                  <label class="form-label" for="procurement_method">Procurement Method</label>
-                  <select class="form-select" id="procurement_method" name="procurement_method">
+                  <label class="form-label" for="procurement_method_id">Procurement Method</label>
+                  <select class="form-select" id="procurement_method_id" name="procurement_method_id">
                     <option value="">— Select —</option>
                     <?php
-                      $procMethods = [
-                        'Competitive Bid (IFB)',
-                        'Request for Proposals (RFP)',
-                        'Sole Source / Single Source',
-                        'Emergency Purchase',
-                        'Cooperative / Piggyback Purchase',
-                        'Small / Informal Purchase (below threshold)',
-                        'Professional Services (QBS)',
-                        'Service (non QBS)',
-                        'Not Required',
-                      ];
-                      $currentMethod = $contract['procurement_method'] ?? '';
-                      foreach ($procMethods as $m):
+                      $currentMethodId = (string)($contract['procurement_method_id'] ?? '');
+                      foreach (($procurementMethods ?? []) as $pm):
                     ?>
-                      <option value="<?= h($m) ?>" <?= $currentMethod === $m ? 'selected' : '' ?>><?= h($m) ?></option>
+                      <option value="<?= (int)$pm['procurement_method_id'] ?>"
+                              <?= $currentMethodId === (string)$pm['procurement_method_id'] ? 'selected' : '' ?>>
+                        <?= h($pm['short_desc']) ?>
+                      </option>
                     <?php endforeach; ?>
                   </select>
+                  <div class="form-text">
+                    Manage this list under <a href="/index.php?page=admin_procurement_methods" target="_blank" rel="noopener noreferrer">System Settings &rarr; Procurement Methods</a>.
+                  </div>
                 </div>
 
                 <div class="col-md-4">
