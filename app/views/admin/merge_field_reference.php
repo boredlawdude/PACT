@@ -66,6 +66,7 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
             ['procurement_method_long_desc', 'Procurement method long description — managed under Procurement Methods admin'],
             ['bid_rfp_number',           'Bid or RFP reference number'],
             ['procurement_notes',        'Procurement narrative / notes'],
+            ['bidding_compliance_comment', 'Most recent Bidding Compliance Log "Approval" comment — combines the Procurement Method Long Description with any Consortium Name / Master Contract # entered'],
             ['date_approved_by_procurement', 'Date approved by procurement (MM/DD/YYYY)'],
             ['date_approved_by_manager', 'Date approved by manager (MM/DD/YYYY)'],
             ['date_approved_by_council', 'Date approved by council (MM/DD/YYYY)'],

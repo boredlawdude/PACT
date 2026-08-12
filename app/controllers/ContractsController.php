@@ -373,6 +373,18 @@ class ContractsController
             }
         }
 
+        // ── Bidding Compliance Log comment merge field ──────────────────────────
+        // Most recent Approval-event comment (Long Description + Consortium info),
+        // available as a single field for insertion into contract templates.
+        $bcStmt = $this->db->prepare(
+            "SELECT comment FROM bidding_compliance
+             WHERE contract_id = ? AND event_type LIKE '%Approval%' AND comment IS NOT NULL AND comment <> ''
+             ORDER BY event_date DESC, compliance_id DESC LIMIT 1"
+        );
+        $bcStmt->execute([$contractId]);
+        $contract['bidding_compliance_comment'] = $bcStmt->fetchColumn() ?: '';
+        // ─────────────────────────────────────────────────────────────────────────
+
         // ── Format currency merge fields ────────────────────────────────────────
         $rawValue = $contract['total_contract_value'] ?? null;
         if ($rawValue !== null && $rawValue !== '') {

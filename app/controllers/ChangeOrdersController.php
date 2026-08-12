@@ -519,6 +519,15 @@ HTML;
             }
         }
 
+        // Bidding Compliance Log comment merge field — most recent Approval-event comment.
+        $bcStmt = $this->db->prepare(
+            "SELECT comment FROM bidding_compliance
+             WHERE contract_id = ? AND event_type LIKE '%Approval%' AND comment IS NOT NULL AND comment <> ''
+             ORDER BY event_date DESC, compliance_id DESC LIMIT 1"
+        );
+        $bcStmt->execute([$contractId]);
+        $contract['bidding_compliance_comment'] = $bcStmt->fetchColumn() ?: '';
+
         // Merge Development Agreement fields if this contract is a DA
         $stmt = $this->db->prepare(
             "SELECT contract_type FROM contract_types WHERE contract_type_id = ? LIMIT 1"
