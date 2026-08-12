@@ -5,19 +5,15 @@ class BiddingComplianceController
 {
     private PDO $db;
 
-    public const EVENT_TYPES = [
-        'No Bidding Required',
-        'RFQ/RFP Published',
-        'RFQ/RFP Received',
-        'Selection Committee Decision',
-        '3 Informal Quotes Received',
-        'Documents Saved Here',
-        'Documents Saved with Project Manager',
-    ];
-
     public function __construct()
     {
         $this->db = db();
+    }
+
+    private function validEventTypes(): array
+    {
+        require_once APP_ROOT . '/app/models/BiddingComplianceEventType.php';
+        return array_column((new BiddingComplianceEventType($this->db))->all(), 'label');
     }
 
     public function store(): void
@@ -47,7 +43,7 @@ class BiddingComplianceController
             header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#bidding-compliance');
             exit;
         }
-        if (!in_array($eventType, self::EVENT_TYPES, true)) {
+        if (!in_array($eventType, $this->validEventTypes(), true)) {
             $_SESSION['flash_errors'] = ['Please select a valid event type.'];
             header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#bidding-compliance');
             exit;

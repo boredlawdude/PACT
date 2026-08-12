@@ -688,6 +688,9 @@ class ContractsController
         $complianceStmt->execute([$id]);
         $complianceRecords = $complianceStmt->fetchAll(PDO::FETCH_ASSOC);
 
+        require_once APP_ROOT . '/app/models/BiddingComplianceEventType.php';
+        $biddingEventTypes = (new BiddingComplianceEventType($this->db))->active();
+
         // Load linked development agreement (if this contract is of type "Development Agreement")
         $devAgreement      = null;
         $devAgreementTracts = [];

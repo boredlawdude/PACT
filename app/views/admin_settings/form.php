@@ -35,6 +35,9 @@
                     <a href="/index.php?page=admin_procurement_methods" class="btn btn-outline-primary w-100">Procurement Methods</a>
                 </div>
                 <div class="col-6 col-md-3">
+                    <a href="/index.php?page=admin_bidding_compliance_event_types" class="btn btn-outline-primary w-100">Bidding Compliance Events</a>
+                </div>
+                <div class="col-6 col-md-3">
                     <a href="/index.php?page=admin_roles" class="btn btn-outline-primary w-100">User Roles</a>
                 </div>
                 <div class="col-6 col-md-3">

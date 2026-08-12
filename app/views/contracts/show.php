@@ -1147,8 +1147,8 @@ if (!function_exists('format_utc_to_eastern')) {
                 <label class="form-label form-label-sm mb-1">Event</label>
                 <select name="event_type" class="form-select form-select-sm" required>
                   <option value="">— Select —</option>
-                  <?php foreach (\BiddingComplianceController::EVENT_TYPES as $et): ?>
-                    <option value="<?= h($et) ?>"><?= h($et) ?></option>
+                  <?php foreach (($biddingEventTypes ?? []) as $et): ?>
+                    <option value="<?= h($et['label']) ?>"><?= h($et['label']) ?></option>
                   <?php endforeach; ?>
                 </select>
               </div>

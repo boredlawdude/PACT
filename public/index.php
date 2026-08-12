@@ -641,6 +641,27 @@ case 'departments_store':
         }
         break;
 
+    case 'admin_bidding_compliance_event_types':
+        require_once APP_ROOT . '/app/controllers/BiddingComplianceEventTypeController.php';
+        (new BiddingComplianceEventTypeController())->index();
+        break;
+    case 'admin_bidding_compliance_event_types_create':
+        require_once APP_ROOT . '/app/controllers/BiddingComplianceEventTypeController.php';
+        (new BiddingComplianceEventTypeController())->create();
+        break;
+    case 'admin_bidding_compliance_event_types_update':
+        require_once APP_ROOT . '/app/controllers/BiddingComplianceEventTypeController.php';
+        (new BiddingComplianceEventTypeController())->update();
+        break;
+    case 'admin_bidding_compliance_event_types_delete':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            require_once APP_ROOT . '/app/controllers/BiddingComplianceEventTypeController.php';
+            (new BiddingComplianceEventTypeController())->delete();
+        } else {
+            http_response_code(405);
+        }
+        break;
+
     case 'admin_town_locations':
         require_once APP_ROOT . '/app/controllers/TownLocationsController.php';
         (new TownLocationsController())->index();
