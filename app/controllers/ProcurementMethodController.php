@@ -66,6 +66,18 @@ class ProcurementMethodController {
         exit;
     }
 
+    public function lookupAjax(): void {
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)($_GET['procurement_method_id'] ?? 0);
+        $longDesc = '';
+        if ($id > 0) {
+            $method = $this->model->find($id);
+            $longDesc = $method['long_desc'] ?? '';
+        }
+        echo json_encode(['long_desc' => $longDesc], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     public function delete() {
         require_login();
         if (!function_exists('is_system_admin') || !is_system_admin()) {

@@ -554,6 +554,28 @@ if (!function_exists('h')) {
         loadContacts(companySel.value, savedName || null);
     }
 })();
+
+(function () {
+    const methodSel = document.getElementById('procurement_method_id');
+    const notesField = document.getElementById('procurement_notes');
+
+    methodSel.addEventListener('change', function () {
+        const id = this.value;
+        if (!id) return;
+
+        if (notesField.value.trim() !== '') {
+            const proceed = confirm('Replace the current "Explain Compliance" text with the standard description for this procurement method?');
+            if (!proceed) return;
+        }
+
+        fetch('/index.php?page=api_procurement_method&procurement_method_id=' + encodeURIComponent(id))
+            .then(r => r.json())
+            .then(data => {
+                notesField.value = data.long_desc || '';
+            })
+            .catch(() => {});
+    });
+})();
 </script>
 
 <?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>

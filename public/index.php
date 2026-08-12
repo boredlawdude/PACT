@@ -54,6 +54,12 @@ if ($page === 'contract_types_template_update') {
     (new ContractTypesController())->updateTemplateContentAjax();
     exit;
 }
+if ($page === 'api_procurement_method') {
+    ob_clean();
+    require_once APP_ROOT . '/app/controllers/ProcurementMethodController.php';
+    (new ProcurementMethodController())->lookupAjax();
+    exit;
+}
 // ────────────────────────────────────────────────────────────────────────────
 
 // Backup download must run before any HTML output
