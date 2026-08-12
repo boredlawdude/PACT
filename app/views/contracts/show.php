@@ -1130,6 +1130,15 @@ if (!function_exists('format_utc_to_eastern')) {
           <span class="badge bg-secondary"><?= count($complianceRecords ?? []) ?></span>
         </div>
 
+        <div class="card-body border-bottom py-2">
+          <span class="text-muted small">Procurement Method:</span>
+          <?php if (!empty($contract['procurement_method'])): ?>
+            <strong><?= h($contract['procurement_method']) ?></strong>
+          <?php else: ?>
+            <span class="text-muted">— Not set —</span>
+          <?php endif; ?>
+        </div>
+
         <!-- Add entry form -->
         <div class="card-body border-bottom">
           <?php if (!empty($_SESSION['flash_success'])): ?>
@@ -1145,7 +1154,7 @@ if (!function_exists('format_utc_to_eastern')) {
               </div>
               <div class="col-md-3">
                 <label class="form-label form-label-sm mb-1">Event</label>
-                <select name="event_type" class="form-select form-select-sm" required>
+                <select name="event_type" id="bc_event_type" class="form-select form-select-sm" required>
                   <option value="">— Select —</option>
                   <?php foreach (($biddingEventTypes ?? []) as $et): ?>
                     <option value="<?= h($et['label']) ?>"><?= h($et['label']) ?></option>
@@ -1154,7 +1163,7 @@ if (!function_exists('format_utc_to_eastern')) {
               </div>
               <div class="col-md-4">
                 <label class="form-label form-label-sm mb-1">Comment</label>
-                <textarea name="comment" class="form-control form-control-sm" rows="2" placeholder="Optional notes…"></textarea>
+                <textarea name="comment" id="bc_comment" class="form-control form-control-sm" rows="2" placeholder="Optional notes…"></textarea>
               </div>
               <div class="col-md-2">
                 <label class="form-label form-label-sm mb-1">File (optional)</label>
@@ -1251,6 +1260,29 @@ if (!function_exists('format_utc_to_eastern')) {
       </div>
     </div>
   </div>
+
+  <script>
+  (function () {
+    const contractProcurementMethodId = <?= (int)($contract['procurement_method_id'] ?? 0) ?>;
+    const eventSel = document.getElementById('bc_event_type');
+    const commentField = document.getElementById('bc_comment');
+    if (!eventSel || !commentField) return;
+
+    eventSel.addEventListener('change', function () {
+      const selectedLabel = this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : '';
+      if (!/approval/i.test(selectedLabel) || !contractProcurementMethodId) return;
+
+      fetch('/index.php?page=api_procurement_method&procurement_method_id=' + encodeURIComponent(contractProcurementMethodId))
+        .then(r => r.json())
+        .then(data => {
+          if (data.long_desc) {
+            commentField.value = data.long_desc;
+          }
+        })
+        .catch(() => {});
+    });
+  })();
+  </script>
   <?php endif; /* !$isDevAgreement */ ?>
 
   <!-- Contract History -->
