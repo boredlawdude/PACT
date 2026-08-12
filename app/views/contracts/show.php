@@ -1176,12 +1176,12 @@ if (!function_exists('format_utc_to_eastern')) {
                   <div class="row g-2">
                     <div class="col-md-5">
                       <label class="form-label form-label-sm mb-1">Consortium / Group Name</label>
-                      <input type="text" name="consortium_name" class="form-control form-control-sm" maxlength="200"
+                      <input type="text" name="consortium_name" id="bc_consortium_name" class="form-control form-control-sm" maxlength="200"
                              placeholder="e.g. NCPA, Sourcewell, TIPS…">
                     </div>
                     <div class="col-md-4">
                       <label class="form-label form-label-sm mb-1">Master Contract #</label>
-                      <input type="text" name="consortium_contract_number" class="form-control form-control-sm" maxlength="100"
+                      <input type="text" name="consortium_contract_number" id="bc_consortium_contract_number" class="form-control form-control-sm" maxlength="100"
                              placeholder="e.g. 01-112 or 4400023640">
                     </div>
                   </div>
@@ -1266,9 +1266,20 @@ if (!function_exists('format_utc_to_eastern')) {
     const commentField = document.getElementById('bc_comment');
     const consortiumFields = document.getElementById('bc_consortium_fields');
     const isConsortiumField = document.getElementById('bc_is_consortium');
+    const consortiumNameField = document.getElementById('bc_consortium_name');
+    const consortiumContractNumberField = document.getElementById('bc_consortium_contract_number');
     if (!eventSel) return;
 
     let approvalAlreadyLogged = false;
+
+    function buildConsortiumSuffix() {
+      const name = consortiumNameField ? consortiumNameField.value.trim() : '';
+      const contractNum = consortiumContractNumberField ? consortiumContractNumberField.value.trim() : '';
+      if (!name && !contractNum) return '';
+      let suffix = 'Consortium: ' + (name || '—');
+      if (contractNum) suffix += ' (Contract# ' + contractNum + ')';
+      return suffix;
+    }
 
     eventSel.addEventListener('change', function () {
       const selectedLabel = this.options[this.selectedIndex] ? this.options[this.selectedIndex].text : '';
@@ -1285,13 +1296,15 @@ if (!function_exists('format_utc_to_eastern')) {
         return;
       }
 
-      // Auto-fill the comment from the contract's Procurement Method long description
+      // Auto-fill the comment from the contract's Procurement Method long description,
+      // appending any Consortium info already entered on the form.
       if (commentField && contractProcurementMethodId) {
         fetch('/index.php?page=api_procurement_method&procurement_method_id=' + encodeURIComponent(contractProcurementMethodId))
           .then(r => r.json())
           .then(data => {
             if (data.long_desc) {
-              commentField.value = data.long_desc;
+              const consortiumSuffix = buildConsortiumSuffix();
+              commentField.value = consortiumSuffix ? data.long_desc + '\n' + consortiumSuffix : data.long_desc;
             }
           })
           .catch(() => {});
