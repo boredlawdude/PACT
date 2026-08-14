@@ -215,52 +215,88 @@ if (!function_exists('format_utc_to_eastern')) {
         </div>
       </div>
 
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-          <h2 class="h6 mb-0">Financial / Terms</h2>
-        </div>
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-4">
-              <div class="small text-muted">Total Contract Value</div>
-              <div><?= !empty($contract['total_contract_value']) ? '$' . number_format((float)$contract['total_contract_value'], 2) : '—' ?></div>
+      <div class="row g-4 mb-4">
+        <div class="col-md-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+              <h2 class="h6 mb-0">Financial / Terms</h2>
             </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="small text-muted">Total Contract Value</div>
+                  <div><?= !empty($contract['total_contract_value']) ? '$' . number_format((float)$contract['total_contract_value'], 2) : '—' ?></div>
+                </div>
 
-            <div class="col-md-4">
-              <div class="small text-muted">PO Number</div>
-              <div><?= h($contract['po_number'] ?? '') ?: '—' ?></div>
-            </div>
+                <div class="col-md-6">
+                  <div class="small text-muted">PO Number</div>
+                  <div><?= h($contract['po_number'] ?? '') ?: '—' ?></div>
+                </div>
 
-            <div class="col-md-4">
-              <div class="small text-muted">Account Number</div>
-              <div><?= h($contract['account_number'] ?? '') ?: '—' ?></div>
-            </div>
+                <div class="col-md-6">
+                  <div class="small text-muted">Account Number</div>
+                  <div><?= h($contract['account_number'] ?? '') ?: '—' ?></div>
+                </div>
 
-            <div class="col-md-4">
-              <div class="small text-muted">PO Amount</div>
-              <div><?= !empty($contract['po_amount']) ? '$' . number_format((float)$contract['po_amount'], 2) : '—' ?></div>
-            </div>
+                <div class="col-md-6">
+                  <div class="small text-muted">PO Amount</div>
+                  <div><?= !empty($contract['po_amount']) ? '$' . number_format((float)$contract['po_amount'], 2) : '—' ?></div>
+                </div>
 
-            <div class="col-md-4">
-              <div class="small text-muted">Governing Law</div>
-              <div><?= h($contract['governing_law'] ?? '') ?: '—' ?></div>
-            </div>
+                <div class="col-md-6">
+                  <div class="small text-muted">Governing Law</div>
+                  <div><?= h($contract['governing_law'] ?? '') ?: '—' ?></div>
+                </div>
 
-            <div class="col-md-12">
-              <div class="small text-muted">Payment Type</div>
-              <div><?= h($contract['payment_terms_name'] ?? '') ?: '—' ?></div>
-            </div>
+                <div class="col-md-6">
+                  <div class="small text-muted">Payment Type</div>
+                  <div><?= h($contract['payment_terms_name'] ?? '') ?: '—' ?></div>
+                </div>
 
-            <?php if (!empty($contract['documents_path'])): ?>
-            <div class="col-12">
-              <div class="small text-muted">Contract Documents Path</div>
-              <div class="font-monospace small">
-                <a href="<?= h($contract['documents_path']) ?>" target="_blank" rel="noopener noreferrer">
-                  <?= h($contract['documents_path']) ?>
-                </a>
+                <?php if (!empty($contract['documents_path'])): ?>
+                <div class="col-12">
+                  <div class="small text-muted">Contract Documents Path</div>
+                  <div class="font-monospace small">
+                    <a href="<?= h($contract['documents_path']) ?>" target="_blank" rel="noopener noreferrer">
+                      <?= h($contract['documents_path']) ?>
+                    </a>
+                  </div>
+                </div>
+                <?php endif; ?>
               </div>
             </div>
-            <?php endif; ?>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+              <h2 class="h6 mb-0">Description</h2>
+            </div>
+            <div class="card-body">
+              <?php $desc = trim((string)($contract['description'] ?? '')); ?>
+              <?php if ($desc !== ''): ?>
+                <div style="white-space: pre-wrap;"><?= h($desc) ?></div>
+              <?php else: ?>
+                <div class="text-muted">No description entered.</div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+              <h2 class="h6 mb-0">Comment</h2>
+            </div>
+            <div class="card-body">
+              <?php $statusComment = trim((string)($contract['status_comment'] ?? '')); ?>
+              <?php if ($statusComment !== ''): ?>
+                <div style="white-space: pre-wrap;"><?= h($statusComment) ?></div>
+              <?php else: ?>
+                <div class="text-muted">No comment entered.</div>
+              <?php endif; ?>
+            </div>
           </div>
         </div>
       </div>
@@ -627,35 +663,7 @@ if (!function_exists('format_utc_to_eastern')) {
 
     </div>
 
-    <div class="col-lg-4">
-
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-          <h2 class="h6 mb-0">Description</h2>
-        </div>
-        <div class="card-body">
-          <?php $desc = trim((string)($contract['description'] ?? '')); ?>
-          <?php if ($desc !== ''): ?>
-            <div style="white-space: pre-wrap;"><?= h($desc) ?></div>
-          <?php else: ?>
-            <div class="text-muted">No description entered.</div>
-          <?php endif; ?>
-        </div>
-      </div>
-
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-          <h2 class="h6 mb-0">Comment</h2>
-        </div>
-        <div class="card-body">
-          <?php $statusComment = trim((string)($contract['status_comment'] ?? '')); ?>
-          <?php if ($statusComment !== ''): ?>
-            <div style="white-space: pre-wrap;"><?= h($statusComment) ?></div>
-          <?php else: ?>
-            <div class="text-muted">No comment entered.</div>
-          <?php endif; ?>
-        </div>
-      </div>
+    <div class="col-12">
 
       <?php if (!$isDevAgreement): ?>
       <div class="card shadow-sm mb-4">
