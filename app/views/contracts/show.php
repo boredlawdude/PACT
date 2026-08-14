@@ -23,55 +23,96 @@ if (!function_exists('format_utc_to_eastern')) {
 }
 ?>
 
+<div class="contract-detail-page">
+<style>
+    .contract-detail-page .contract-editor-shell {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), rgba(15, 23, 42, 0));
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1.25rem;
+    }
+
+    .contract-detail-page .contract-editor-banner {
+        background: linear-gradient(135deg, #14344e, #1d5b7d 55%, #3d7aa4);
+        color: #fff;
+        border-radius: 1.25rem;
+    }
+
+    .contract-detail-page .contract-editor-banner .text-muted {
+        color: rgba(255, 255, 255, 0.72) !important;
+    }
+
+    .contract-detail-page .card {
+        border: 0;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .contract-detail-page .card-header {
+        font-weight: 600;
+        background: #fff;
+    }
+
+    .contract-detail-page .card .small.text-muted {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.03em;
+    }
+</style>
+
 <div class="container py-4">
 
-  <div class="d-flex justify-content-between align-items-start mb-4">
-    <div>
-      <div class="text-muted small mb-1"><?= $isDevAgreement ? 'Development Agreement' : 'Contract Detail' ?></div>
-      <h1 class="h3 mb-1"><?= h($contractTitle) ?></h1>
-      <div class="text-muted">
-        <?php if ($contractNumber !== ''): ?>
-          <span class="me-3"><strong>No.</strong> <?= h($contractNumber) ?></span>
-        <?php endif; ?>
-        <?php if ($isDevAgreement): ?>
-          <span class="badge text-bg-info me-1">Development Agreement</span>
-        <?php endif; ?>
-        <?php if ($status !== ''): ?>
-          <?php if (!function_exists('status_badge')) {
-              function status_badge(string $status): string {
-                  return match (strtolower($status)) {
-                      'draft' => 'secondary',
-                      'negotiate' => 'info',
-                      'procurement review' => 'info',
-                      'legal review' => 'warning',
-                      'dept head review' => 'primary',
-                      'manager review' => 'primary',
-                      'town council' => 'info',
-                      'out for signature' => 'warning',
-                      'executed' => 'success',
-                      default => 'light',
-                  };
-              }
-          } ?>
-          <span class="badge text-bg-<?= status_badge($status) ?>"><?= h($status) ?></span>
-        <?php endif; ?>
-      </div>
-    </div>
+  <div class="contract-editor-shell shadow-sm mb-4">
+    <div class="contract-editor-banner px-4 px-lg-5 py-4 py-lg-5">
+      <div class="d-flex flex-column flex-lg-row gap-3 align-items-start align-items-lg-center">
+        <div class="me-auto">
+          <div class="small text-uppercase fw-semibold text-muted mb-1"><?= $isDevAgreement ? 'Development Agreement' : 'Contract Detail' ?></div>
+          <h1 class="display-6 fw-semibold mb-2"><?= h($contractTitle) ?></h1>
+          <div class="text-muted">
+            <?php if ($contractNumber !== ''): ?>
+              <span class="me-3"><strong>No.</strong> <?= h($contractNumber) ?></span>
+            <?php endif; ?>
+            <?php if ($isDevAgreement): ?>
+              <span class="badge text-bg-info me-1">Development Agreement</span>
+            <?php endif; ?>
+            <?php if ($status !== ''): ?>
+              <?php if (!function_exists('status_badge')) {
+                  function status_badge(string $status): string {
+                      return match (strtolower($status)) {
+                          'draft' => 'secondary',
+                          'negotiate' => 'info',
+                          'procurement review' => 'info',
+                          'legal review' => 'warning',
+                          'dept head review' => 'primary',
+                          'manager review' => 'primary',
+                          'town council' => 'info',
+                          'out for signature' => 'warning',
+                          'executed' => 'success',
+                          default => 'light',
+                      };
+                  }
+              } ?>
+              <span class="badge text-bg-<?= status_badge($status) ?>"><?= h($status) ?></span>
+            <?php endif; ?>
+          </div>
+        </div>
 
-    <div class="d-flex gap-2 flex-wrap justify-content-end">
-      <a href="/index.php?page=<?= $isDevAgreement ? 'development_agreements' : 'contracts' ?>" class="btn btn-outline-secondary btn-sm">Back</a>
-      <?php if ($isDevAgreement && !empty($devAgreement['dev_agreement_id'])): ?>
-        <a href="/index.php?page=development_agreements_edit&dev_agreement_id=<?= (int)$devAgreement['dev_agreement_id'] ?>" class="btn btn-warning btn-sm">Edit Dev Agreement Details</a>
-      <?php endif; ?>
-      <a href="/index.php?page=contracts_edit&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-primary btn-sm">Change Contract Info</a>
-      <a href="/index.php?page=contracts_generate_html&contract_id=<?= (int)$contract['contract_id'] ?>" target="_blank" class="btn btn-outline-success btn-sm">Generate HTML</a>
-      <a href="/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-info btn-sm">Generate Word Doc</a>
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+          <a href="/index.php?page=<?= $isDevAgreement ? 'development_agreements' : 'contracts' ?>" class="btn btn-light btn-sm">Back</a>
+          <?php if ($isDevAgreement && !empty($devAgreement['dev_agreement_id'])): ?>
+            <a href="/index.php?page=development_agreements_edit&dev_agreement_id=<?= (int)$devAgreement['dev_agreement_id'] ?>" class="btn btn-warning btn-sm">Edit Dev Agreement Details</a>
+          <?php endif; ?>
+          <a href="/index.php?page=contracts_edit&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-primary btn-sm">Change Contract Info</a>
+          <a href="/index.php?page=contracts_generate_html&contract_id=<?= (int)$contract['contract_id'] ?>" target="_blank" class="btn btn-outline-light btn-sm">Generate HTML</a>
+          <a href="/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-light btn-sm">Generate Word Doc</a>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="row g-4">
 
-    <div class="col-lg-8">
+    <div class="col-12">
 
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-white">
@@ -1464,6 +1505,7 @@ if (!function_exists('format_utc_to_eastern')) {
     <a href="/index.php?page=contract_document_create&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-secondary">Add Document</a>
   </div>
 
+</div>
 </div>
 
 <?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>
