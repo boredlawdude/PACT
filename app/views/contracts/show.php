@@ -988,7 +988,7 @@ if (!function_exists('format_utc_to_eastern')) {
           <?php endif; ?>
           <?php if (!empty($_SESSION['flash_errors'])): ?>
             <div class="alert alert-warning m-2">
-              <strong>Some documents could not be converted:</strong>
+              <strong>The document action could not be completed:</strong>
               <ul class="mb-0 mt-1">
                 <?php foreach ((array)$_SESSION['flash_errors'] as $fe): ?>
                   <li><?= h($fe) ?></li>
@@ -1006,6 +1006,7 @@ if (!function_exists('format_utc_to_eastern')) {
             <?php unset($_SESSION['docusign_flash_error']); ?>
           <?php endif; ?>
           <?php if (!empty($documents)): ?>
+            <?php $canRenameDocuments = can_manage_contract((int)$contract['contract_id']); ?>
             <form method="post" action="/index.php?page=contract_documents_save_order">
               <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
             <div class="table-responsive">
@@ -1149,6 +1150,10 @@ if (!function_exists('format_utc_to_eastern')) {
                           <?php if ($canInlineEdit): ?>
                             <a href="/index.php?page=onlyoffice_editor&document_id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-success btn-sm w-100">Edit Inline</a>
                           <?php endif; ?>
+                          <?php if ($canRenameDocuments): ?>
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                                    onclick='renameContractDocument(<?= (int)$doc['contract_document_id'] ?>, <?= json_encode((string)($doc['file_name'] ?? ''), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP) ?>)'>Rename</button>
+                          <?php endif; ?>
                           <a href="/index.php?page=contract_document_email&id=<?= (int)$doc['contract_document_id'] ?>" class="btn btn-outline-primary btn-sm w-100">Email Doc</a>
                           <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="if(confirm('Delete this document?')){let f=document.createElement('form');f.method='post';f.action='/index.php?page=contract_document_delete';let i=document.createElement('input');i.type='hidden';i.name='document_id';i.value='<?= (int)$doc['contract_document_id'] ?>';f.appendChild(i);document.body.appendChild(f);f.submit();}">Delete</button>
                         <?php endif; ?>
@@ -1168,6 +1173,35 @@ if (!function_exists('format_utc_to_eastern')) {
           <?php endif; ?>
         </div>
       </div>
+
+      <script>
+        function renameContractDocument(documentId, currentName) {
+          const newName = window.prompt('Enter the new file name. Keep the existing file extension.', currentName);
+          if (newName === null || newName.trim() === '' || newName.trim() === currentName) {
+            return;
+          }
+
+          const form = document.createElement('form');
+          form.method = 'post';
+          form.action = '/index.php?page=contract_document_rename';
+
+          const fields = {
+            document_id: documentId,
+            file_name: newName.trim(),
+            csrf_token: <?= json_encode(csrf_token()) ?>
+          };
+          Object.keys(fields).forEach(function (name) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = fields[name];
+            form.appendChild(input);
+          });
+
+          document.body.appendChild(form);
+          form.submit();
+        }
+      </script>
 
   <!-- Bidding Compliance Log -->
   <?php if (!$isDevAgreement): ?>

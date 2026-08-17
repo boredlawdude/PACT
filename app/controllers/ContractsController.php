@@ -147,6 +147,110 @@ class ContractsController
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;
     }
+
+    /**
+     * Rename a locally stored contract document (POST).
+     */
+    public function renameDocument(): void
+    {
+        require_login();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        require_csrf();
+
+        $docId = (int)($_POST['document_id'] ?? 0);
+        $document = $this->loadContractDocument($docId);
+        if (!$document) {
+            http_response_code(404);
+            exit('Document not found.');
+        }
+
+        $contractId = (int)($document['contract_id'] ?? 0);
+        if (!can_manage_contract($contractId)) {
+            http_response_code(403);
+            exit('Forbidden');
+        }
+
+        $redirect = '/index.php?page=contracts_show&contract_id=' . $contractId;
+        $oldName = (string)($document['file_name'] ?? '');
+        $newName = trim((string)($_POST['file_name'] ?? ''));
+
+        if ($newName === '' || $newName === '.' || $newName === '..') {
+            $_SESSION['flash_errors'] = ['Please enter a valid file name.'];
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        if (strlen($newName) > 255 || preg_match('/[<>:"\/\\\\|?*\x00-\x1F]/', $newName) || preg_match('/[. ]$/', $newName)) {
+            $_SESSION['flash_errors'] = ['The file name contains unsupported characters or is too long.'];
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        $oldExtension = strtolower((string)pathinfo($oldName, PATHINFO_EXTENSION));
+        $newExtension = strtolower((string)pathinfo($newName, PATHINFO_EXTENSION));
+        if ($oldExtension !== $newExtension) {
+            $_SESSION['flash_errors'] = ['The file extension must remain .' . $oldExtension . '.'];
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        if ($newName === $oldName) {
+            $_SESSION['flash_success'] = 'The document name is unchanged.';
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        $relativePath = ltrim((string)($document['file_path'] ?? ''), '/');
+        $oldPath = APP_ROOT . '/' . $relativePath;
+        $documentDirectory = dirname($oldPath);
+        $newPath = $documentDirectory . '/' . $newName;
+
+        $rootPath = realpath(APP_ROOT);
+        $realDirectory = realpath($documentDirectory);
+        if ($relativePath === '' || !is_file($oldPath) || $rootPath === false || $realDirectory === false
+            || ($realDirectory !== $rootPath && !str_starts_with($realDirectory, $rootPath . DIRECTORY_SEPARATOR))) {
+            $_SESSION['flash_errors'] = ['The stored document file could not be found.'];
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        if (file_exists($newPath)) {
+            $_SESSION['flash_errors'] = ['A file with that name already exists.'];
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        if (!rename($oldPath, $newPath)) {
+            $_SESSION['flash_errors'] = ['The document could not be renamed.'];
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        $newRelativePath = str_replace('\\', '/', dirname($relativePath) . '/' . $newName);
+        try {
+            $stmt = $this->db->prepare(
+                'UPDATE contract_documents SET file_name = ?, file_path = ? WHERE contract_document_id = ? AND contract_id = ?'
+            );
+            $stmt->execute([$newName, $newRelativePath, $docId, $contractId]);
+        } catch (Throwable $e) {
+            @rename($newPath, $oldPath);
+            error_log('Document rename database update failed for document ' . $docId . ': ' . $e->getMessage());
+            $_SESSION['flash_errors'] = ['The document could not be renamed.'];
+            header('Location: ' . $redirect);
+            exit;
+        }
+
+        $this->logHistory($contractId, 'document_renamed', $oldName, $newName, 'Renamed document from ' . $oldName . ' to ' . $newName);
+        $_SESSION['flash_success'] = 'Document renamed to ' . $newName . '.';
+        header('Location: ' . $redirect);
+        exit;
+    }
     private function getContractStatuses(): array {
         require_once APP_ROOT . '/app/models/ContractStatus.php';
         $statusModel = new ContractStatus($this->db);

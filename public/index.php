@@ -517,6 +517,15 @@ case 'departments_store':
         }
         break;
 
+    case 'contract_document_rename':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ContractsController->renameDocument();
+        } else {
+            http_response_code(405);
+            echo 'Method not allowed.';
+        }
+        break;
+
     case 'contract_document_sharepoint_sync':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ContractsController->syncDocumentToSharePoint();
