@@ -27,6 +27,10 @@ read_env_value() {
   local line
   line=$(grep -E "^${key}=" "$ENV_FILE" | tail -n 1 || true)
   line="${line#*=}"
+  # Match phpdotenv's handling of insignificant whitespace around values.
+  # This also prevents a visually hidden trailing space from becoming part of
+  # a MySQL username, host, or database name.
+  line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
   line="${line%\"}"
   line="${line#\"}"
   printf '%s' "$line"
