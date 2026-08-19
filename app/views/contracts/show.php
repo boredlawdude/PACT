@@ -962,6 +962,7 @@ if (!function_exists('format_utc_to_eastern')) {
             <a href="/index.php?page=contract_documents_merge_pdf&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-dark btn-sm">Merge as PDF</a>
             <a href="/index.php?page=contract_document_compare&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-info btn-sm">Compare Documents</a>
             <a href="/index.php?page=contract_document_create&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-secondary btn-sm">Upload Document</a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addBlankDocModal">Add Blank Doc</button>
             <a href="/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-primary btn-sm">Generate Related Doc</a>
             <a href="/index.php?page=contracts_generate_html&contract_id=<?= (int)$contract['contract_id'] ?>" target="_blank" class="btn btn-outline-success btn-sm">Generate HTML</a>
             <?php if (!empty($contractTypes)): ?>
@@ -979,6 +980,29 @@ if (!function_exists('format_utc_to_eastern')) {
               ">Generate Selected Doc</button>
             </div>
             <?php endif; ?>
+          </div>
+        </div>
+        <!-- Add Blank Doc Modal -->
+        <div class="modal fade" id="addBlankDocModal" tabindex="-1" aria-labelledby="addBlankDocModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <form method="post" action="/index.php?page=contract_documents_create_blank">
+              <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="addBlankDocModalLabel">Add Blank Document</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <label for="blankDocName" class="form-label">Document Name (optional)</label>
+                  <input type="text" id="blankDocName" name="doc_name" class="form-control" placeholder="e.g. Amendment Notes">
+                  <div class="form-text">Creates a blank Word document you can edit inline right away using the same editor used for other documents.</div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Create &amp; Edit</button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
         <div class="card-body p-0">
@@ -1013,7 +1037,7 @@ if (!function_exists('format_utc_to_eastern')) {
               <table class="table table-hover mb-0 align-middle">
                 <thead>
                   <tr>
-                    <th style="width:60px">#</th>
+                    <th style="width:60px">Merge #<br><small class="fw-normal text-muted">0 = excluded</small></th>
                     <th>Draft</th>
                     <th>Type</th>
                     <th>PDF Stamp</th>

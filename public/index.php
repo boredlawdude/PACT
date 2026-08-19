@@ -153,6 +153,10 @@ switch ($page) {
             $ContractsController->saveDocumentOrder();
             break;
 
+        case 'contract_documents_create_blank':
+            $ContractsController->createBlankDocument();
+            break;
+
     case 'bidding_compliance_store':
         $BiddingComplianceController->store();
         break;
