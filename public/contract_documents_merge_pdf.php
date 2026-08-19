@@ -34,6 +34,7 @@ $docsStmt = $db->prepare(
     "SELECT contract_document_id, file_path, file_name, mime_type, exhibit_label, doc_type, description
      FROM contract_documents
      WHERE contract_id = ?
+       AND sort_order > 0
        AND NOT (doc_type = 'pdf' AND description = 'Merged PDF of all documents')
      ORDER BY sort_order ASC, created_at ASC"
 );
@@ -41,7 +42,7 @@ $docsStmt->execute([$contractId]);
 $documents = $docsStmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($documents)) {
-    $_SESSION['flash_errors'] = ['No documents to merge.'];
+    $_SESSION['flash_errors'] = ['No documents to merge. Set an order number (1, 2, 3, ...) on the documents you want included — documents left at 0 are excluded.'];
     header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
     exit;
 }

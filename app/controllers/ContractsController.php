@@ -1917,4 +1917,79 @@ class ContractsController
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;
     }
+
+    /**
+     * Create a blank, inline-editable Word document and attach it to the
+     * contract's document list, then redirect straight into the OnlyOffice
+     * inline editor so the user can start typing immediately.
+     */
+    public function createBlankDocument(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        $contractId = (int)($_POST['contract_id'] ?? 0);
+        if ($contractId <= 0) {
+            http_response_code(400);
+            echo 'Missing contract ID.';
+            return;
+        }
+
+        if (!can_manage_contract($contractId)) {
+            http_response_code(403);
+            echo 'Forbidden.';
+            return;
+        }
+
+        $docName = trim($_POST['doc_name'] ?? '');
+        $description = $docName !== '' ? $docName : null;
+
+        $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';
+        $outputDir = APP_ROOT . '/' . $relativeDir;
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0775, true);
+        }
+
+        $createdBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
+
+        // Insert row first to get the doc ID for file naming
+        $stmt = $this->db->prepare(
+            "INSERT INTO contract_documents (contract_id, doc_type, description, file_name, file_path, mime_type, created_by_person_id, created_at)
+             VALUES (?, 'Blank Document', ?, '', '', ?, ?, NOW())"
+        );
+        $stmt->execute([
+            $contractId,
+            $description,
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            $createdBy,
+        ]);
+        $docId = $this->db->lastInsertId();
+
+        $safeName = $docName !== '' ? preg_replace('/[^A-Za-z0-9_-]/', '_', $docName) : 'Blank_Document';
+        $fileName = $contractId . '_' . $safeName . '_v' . $docId . '.docx';
+        $outputPath = $outputDir . $fileName;
+
+        try {
+            $phpWord = new \PhpOffice\PhpWord\PhpWord();
+            $phpWord->addSection()->addText('');
+            \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007')->save($outputPath);
+        } catch (\Throwable $e) {
+            $this->db->prepare("DELETE FROM contract_documents WHERE contract_document_id = ?")->execute([$docId]);
+            http_response_code(500);
+            echo 'Failed to create blank document: ' . $e->getMessage();
+            return;
+        }
+
+        $relativePath = $relativeDir . $fileName;
+        $stmt = $this->db->prepare("UPDATE contract_documents SET file_name = ?, file_path = ? WHERE contract_document_id = ?");
+        $stmt->execute([$fileName, $relativePath, $docId]);
+
+        $this->logHistory($contractId, 'document_uploaded', null, null, 'Created blank document: ' . $fileName);
+
+        header('Location: /index.php?page=onlyoffice_editor&document_id=' . $docId);
+        exit;
+    }
 }
