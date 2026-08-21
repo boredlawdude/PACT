@@ -44,9 +44,9 @@ final class OnlyOfficeController
             $ext = 'docx';
         }
 
-        if (!in_array($ext, ['docx', 'doc', 'odt', 'rtf', 'txt'], true)) {
+        if (!in_array($ext, ['docx', 'doc', 'odt', 'rtf', 'txt', 'pdf'], true)) {
             http_response_code(400);
-            echo 'Inline editor currently supports text documents only.';
+            echo 'Inline editor currently supports text documents and PDFs only.';
             return;
         }
 
@@ -73,7 +73,7 @@ final class OnlyOfficeController
                 'title' => $fileName !== '' ? $fileName : ('Document_' . $docId . '.' . $ext),
                 'url' => $docUrl,
             ],
-            'documentType' => 'word',
+            'documentType' => $ext === 'pdf' ? 'pdf' : 'word',
             'editorConfig' => [
                 'mode' => 'edit',
                 'callbackUrl' => $callbackUrl,

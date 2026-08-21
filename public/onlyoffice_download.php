@@ -73,6 +73,8 @@ if ($ext === 'docx') {
     $mime = 'application/rtf';
 } elseif ($ext === 'txt') {
     $mime = 'text/plain; charset=utf-8';
+} elseif ($ext === 'pdf') {
+    $mime = 'application/pdf';
 }
 
 header('Content-Type: ' . $mime);

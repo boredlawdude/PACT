@@ -959,7 +959,7 @@ if (!function_exists('format_utc_to_eastern')) {
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
       <h2 class="h6 mb-0">Documents</h2>
       <div class="d-flex gap-2 align-items-center flex-wrap">
-            <a href="/index.php?page=contract_documents_merge_pdf&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-dark btn-sm">Merge as PDF</a>
+            <a href="/index.php?page=contract_documents_merge_pdf&contract_id=<?= (int)$contract['contract_id'] ?>" id="mergePdfBtn" class="btn btn-outline-dark btn-sm" onclick="startMergePdf(this)">Merge as PDF</a>
             <a href="/index.php?page=contract_document_compare&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-info btn-sm">Compare Documents</a>
             <a href="/index.php?page=contract_document_create&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-secondary btn-sm">Upload Document</a>
             <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addBlankDocModal">Add Blank Doc</button>
@@ -1129,7 +1129,7 @@ if (!function_exists('format_utc_to_eastern')) {
                           $dsBadge = $dsStatus !== null ? ($dsBadgeMap[$dsStatus] ?? 'light') : null;
                           $docName = strtolower((string)($doc['file_name'] ?? ''));
                           $docExt = pathinfo($docName, PATHINFO_EXTENSION);
-                          $canInlineEdit = in_array($docExt, ['docx', 'doc', 'odt', 'rtf', 'txt'], true);
+                          $canInlineEdit = in_array($docExt, ['docx', 'doc', 'odt', 'rtf', 'txt', 'pdf'], true);
                         ?>
                         <?php if ($dsStatus !== null): ?>
                           <span class="badge text-bg-<?= h($dsBadge) ?>"><?= h(ucfirst($dsStatus)) ?></span>
@@ -1573,5 +1573,30 @@ if (!function_exists('format_utc_to_eastern')) {
 
 </div>
 </div>
+
+<!-- Full-page overlay shown while "Merge as PDF" converts/merges documents server-side
+     (can take up to a minute or more for several DOCX/PDF files). The link below is a
+     normal <a href> full-page navigation, not an AJAX call, so the overlay is displayed
+     synchronously on click and simply stays visible on this page for as long as the
+     browser is waiting for the merge script's response/redirect. -->
+<div id="mergePdfOverlay" class="d-none" style="position:fixed; inset:0; z-index:2000; background:rgba(255,255,255,0.85); align-items:center; justify-content:center; flex-direction:column;">
+  <div class="spinner-border text-dark mb-3" role="status" style="width:3rem; height:3rem;"></div>
+  <div class="h5 mb-1">Merging documents into a single PDF&hellip;</div>
+  <div class="text-muted small">This can take a minute or more for several/large documents. Please don&rsquo;t close this tab.</div>
+</div>
+<script>
+  function startMergePdf(link) {
+    var overlay = document.getElementById('mergePdfOverlay');
+    if (overlay) {
+      overlay.classList.remove('d-none');
+      overlay.style.display = 'flex';
+    }
+    link.classList.add('disabled');
+    link.setAttribute('aria-disabled', 'true');
+    // Do not preventDefault: let the browser continue navigating to the merge
+    // endpoint normally; the overlay simply remains on top of this page until
+    // the server responds and redirects back.
+  }
+</script>
 
 <?php require APP_ROOT . '/app/views/layouts/footer.php'; ?>
