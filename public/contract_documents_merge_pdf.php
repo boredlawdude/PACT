@@ -357,6 +357,40 @@ function flattenPdfForFpdi(string $pdfPath): string
     return $pdfPath;
 }
 
+/**
+ * Compress a PDF in-place using Ghostscript (downsamples images, strips unused resources).
+ * Replaces the file with the compressed version only if Ghostscript succeeds and the
+ * result is smaller than the original; otherwise leaves the original untouched.
+ */
+function compressMergedPdf(string $pdfPath): void
+{
+    $gs = trim(shell_exec('which gs 2>/dev/null') ?? '');
+    if ($gs === '' || !is_file($gs)) {
+        return;
+    }
+
+    $originalSize = filesize($pdfPath);
+    $tmpPdf = tempnam(sys_get_temp_dir(), 'merge_compress_') . '.pdf';
+    $cmd = escapeshellarg($gs)
+         . ' -dBATCH -dNOPAUSE -dQUIET -sDEVICE=pdfwrite'
+         . ' -dCompatibilityLevel=1.4'
+         . ' -dPDFSETTINGS=/ebook'
+         . ' -dDetectDuplicateImages=true'
+         . ' -dColorImageDownsampleType=/Bicubic -dColorImageResolution=150'
+         . ' -dGrayImageDownsampleType=/Bicubic -dGrayImageResolution=150'
+         . ' -dMonoImageDownsampleType=/Bicubic -dMonoImageResolution=300'
+         . ' -sOutputFile=' . escapeshellarg($tmpPdf)
+         . ' ' . escapeshellarg($pdfPath)
+         . ' 2>/dev/null';
+    shell_exec($cmd);
+
+    if (is_file($tmpPdf) && filesize($tmpPdf) > 0 && filesize($tmpPdf) < $originalSize) {
+        rename($tmpPdf, $pdfPath);
+    } else {
+        @unlink($tmpPdf);
+    }
+}
+
 // Generate exhibit label: 0→A, 1→B, … 25→Z, 26→AA, etc.
 function getExhibitLabel(int $index): string
 {
@@ -499,6 +533,10 @@ try {
     }
     $savePath = $storageDir . '/' . $outputName;
     $merger->Output('F', $savePath);
+
+    // Shrink the merged PDF (downsamples embedded images) so large scanned exhibits
+    // don't produce an oversized final file.
+    compressMergedPdf($savePath);
 
     // Add to document list
     $relPath = 'storage/generated_docs/' . $contractId . '/' . $outputName;
