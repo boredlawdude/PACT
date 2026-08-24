@@ -49,6 +49,7 @@ class DatabaseBackupController
             '--routines',
             '--triggers',
             '--set-gtid-purged=OFF',
+            '--column-statistics=0',
             escapeshellarg($dbname),
         ]);
 
