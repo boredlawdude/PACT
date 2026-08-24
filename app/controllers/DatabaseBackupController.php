@@ -5,13 +5,13 @@ class DatabaseBackupController
 {
     public function index(): void
     {
-        require_system_admin();
+        require_superuser();
         require APP_ROOT . '/app/views/admin/database_backup.php';
     }
 
     public function run(): void
     {
-        require_system_admin();
+        require_superuser();
 
         // CSRF check
         if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
@@ -142,7 +142,7 @@ class DatabaseBackupController
      */
     public function restore(): void
     {
-        require_system_admin();
+        require_superuser();
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);

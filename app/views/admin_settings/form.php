@@ -70,9 +70,11 @@
                 <div class="col-6 col-md-3">
                     <a href="/index.php?page=merge_field_reference" class="btn btn-outline-secondary w-100">Merge Field Reference</a>
                 </div>
+                <?php if (is_superuser()): ?>
                 <div class="col-6 col-md-3">
                     <a href="/index.php?page=db_backup" class="btn btn-outline-danger w-100">&#128190; Database Backup</a>
                 </div>
+                <?php endif; ?>
                 <div class="col-6 col-md-3">
                     <a href="/index.php?page=user_manual" class="btn btn-outline-secondary w-100">&#128218; User Manual</a>
                 </div>
