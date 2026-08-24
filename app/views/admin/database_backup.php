@@ -64,6 +64,36 @@ require_once APP_ROOT . '/app/views/layouts/header.php';
       </ul>
     </div>
   </div>
+
+  <div class="card shadow-sm mt-4 border-danger">
+    <div class="card-header bg-danger-subtle text-danger-emphasis fw-semibold">&#9888; Restore Database</div>
+    <div class="card-body">
+      <div class="alert alert-danger">
+        <strong>This is destructive and cannot be undone.</strong> Restoring will drop and recreate every
+        table in the database, replacing ALL current data with the contents of the uploaded <code>.sql</code> file.
+      </div>
+
+      <form method="post" action="/index.php?page=db_restore_run" enctype="multipart/form-data"
+            onsubmit="return confirm('This will permanently overwrite the entire database with the uploaded backup. Are you absolutely sure?');">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="restore_file">Backup file (.sql)</label>
+          <input type="file" id="restore_file" name="restore_file" class="form-control" accept=".sql" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="confirm_text">Type <code>RESTORE</code> to confirm</label>
+          <input type="text" id="confirm_text" name="confirm_text" class="form-control font-monospace" autocomplete="off" required>
+        </div>
+
+        <button type="submit" class="btn btn-danger">
+          &#9888; Restore Database
+        </button>
+      </form>
+    </div>
+  </div>
 </div>
+
 
 <?php require_once APP_ROOT . '/app/views/layouts/footer.php'; ?>

@@ -50,6 +50,7 @@ class DatabaseBackupController
             '--triggers',
             '--set-gtid-purged=OFF',
             '--column-statistics=0',
+            '--no-tablespaces',
             escapeshellarg($dbname),
         ]);
 
@@ -132,5 +133,80 @@ class DatabaseBackupController
         }
         // Fall back to PATH
         return 'mysqldump';
+    }
+
+    /**
+     * Restore the database from an uploaded .sql dump (as produced by run() above).
+     * Executed via PDO rather than the mysql CLI so it works the same way
+     * regardless of local CLI auth/host-grant quirks.
+     */
+    public function restore(): void
+    {
+        require_system_admin();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        // CSRF check
+        if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+            http_response_code(403);
+            echo 'Invalid CSRF token.';
+            exit;
+        }
+
+        // Require the admin to type a confirmation phrase — this is a destructive,
+        // irreversible operation that drops and recreates every table.
+        $confirm = trim((string)($_POST['confirm_text'] ?? ''));
+        if (strtoupper($confirm) !== 'RESTORE') {
+            $_SESSION['backup_error'] = 'Restore not run: you must type RESTORE (in the confirmation box) to proceed.';
+            header('Location: /index.php?page=db_backup');
+            exit;
+        }
+
+        if (empty($_FILES['restore_file']) || $_FILES['restore_file']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['backup_error'] = 'Please choose a valid .sql backup file to upload.';
+            header('Location: /index.php?page=db_backup');
+            exit;
+        }
+
+        $file = $_FILES['restore_file'];
+        $originalName = basename($file['name']);
+        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if ($ext !== 'sql') {
+            $_SESSION['backup_error'] = 'Restore file must have a .sql extension.';
+            header('Location: /index.php?page=db_backup');
+            exit;
+        }
+
+        $sql = file_get_contents($file['tmp_name']);
+        if ($sql === false || trim($sql) === '') {
+            $_SESSION['backup_error'] = 'Could not read the uploaded file, or it was empty.';
+            header('Location: /index.php?page=db_backup');
+            exit;
+        }
+
+        // Strip stray mysqldump CLI warning/error lines that can end up mixed into
+        // a backup file when stderr was redirected into stdout (older backups, or
+        // ones captured with a different tool). Harmless to run on clean dumps too.
+        $lines = explode("\n", $sql);
+        $clean = array_filter($lines, function ($l) {
+            return strpos(ltrim($l), 'mysqldump:') !== 0;
+        });
+        $sql = implode("\n", $clean);
+
+        try {
+            db()->exec($sql);
+        } catch (Throwable $e) {
+            $_SESSION['backup_error'] = 'Restore failed: ' . $e->getMessage();
+            header('Location: /index.php?page=db_backup');
+            exit;
+        }
+
+        $_SESSION['backup_success'] = 'Database restored successfully from ' . $originalName . '.';
+        header('Location: /index.php?page=db_backup');
+        exit;
     }
 }

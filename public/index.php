@@ -609,6 +609,11 @@ case 'departments_store':
         (new DatabaseBackupController())->run();
         break;
 
+    case 'db_restore_run':
+        require_once APP_ROOT . '/app/controllers/DatabaseBackupController.php';
+        (new DatabaseBackupController())->restore();
+        break;
+
     case 'admin_statuses':
         require_once APP_ROOT . '/app/controllers/ContractStatusController.php';
         (new ContractStatusController())->index();
