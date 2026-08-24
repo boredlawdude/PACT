@@ -262,6 +262,14 @@ switch ($page) {
         $ChangeOrdersController->delete();
         break;
 
+    case 'contracts_link_change_order':
+        $ContractsController->linkChangeOrderContract();
+        break;
+
+    case 'contracts_unlink_change_order':
+        $ContractsController->unlinkChangeOrderContract();
+        break;
+
     // ── Contract Milestones ────────────────────────────────────────────────
 
     case 'contract_milestones_store':

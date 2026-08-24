@@ -149,7 +149,8 @@ class ChangeOrdersController
             header('Location: /index.php?page=change_orders_create&contract_id=' . $contractId);
             exit;
         }
-        $this->changeOrders->create($contractId, $data);
+        $changeOrderId = $this->changeOrders->create($contractId, $data);
+        $this->handleChangeOrderFileUpload($contractId, $changeOrderId);
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#change-orders');
         exit;
     }
@@ -209,6 +210,7 @@ class ChangeOrdersController
             exit;
         }
         $this->changeOrders->update($changeOrderId, $data);
+        $this->handleChangeOrderFileUpload($contractId, $changeOrderId);
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#change-orders');
         exit;
     }
@@ -261,6 +263,7 @@ class ChangeOrdersController
             exit;
         }
         $changeOrderId = $this->changeOrders->create($contractId, $data);
+        $this->handleChangeOrderFileUpload($contractId, $changeOrderId);
         header('Location: /index.php?page=change_orders_print&change_order_id=' . $changeOrderId);
         exit;
     }
@@ -291,6 +294,7 @@ class ChangeOrdersController
             exit;
         }
         $this->changeOrders->update($changeOrderId, $data);
+        $this->handleChangeOrderFileUpload($contractId, $changeOrderId);
         header('Location: /index.php?page=change_orders_print&change_order_id=' . $changeOrderId);
         exit;
     }
@@ -661,6 +665,57 @@ HTML;
 
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#change-orders');
         exit;
+    }
+
+    /**
+     * Save an optional file uploaded alongside the Change Order form, storing it
+     * the same way ContractsController::storeDocument() does for the
+     * "Change Order & Supporting Documents" category, linked to this change order.
+     */
+    private function handleChangeOrderFileUpload(int $contractId, int $changeOrderId): void
+    {
+        if (empty($_FILES['co_file_upload']) || $_FILES['co_file_upload']['error'] === UPLOAD_ERR_NO_FILE) {
+            return;
+        }
+        if ($_FILES['co_file_upload']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['flash_errors'] = array_merge($_SESSION['flash_errors'] ?? [], ['Change order saved, but the file upload failed.']);
+            return;
+        }
+
+        $file = $_FILES['co_file_upload'];
+        $originalName = basename($file['name']);
+        $mimeType = $file['type'] ?: 'application/octet-stream';
+        $ext = pathinfo($originalName, PATHINFO_EXTENSION);
+        $docType = 'CO Supporting Docs';
+        $safeDocType = preg_replace('/[^A-Za-z0-9_-]/', '_', $docType);
+
+        $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';
+        $outputDir = APP_ROOT . '/' . $relativeDir;
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0775, true);
+        }
+
+        $createdBy = isset($_SESSION['person']['person_id']) ? (int)$_SESSION['person']['person_id'] : null;
+
+        $stmt = $this->db->prepare(
+            "INSERT INTO contract_documents (contract_id, change_order_id, doc_type, file_name, file_path, mime_type, created_by_person_id, created_at)
+             VALUES (?, ?, ?, '', '', ?, ?, NOW())"
+        );
+        $stmt->execute([$contractId, $changeOrderId, $docType, $mimeType, $createdBy]);
+        $docId = $this->db->lastInsertId();
+
+        $fileName = $contractId . '_' . $safeDocType . '_v' . $docId . ($ext ? '.' . $ext : '');
+        $outputPath = $outputDir . $fileName;
+
+        if (!move_uploaded_file($file['tmp_name'], $outputPath)) {
+            $this->db->prepare("DELETE FROM contract_documents WHERE contract_document_id = ?")->execute([$docId]);
+            $_SESSION['flash_errors'] = array_merge($_SESSION['flash_errors'] ?? [], ['Change order saved, but the file could not be stored.']);
+            return;
+        }
+
+        $relativePath = $relativeDir . $fileName;
+        $this->db->prepare("UPDATE contract_documents SET file_name = ?, file_path = ? WHERE contract_document_id = ?")
+            ->execute([$fileName, $relativePath, $docId]);
     }
 
     private function collectFormData(array $post): array

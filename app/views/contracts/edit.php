@@ -123,6 +123,39 @@ if (!function_exists('h')) {
                 <label class="form-label" for="contract_number">Contract Number (Auto-Generated)</label>
                 <input class="form-control bg-light text-muted" type="text" id="contract_number" name="contract_number"
                        value="<?= h($contract['contract_number'] ?? '') ?>">
+
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="is_change_order_contract" name="is_change_order_contract" value="1"
+                           <?= !empty($contract['parent_contract_id']) ? 'checked' : '' ?>
+                           onchange="document.getElementById('parent_contract_picker').style.display = this.checked ? '' : 'none';">
+                    <label class="form-check-label fw-semibold" for="is_change_order_contract">
+                        Is this a Change Order to an existing contract?
+                    </label>
+                </div>
+                <?php
+                    $selectedParentLabel = '';
+                    foreach (($linkableContracts ?? []) as $lc) {
+                        if ((string)$lc['contract_id'] === (string)($contract['parent_contract_id'] ?? '')) {
+                            $selectedParentLabel = ($lc['contract_number'] ?? ('#' . $lc['contract_id'])) . ' — ' . $lc['name'];
+                            break;
+                        }
+                    }
+                ?>
+                <div id="parent_contract_picker" class="mt-2" style="<?= empty($contract['parent_contract_id']) ? 'display:none;' : '' ?>">
+                    <label class="form-label small mb-0">Linked Contract</label>
+                    <input type="text" class="form-control" list="parent_contract_options" id="parent_contract_search"
+                           placeholder="Search by name or contract #…" autocomplete="off"
+                           value="<?= h($selectedParentLabel) ?>"
+                           onchange="resolveParentContractId(this);">
+                    <datalist id="parent_contract_options">
+                        <?php foreach (($linkableContracts ?? []) as $lc): ?>
+                            <option data-contract-id="<?= (int)$lc['contract_id'] ?>"
+                                    value="<?= h(($lc['contract_number'] ?? ('#' . $lc['contract_id'])) . ' — ' . $lc['name']) ?>"></option>
+                        <?php endforeach; ?>
+                    </datalist>
+                    <input type="hidden" name="parent_contract_id" id="parent_contract_id" value="<?= h($contract['parent_contract_id'] ?? '') ?>">
+                    <div class="form-text text-muted">This contract will show up as a Change Order in the linked contract's Change Orders table.</div>
+                </div>
             </div>
 
 
@@ -492,6 +525,18 @@ if (!function_exists('h')) {
         </div>
     </div>
 </form>
+
+<script>
+function resolveParentContractId(input) {
+    var hidden = document.getElementById('parent_contract_id');
+    var options = document.getElementById('parent_contract_options').querySelectorAll('option');
+    var match = null;
+    options.forEach(function (opt) {
+        if (opt.value === input.value) { match = opt; }
+    });
+    hidden.value = match ? match.getAttribute('data-contract-id') : '';
+}
+</script>
 
 <script>
 (function () {

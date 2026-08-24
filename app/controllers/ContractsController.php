@@ -652,6 +652,12 @@ class ContractsController
         }
     }
 
+    /** Candidate contracts for the "link as Change Order to" dropdown (all except itself). */
+    private function getLinkableContracts(int $excludeContractId = 0): array
+    {
+        return $this->contracts->linkableContracts($excludeContractId);
+    }
+
     private function getSystemSetting(string $key): string
     {
         $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1");
@@ -777,6 +783,12 @@ class ContractsController
         $id = (int)($_GET['contract_id'] ?? 0);
         $contract = $this->contracts->find($id);
         $linkedProject = $this->getProjectFilterInfo((int)($contract['project_id'] ?? 0) ?: null);
+        $linkedParentContract = null;
+        if (!empty($contract['parent_contract_id'])) {
+            $linkedParentContract = $this->contracts->findParentContract((int)$contract['parent_contract_id']);
+        }
+        $childChangeOrderContracts = $this->contracts->childChangeOrderContracts($id);
+        $linkableContractsForCo = $this->contracts->linkableContracts($id);
         $docsStmt = $this->db->prepare("SELECT cd.*, CONCAT(p.first_name, ' ', p.last_name) AS created_by_name FROM contract_documents cd LEFT JOIN people p ON cd.created_by_person_id = p.person_id WHERE cd.contract_id = :id ORDER BY cd.sort_order ASC, cd.created_at DESC");
         $docsStmt->execute(['id' => $id]);
         $documents = $docsStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -929,6 +941,7 @@ class ContractsController
         $procurementMethods = $this->getProcurementMethods();
         $contractStatuses = $this->getContractStatuses();
         $projects = $this->getProjects();
+        $linkableContracts = $this->getLinkableContracts();
 
         $ownerPeople = [];
         if (!empty($contract['owner_company_id'])) {
@@ -956,7 +969,14 @@ class ContractsController
         if (empty($data['contract_number'])) {
             $data['contract_number'] = $this->generateContractNumber($data);
         }
+        if (empty($data['is_change_order_contract'])) {
+            $data['parent_contract_id'] = null;
+        }
         $errors = $this->validate($data);
+        $parentContractId = (int)($data['parent_contract_id'] ?? 0);
+        if ($errors === [] && $parentContractId > 0 && !$this->contracts->find($parentContractId)) {
+            $errors[] = 'Please select a valid contract to link as a Change Order.';
+        }
 
         if ($errors) {
             $_SESSION['flash_errors'] = $errors;
@@ -1096,6 +1116,7 @@ class ContractsController
         $procurementMethods = $this->getProcurementMethods();
         $contractStatuses = $this->getContractStatuses();
         $projects = $this->getProjects();
+        $linkableContracts = $this->getLinkableContracts($contractId);
         $ownerPeople = [];
         if (!empty($contract['owner_company_id'])) {
             $ownerPeople = $this->getPeopleByCompany((int)$contract['owner_company_id']);
@@ -1121,7 +1142,20 @@ class ContractsController
             return;
         }
         $data = $this->collectFormData($_POST);
+        if (empty($data['is_change_order_contract'])) {
+            $data['parent_contract_id'] = null;
+        }
         $errors = $this->validate($data);
+        $parentContractId = (int)($data['parent_contract_id'] ?? 0);
+        if ($errors === [] && $parentContractId > 0) {
+            if ($parentContractId === $contractId) {
+                $errors[] = 'A contract cannot be a Change Order to itself.';
+            } elseif (!$this->contracts->find($parentContractId)) {
+                $errors[] = 'Please select a valid contract to link as a Change Order.';
+            } elseif ($this->contracts->wouldCreateParentCycle($contractId, $parentContractId)) {
+                $errors[] = 'That contract cannot be selected — it would create a circular Change Order link.';
+            }
+        }
         if ($errors) {
             $_SESSION['flash_errors'] = $errors;
             $_SESSION['old_contract_form'] = $data;
@@ -1819,6 +1853,70 @@ class ContractsController
     }
 
     /**
+     * Link an existing contract as a Change Order to this contract
+     * (sets the OTHER contract's parent_contract_id to this one).
+     */
+    public function linkChangeOrderContract(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        $parentId = (int)($_POST['contract_id'] ?? 0);
+        $childId  = (int)($_POST['linked_contract_id'] ?? 0);
+
+        if ($parentId <= 0 || !$this->contracts->find($parentId)) {
+            http_response_code(404);
+            echo 'Contract not found.';
+            return;
+        }
+
+        if ($childId <= 0 || $childId === $parentId || !$this->contracts->find($childId)) {
+            $_SESSION['flash_errors'] = ['Please select a valid contract to link as a Change Order.'];
+            header('Location: /index.php?page=contracts_show&contract_id=' . $parentId . '#change-orders');
+            exit;
+        }
+
+        if ($this->contracts->wouldCreateParentCycle($childId, $parentId)) {
+            $_SESSION['flash_errors'] = ['That contract cannot be linked — it would create a circular Change Order link.'];
+            header('Location: /index.php?page=contracts_show&contract_id=' . $parentId . '#change-orders');
+            exit;
+        }
+
+        $this->contracts->setParentContract($childId, $parentId);
+        $this->logHistory($parentId, 'change_order_linked', null, null, 'Linked contract #' . $childId . ' as a Change Order');
+
+        header('Location: /index.php?page=contracts_show&contract_id=' . $parentId . '#change-orders');
+        exit;
+    }
+
+    /**
+     * Unlink a contract that was previously linked as a Change Order.
+     */
+    public function unlinkChangeOrderContract(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo 'Method not allowed.';
+            return;
+        }
+
+        $parentId = (int)($_POST['contract_id'] ?? 0);
+        $childId  = (int)($_POST['linked_contract_id'] ?? 0);
+        $child = $childId > 0 ? $this->contracts->find($childId) : null;
+
+        if ($child && (int)($child['parent_contract_id'] ?? 0) === $parentId) {
+            $this->contracts->setParentContract($childId, null);
+            $this->logHistory($parentId, 'change_order_unlinked', null, null, 'Unlinked contract #' . $childId . ' as a Change Order');
+        }
+
+        header('Location: /index.php?page=contracts_show&contract_id=' . $parentId . '#change-orders');
+        exit;
+    }
+
+    /**
      * Handle uploaded document (exhibit or revised contract)
      */
     public function storeDocument(): void
@@ -1837,11 +1935,23 @@ class ContractsController
         }
 
         $category = $_POST['doc_category'] ?? '';
-        $allowedCategories = ['revised_vendor', 'revised_internal', 'exhibit'];
+        $allowedCategories = ['revised_vendor', 'revised_internal', 'exhibit', 'change_order'];
         if (!in_array($category, $allowedCategories, true)) {
             http_response_code(400);
             echo 'Invalid document category.';
             return;
+        }
+
+        // Optional: link this document to a specific change_orders row (must belong to this contract)
+        $changeOrderId = (int)($_POST['change_order_id'] ?? 0);
+        if ($changeOrderId > 0) {
+            $coCheck = $this->db->prepare("SELECT contract_id FROM change_orders WHERE change_order_id = ? LIMIT 1");
+            $coCheck->execute([$changeOrderId]);
+            if ((int)$coCheck->fetchColumn() !== $contractId) {
+                http_response_code(400);
+                echo 'Invalid change order for this contract.';
+                return;
+            }
         }
 
         // Build doc_type value
@@ -1856,6 +1966,9 @@ class ContractsController
             $description = trim($_POST['description'] ?? '');
         } elseif ($category === 'revised_vendor') {
             $docType = 'Revised by Vendor';
+            $description = '';
+        } elseif ($category === 'change_order') {
+            $docType = 'CO Supporting Docs';
             $description = '';
         } else {
             $docType = 'Revised Internally';
@@ -1889,10 +2002,10 @@ class ContractsController
 
         // Insert row first to get the doc ID for file naming
         $stmt = $this->db->prepare(
-            "INSERT INTO contract_documents (contract_id, doc_type, exhibit_label, description, file_name, file_path, mime_type, created_by_person_id, created_at)
-             VALUES (?, ?, ?, ?, '', '', ?, ?, NOW())"
+            "INSERT INTO contract_documents (contract_id, change_order_id, doc_type, exhibit_label, description, file_name, file_path, mime_type, created_by_person_id, created_at)
+             VALUES (?, ?, ?, ?, ?, '', '', ?, ?, NOW())"
         );
-        $stmt->execute([$contractId, $docType, $exhibitLabel, $description ?: null, $mimeType, $createdBy]);
+        $stmt->execute([$contractId, $changeOrderId ?: null, $docType, $exhibitLabel, $description ?: null, $mimeType, $createdBy]);
         $docId = $this->db->lastInsertId();
 
         $fileName = $contractId . '_' . $safeDocType . '_v' . $docId . ($ext ? '.' . $ext : '');
@@ -1914,7 +2027,8 @@ class ContractsController
 
         $this->logHistory($contractId, 'document_uploaded', null, null, 'Uploaded ' . $docType . ': ' . $fileName);
 
-        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+        $redirectAnchor = $changeOrderId > 0 ? '#change-orders' : '';
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . $redirectAnchor);
         exit;
     }
 

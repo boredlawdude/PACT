@@ -146,6 +146,19 @@ if (!function_exists('format_utc_to_eastern')) {
               </div>
             </div>
             <div class="col-md-6">
+              <div class="small text-muted">Change Order To</div>
+              <div>
+                <?php if (!empty($linkedParentContract)): ?>
+                  <a href="/index.php?page=contracts_show&contract_id=<?= (int)$linkedParentContract['contract_id'] ?>">
+                    <?= h($linkedParentContract['contract_number'] ?? ('#' . $linkedParentContract['contract_id'])) ?> — <?= h($linkedParentContract['name'] ?? '') ?>
+                  </a>
+                  <span class="badge text-bg-info ms-1">Change Order</span>
+                <?php else: ?>
+                  —
+                <?php endif; ?>
+              </div>
+            </div>
+            <div class="col-md-6">
               <div class="small text-muted">Counterparty Company</div>
               <div><?= h($contract['counterparty_company_name'] ?? '') ?: '—' ?></div>
             </div>
@@ -306,6 +319,14 @@ if (!function_exists('format_utc_to_eastern')) {
       require_once APP_ROOT . '/app/models/ChangeOrder.php';
       $coModel      = new ChangeOrder(db());
       $changeOrders = $coModel->allForContract((int)$contract['contract_id']);
+      $linkedCoContracts = $childChangeOrderContracts ?? [];
+      // Documents already uploaded against a specific change_orders row (grouped by change_order_id)
+      $coDocsByChangeOrderId = [];
+      foreach (($documents ?? []) as $doc) {
+          if (!empty($doc['change_order_id'])) {
+              $coDocsByChangeOrderId[(int)$doc['change_order_id']][] = $doc;
+          }
+      }
       ?>
       <div class="card shadow-sm mb-4" id="change-orders">
         <div class="card-header bg-white d-flex align-items-center">
@@ -313,7 +334,7 @@ if (!function_exists('format_utc_to_eastern')) {
           <a href="/index.php?page=change_orders_create&contract_id=<?= (int)$contract['contract_id'] ?>"
              class="btn btn-sm btn-primary">+ Add Change Order</a>
         </div>
-        <?php if (empty($changeOrders)): ?>
+        <?php if (empty($changeOrders) && empty($linkedCoContracts)): ?>
           <div class="card-body text-muted">No change orders recorded yet.</div>
         <?php else: ?>
           <?php
@@ -323,22 +344,31 @@ if (!function_exists('format_utc_to_eastern')) {
               $changeOrderTotal += (float)$co['co_amount'];
             }
           }
+          foreach ($linkedCoContracts as $lc) {
+            if ($lc['total_contract_value'] !== null && $lc['total_contract_value'] !== '') {
+              $changeOrderTotal += (float)$lc['total_contract_value'];
+            }
+          }
           ?>
           <div class="table-responsive">
             <table class="table table-hover table-sm mb-0">
               <thead class="table-light">
                 <tr>
                   <th>CO #</th>
+                  <th>Type</th>
                   <th>Amount</th>
-                  <th>Approval Date</th>
+                  <th>Approval / Start Date</th>
                   <th>Justification</th>
+                  <th>Documents</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <?php foreach ($changeOrders as $co): ?>
+                  <?php $coDocs = $coDocsByChangeOrderId[(int)$co['change_order_id']] ?? []; ?>
                   <tr>
                     <td><?= h($co['change_order_number']) ?></td>
+                    <td><span class="badge text-bg-secondary">Record</span></td>
                     <td>
                       <?php if ($co['co_amount'] !== null && $co['co_amount'] !== ''): ?>
                         $<?= number_format((float)$co['co_amount'], 2) ?>
@@ -354,6 +384,34 @@ if (!function_exists('format_utc_to_eastern')) {
                       <?php endif; ?>
                     </td>
                     <td class="text-truncate" style="max-width:300px;"><?= h($co['co_justification'] ?? '') ?></td>
+                    <td>
+                      <?php if (!empty($coDocs)): ?>
+                        <?php foreach ($coDocs as $cd): ?>
+                          <?php
+                            $coDocWebPath = '';
+                            if (!empty($cd['file_path'])) {
+                              $coDocWebPath = $cd['file_path'];
+                              if (strpos($coDocWebPath, '/storage/') === false && ($pos = strpos($coDocWebPath, 'storage/')) !== false) {
+                                $coDocWebPath = '/' . substr($coDocWebPath, $pos);
+                              } elseif (strpos($coDocWebPath, '/storage/') !== 0) {
+                                $coDocWebPath = '/' . ltrim($coDocWebPath, '/');
+                              }
+                            }
+                          ?>
+                          <div>
+                            <?php if ($coDocWebPath): ?>
+                              <a href="<?= h($coDocWebPath) ?>" target="_blank"><?= h($cd['file_name']) ?></a>
+                            <?php else: ?>
+                              <?= h($cd['file_name']) ?>
+                            <?php endif; ?>
+                          </div>
+                        <?php endforeach; ?>
+                      <?php else: ?>
+                        <span class="text-muted">No documents</span>
+                      <?php endif; ?>
+                      <a href="/index.php?page=contract_document_create&contract_id=<?= (int)$contract['contract_id'] ?>&change_order_id=<?= (int)$co['change_order_id'] ?>"
+                         class="small d-block">+ Upload Doc</a>
+                    </td>
                     <td class="text-end text-nowrap">
                       <a href="/index.php?page=change_orders_edit&change_order_id=<?= (int)$co['change_order_id'] ?>"
                          class="btn btn-outline-secondary btn-sm">Edit</a>
@@ -367,18 +425,87 @@ if (!function_exists('format_utc_to_eastern')) {
                     </td>
                   </tr>
                 <?php endforeach; ?>
+                <?php foreach ($linkedCoContracts as $lc): ?>
+                  <tr>
+                    <td><?= h($lc['contract_number'] ?? ('#' . $lc['contract_id'])) ?></td>
+                    <td><span class="badge text-bg-info">Linked Contract</span></td>
+                    <td>
+                      <?php if ($lc['total_contract_value'] !== null && $lc['total_contract_value'] !== ''): ?>
+                        $<?= number_format((float)$lc['total_contract_value'], 2) ?>
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
+                    <td>
+                      <?php if (!empty($lc['start_date'])): ?>
+                        <?= date('m/d/Y', strtotime((string)$lc['start_date'])) ?>
+                      <?php else: ?>
+                        <span class="text-muted">—</span>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-truncate" style="max-width:300px;"><?= h($lc['name'] ?? '') ?></td>
+                    <td><span class="text-muted">See linked contract</span></td>
+                    <td class="text-end text-nowrap">
+                      <a href="/index.php?page=contracts_show&contract_id=<?= (int)$lc['contract_id'] ?>"
+                         class="btn btn-outline-secondary btn-sm">Open Contract</a>
+                      <form method="post" action="/index.php?page=contracts_unlink_change_order" class="d-inline"
+                            onsubmit="return confirm('Unlink contract <?= h($lc['contract_number'] ?? $lc['contract_id']) ?> as a Change Order?');">
+                        <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
+                        <input type="hidden" name="linked_contract_id" value="<?= (int)$lc['contract_id'] ?>">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Unlink</button>
+                      </form>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
               </tbody>
               <tfoot class="table-light">
                 <tr>
                   <th scope="row">Total Change Orders</th>
+                  <th></th>
                   <th class="text-end">$<?= number_format($changeOrderTotal, 2) ?></th>
-                  <th colspan="3"></th>
+                  <th colspan="4"></th>
                 </tr>
               </tfoot>
             </table>
           </div>
         <?php endif; ?>
+        <div class="card-footer bg-white">
+          <form method="post" action="/index.php?page=contracts_link_change_order" class="row g-2 align-items-end">
+            <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
+            <div class="col-auto">
+              <label class="form-label small mb-0">Link an existing contract as a Change Order</label>
+              <input type="text" class="form-control form-control-sm" list="link_co_contract_options" name="linked_contract_search" placeholder="Search by name or contract #…" autocomplete="off" style="min-width:280px;">
+              <datalist id="link_co_contract_options">
+                <?php foreach (($linkableContractsForCo ?? []) as $lco): ?>
+                  <option data-contract-id="<?= (int)$lco['contract_id'] ?>"
+                          value="<?= h(($lco['contract_number'] ?? ('#' . $lco['contract_id'])) . ' — ' . $lco['name']) ?>"></option>
+                <?php endforeach; ?>
+              </datalist>
+              <input type="hidden" name="linked_contract_id" id="linked_contract_id_input">
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-outline-primary btn-sm" onclick="return resolveLinkedContractId(this.form);">Link Contract</button>
+            </div>
+          </form>
+        </div>
       </div>
+      <script>
+      function resolveLinkedContractId(form) {
+        var input = form.querySelector('input[name="linked_contract_search"]');
+        var hidden = form.querySelector('#linked_contract_id_input');
+        var options = document.getElementById('link_co_contract_options').querySelectorAll('option');
+        var match = null;
+        options.forEach(function (opt) {
+          if (opt.value === input.value) { match = opt; }
+        });
+        if (!match) {
+          alert('Please select a contract from the list.');
+          return false;
+        }
+        hidden.value = match.getAttribute('data-contract-id');
+        return true;
+      }
+      </script>
 
       <!-- ── Contract Milestones ───────────────────────────────────────── -->
       <div class="card shadow-sm mb-4" id="milestones">

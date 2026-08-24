@@ -43,7 +43,7 @@ if (!function_exists('h')) {
     </div>
 <?php endif; ?>
 
-<form method="post" action="<?= h($action) ?>" id="co-form" class="card shadow-sm">
+<form method="post" action="<?= h($action) ?>" id="co-form" class="card shadow-sm" enctype="multipart/form-data">
     <input type="hidden" name="contract_id" value="<?= (int)$contractId ?>">
 
     <div class="card-header fw-semibold">
@@ -81,6 +81,28 @@ if (!function_exists('h')) {
                 <textarea class="form-control" id="co_justification" name="co_justification"
                           rows="4"
                           placeholder="Describe the reason for this change order…"><?= h($changeOrder['co_justification'] ?? '') ?></textarea>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label" for="co_file_upload">Attach Supporting Document <small class="text-muted">(optional)</small></label>
+                <input type="file" class="form-control" id="co_file_upload" name="co_file_upload">
+                <div class="form-text text-muted">Uploaded here or saved with a name like "CO Supporting Docs" — this will also show up in the contract's main Documents list.</div>
+                <?php if ($isEdit && !empty($changeOrder['change_order_id'])): ?>
+                    <?php
+                        $coDocsStmt = db()->prepare(
+                            "SELECT contract_document_id, file_name, file_path FROM contract_documents WHERE change_order_id = ? ORDER BY created_at DESC"
+                        );
+                        $coDocsStmt->execute([(int)$changeOrder['change_order_id']]);
+                        $coDocs = $coDocsStmt->fetchAll(PDO::FETCH_ASSOC);
+                    ?>
+                    <?php if ($coDocs): ?>
+                        <ul class="list-unstyled small mt-2 mb-0">
+                            <?php foreach ($coDocs as $doc): ?>
+                                <li>&#128206; <a href="/<?= h(ltrim((string)$doc['file_path'], '/')) ?>" target="_blank"><?= h($doc['file_name']) ?></a></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
 
         </div>

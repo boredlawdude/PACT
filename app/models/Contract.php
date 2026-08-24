@@ -203,6 +203,91 @@ class Contract
     }
 
     /**
+     * Basic info for the contract this one is linked to as a Change Order
+     * (contracts.parent_contract_id), or null if not linked.
+     */
+    public function findParentContract(int $parentContractId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT contract_id, contract_number, name
+            FROM contracts
+            WHERE contract_id = :contract_id
+            LIMIT 1
+        ");
+        $stmt->execute(['contract_id' => $parentContractId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    /**
+     * Contracts linked as a Change Order to $contractId (parent_contract_id = $contractId).
+     * Shown alongside the plain `change_orders` table rows in the Change Orders panel.
+     */
+    public function childChangeOrderContracts(int $contractId): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT c.contract_id, c.contract_number, c.name, c.total_contract_value,
+                   c.start_date, cs.contract_status_name AS status_name
+            FROM contracts c
+            LEFT JOIN contract_statuses cs ON c.contract_status_id = cs.contract_status_id
+            WHERE c.parent_contract_id = :parent_id
+            ORDER BY c.start_date ASC, c.contract_id ASC
+        ");
+        $stmt->execute(['parent_id' => $contractId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Basic list of contracts for the "link as Change Order to" dropdown,
+     * excluding the contract itself.
+     */
+    public function linkableContracts(int $excludeContractId = 0): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT contract_id, contract_number, name
+            FROM contracts
+            WHERE contract_id != :exclude_id
+            ORDER BY name ASC
+        ");
+        $stmt->execute(['exclude_id' => $excludeContractId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Walk the parent_contract_id chain starting at $startParentId to see if it
+     * would ever loop back to $contractId — used to reject cyclical CO links.
+     */
+    public function wouldCreateParentCycle(int $contractId, int $startParentId): bool
+    {
+        $currentId = $startParentId;
+        for ($i = 0; $i < 25; $i++) {
+            if ($currentId === $contractId) {
+                return true;
+            }
+            $stmt = $this->db->prepare("SELECT parent_contract_id FROM contracts WHERE contract_id = ? LIMIT 1");
+            $stmt->execute([$currentId]);
+            $next = $stmt->fetchColumn();
+            if ($next === false || $next === null) {
+                return false;
+            }
+            $currentId = (int)$next;
+        }
+        return false;
+    }
+
+    /**
+     * Set (or clear) which contract this one is linked to as a Change Order.
+     */
+    public function setParentContract(int $childContractId, ?int $parentContractId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE contracts SET parent_contract_id = :parent_id WHERE contract_id = :child_id");
+        return $stmt->execute([
+            'parent_id' => $parentContractId ?: null,
+            'child_id'  => $childContractId,
+        ]);
+    }
+
+    /**
      * Create contract
      */
     public function create(array $data): int
@@ -246,7 +331,8 @@ class Contract
                 date_approved_by_procurement,
                 date_approved_by_manager,
                 date_approved_by_council,
-                project_id
+                project_id,
+                parent_contract_id
             ) VALUES (
                 :contract_number,
                 :name,
@@ -285,7 +371,8 @@ class Contract
                 :date_approved_by_procurement,
                 :date_approved_by_manager,
                 :date_approved_by_council,
-                :project_id
+                :project_id,
+                :parent_contract_id
             )
         ";
 
@@ -340,7 +427,8 @@ class Contract
                 date_approved_by_procurement = :date_approved_by_procurement,
                 date_approved_by_manager = :date_approved_by_manager,
                 date_approved_by_council = :date_approved_by_council,
-                project_id = :project_id
+                project_id = :project_id,
+                parent_contract_id = :parent_contract_id
             WHERE contract_id = :contract_id
         ";
 
@@ -426,6 +514,7 @@ class Contract
             'date_approved_by_manager' => $this->nullIfEmpty($data['date_approved_by_manager'] ?? null),
             'date_approved_by_council' => $this->nullIfEmpty($data['date_approved_by_council'] ?? null),
             'project_id' => $this->nullIfEmpty($data['project_id'] ?? null),
+            'parent_contract_id' => $this->nullIfEmpty($data['parent_contract_id'] ?? null),
         ];
     }
 
