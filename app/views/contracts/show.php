@@ -160,7 +160,15 @@ if (!function_exists('format_utc_to_eastern')) {
             </div>
             <div class="col-md-6">
               <div class="small text-muted">Counterparty Company</div>
-              <div><?= h($contract['counterparty_company_name'] ?? '') ?: '—' ?></div>
+              <div>
+                <?php if (!empty($contract['counterparty_company_id']) && !empty($contract['counterparty_company_name'])): ?>
+                  <a href="/index.php?page=companies_show&company_id=<?= (int)$contract['counterparty_company_id'] ?>">
+                    <?= h($contract['counterparty_company_name']) ?>
+                  </a>
+                <?php else: ?>
+                  <?= h($contract['counterparty_company_name'] ?? '') ?: '—' ?>
+                <?php endif; ?>
+              </div>
             </div>
             
 
