@@ -110,25 +110,50 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
     </div>
 </div>
 
-<?php if (!empty($myPendingApprovals)): ?>
-<!-- ── My Pending Approvals ──────────────────────────────────────────────── -->
+<?php if (!empty($myPendingApprovals) || !empty($myOpenTasksList)): ?>
+<!-- ── My Pending Approvals and Tasks ─────────────────────────────────────── -->
 <div class="card shadow-sm border-danger mb-4">
     <div class="card-header bg-danger text-white fw-semibold py-2">
-        &#9888; My Pending Approvals
+        &#9888; My Pending Approvals and Tasks
     </div>
     <div class="card-body py-2 px-3">
-        <p class="text-muted small mb-2">Contracts awaiting your approval based on your role(s):</p>
-        <div class="d-flex flex-wrap gap-3">
-            <?php foreach ($myPendingApprovals as $pa): ?>
-                <a href="/index.php?page=contracts&pending_approval=<?= h($pa['key']) ?>"
-                   class="text-decoration-none">
-                    <div class="border rounded px-3 py-2 text-center" style="min-width:120px;">
-                        <div class="fs-3 fw-bold text-danger"><?= $pa['count'] ?></div>
-                        <div class="small text-muted"><?= h($pa['label']) ?> Approval</div>
-                    </div>
-                </a>
-            <?php endforeach; ?>
-        </div>
+        <?php if (!empty($myPendingApprovals)): ?>
+            <p class="text-muted small mb-2">Contracts awaiting your approval based on your role(s):</p>
+            <div class="d-flex flex-wrap gap-3 mb-3">
+                <?php foreach ($myPendingApprovals as $pa): ?>
+                    <a href="/index.php?page=contracts&pending_approval=<?= h($pa['key']) ?>"
+                       class="text-decoration-none">
+                        <div class="border rounded px-3 py-2 text-center" style="min-width:120px;">
+                            <div class="fs-3 fw-bold text-danger"><?= $pa['count'] ?></div>
+                            <div class="small text-muted"><?= h($pa['label']) ?> Approval</div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($myOpenTasksList)): ?>
+            <p class="text-muted small mb-2">Your open tasks:</p>
+            <ul class="list-group list-group-flush">
+                <?php foreach ($myOpenTasksList as $t): ?>
+                    <li class="list-group-item px-0 py-1 d-flex justify-content-between align-items-center">
+                        <span>
+                            <a href="/index.php?page=tasks_edit&task_id=<?= (int)$t['task_id'] ?>"><?= h($t['title']) ?></a>
+                            <?php if (!empty($t['is_stale'])): ?>
+                                <span class="badge text-bg-danger ms-1">Stale</span>
+                            <?php endif; ?>
+                            <?php if (!empty($t['contract_id'])): ?>
+                                <a href="/index.php?page=contracts_show&contract_id=<?= (int)$t['contract_id'] ?>#tasks"
+                                   class="small text-muted ms-1">(<?= h($t['contract_number'] ?? ('#' . $t['contract_id'])) ?>)</a>
+                            <?php endif; ?>
+                        </span>
+                        <span class="small text-muted">
+                            <?= !empty($t['due_date']) ? 'Due ' . date('m/d/Y', strtotime($t['due_date'])) : '' ?>
+                        </span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </div>
 </div>
 <?php endif; ?>

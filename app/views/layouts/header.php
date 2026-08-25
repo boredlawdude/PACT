@@ -83,6 +83,11 @@ declare(strict_types=1);
             require_once APP_ROOT . '/app/models/DevelopmentAgreementSubmission.php';
             $devAgrPending = (new DevelopmentAgreementSubmission(db()))->countPending();
         } catch (Throwable $e) {}
+        $myOpenTasks = 0;
+        try {
+            require_once APP_ROOT . '/app/controllers/TasksController.php';
+            $myOpenTasks = TasksController::countMyOpenTasks(function_exists('current_person_id') ? current_person_id() : 0);
+        } catch (Throwable $e) {}
       ?>
       <ul class="navbar-nav me-auto">
 
@@ -144,6 +149,15 @@ declare(strict_types=1);
             <li><a class="dropdown-item" href="/index.php?page=people">People</a></li>
             <li><a class="dropdown-item" href="/index.php?page=departments">Departments</a></li>
           </ul>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="/index.php?page=tasks">
+            Tasks
+            <?php if ($myOpenTasks > 0): ?>
+              <span class="badge bg-warning text-dark ms-1"><?= $myOpenTasks ?></span>
+            <?php endif; ?>
+          </a>
         </li>
 
         <?php if ($isSuperOrAdmin): ?>

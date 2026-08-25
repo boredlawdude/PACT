@@ -612,6 +612,69 @@ if (!function_exists('format_utc_to_eastern')) {
       </div>
       <!-- ── /Contract Milestones ──────────────────────────────────────── -->
 
+      <!-- ── Tasks ─────────────────────────────────────────────────────── -->
+      <div class="card shadow-sm mb-4" id="tasks">
+        <div class="card-header bg-white d-flex align-items-center">
+          <h2 class="h6 mb-0 me-auto">Tasks</h2>
+          <a href="/index.php?page=tasks_create&contract_id=<?= (int)$contract['contract_id'] ?>"
+             class="btn btn-sm btn-outline-primary">+ Assign Task</a>
+        </div>
+
+        <?php if (!empty($contractTasks)): ?>
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Title</th>
+                  <th>Assigned To</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($contractTasks as $t): ?>
+                  <tr class="<?= !empty($t['is_stale']) ? 'table-danger' : '' ?>">
+                    <td>
+                      <a href="/index.php?page=tasks_edit&task_id=<?= (int)$t['task_id'] ?>"><?= h($t['title']) ?></a>
+                      <?php if (!empty($t['is_stale'])): ?>
+                        <span class="badge text-bg-danger ms-1">Stale</span>
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-nowrap"><?= h($t['assigned_to_name']) ?></td>
+                    <td class="text-nowrap"><?= !empty($t['due_date']) ? date('m/d/Y', strtotime($t['due_date'])) : '—' ?></td>
+                    <td>
+                      <?php $statusBadge = ['open' => 'secondary', 'in_progress' => 'info', 'done' => 'success'][$t['status']] ?? 'secondary'; ?>
+                      <span class="badge text-bg-<?= $statusBadge ?>"><?= h(str_replace('_', ' ', $t['status'])) ?></span>
+                    </td>
+                    <td class="text-end text-nowrap">
+                      <?php if ($t['status'] !== 'done'): ?>
+                        <form method="post" action="/index.php?page=tasks_set_status" class="d-inline">
+                          <input type="hidden" name="task_id" value="<?= (int)$t['task_id'] ?>">
+                          <input type="hidden" name="status" value="done">
+                          <input type="hidden" name="redirect" value="/index.php?page=contracts_show&contract_id=<?= (int)$contract['contract_id'] ?>#tasks">
+                          <button type="submit" class="btn btn-outline-success btn-sm">Complete</button>
+                        </form>
+                      <?php else: ?>
+                        <form method="post" action="/index.php?page=tasks_set_status" class="d-inline">
+                          <input type="hidden" name="task_id" value="<?= (int)$t['task_id'] ?>">
+                          <input type="hidden" name="status" value="open">
+                          <input type="hidden" name="redirect" value="/index.php?page=contracts_show&contract_id=<?= (int)$contract['contract_id'] ?>#tasks">
+                          <button type="submit" class="btn btn-outline-secondary btn-sm">Reopen</button>
+                        </form>
+                      <?php endif; ?>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php else: ?>
+          <div class="card-body text-muted">No tasks linked to this contract yet.</div>
+        <?php endif; ?>
+      </div>
+      <!-- ── /Tasks ────────────────────────────────────────────────────── -->
+
       <?php if ($isDevAgreement && $devAgreement): ?>
 
       <!-- Dev Agreement: Property Information -->

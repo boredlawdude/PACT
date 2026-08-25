@@ -194,6 +194,10 @@ class DashboardController
         // All contracts (unfiltered); JS handles client-side filtering
         $contracts = $this->contractModel->search([]);
 
+        // ── My open tasks (shown alongside pending approvals) ──────────────
+        require_once APP_ROOT . '/app/controllers/TasksController.php';
+        $myOpenTasksList = (new TasksController())->getMyOpenTasks(current_person_id());
+
         $ctStmt = $this->db->query("SELECT contract_type_id, contract_type FROM contract_types WHERE is_active = 1 ORDER BY contract_type ASC");
         $contractTypes = $ctStmt ? $ctStmt->fetchAll(\PDO::FETCH_ASSOC) : [];
 

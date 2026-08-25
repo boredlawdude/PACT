@@ -95,6 +95,7 @@ require_once APP_ROOT . '/app/controllers/ContractMilestonesController.php';
 require_once APP_ROOT . '/app/controllers/ContractMilestoneTypesController.php';
 require_once APP_ROOT . '/app/controllers/NextcloudFilesController.php';
 require_once APP_ROOT . '/app/controllers/OnlyOfficeController.php';
+require_once APP_ROOT . '/app/controllers/TasksController.php';
 $ChangeOrdersController = new ChangeOrdersController();
 
 $companiesController = new CompaniesController();
@@ -296,6 +297,36 @@ switch ($page) {
 
     case 'admin_milestone_types_delete':
         (new ContractMilestoneTypesController())->delete();
+        break;
+
+    // ── Tasks ────────────────────────────────────────────────────────────
+
+    case 'tasks':
+        (new TasksController())->index();
+        break;
+
+    case 'tasks_create':
+        (new TasksController())->create();
+        break;
+
+    case 'tasks_store':
+        (new TasksController())->store();
+        break;
+
+    case 'tasks_edit':
+        (new TasksController())->edit((int)($_GET['task_id'] ?? 0));
+        break;
+
+    case 'tasks_update':
+        (new TasksController())->update((int)($_GET['task_id'] ?? 0));
+        break;
+
+    case 'tasks_set_status':
+        (new TasksController())->setStatus();
+        break;
+
+    case 'tasks_delete':
+        (new TasksController())->delete();
         break;
 
     case 'contract_types':

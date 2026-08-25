@@ -905,6 +905,10 @@ class ContractsController
         ");
         $milestoneTypes = $msTypesStmt ? $msTypesStmt->fetchAll(PDO::FETCH_ASSOC) : [];
 
+        // Load tasks linked to this contract
+        require_once APP_ROOT . '/app/controllers/TasksController.php';
+        $contractTasks = (new TasksController())->getTasksForContract($id);
+
         require APP_ROOT . '/app/views/contracts/show.php';
     }
 
