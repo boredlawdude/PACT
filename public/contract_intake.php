@@ -3,6 +3,28 @@ declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap.php';
 require_once APP_ROOT . '/app/models/ContractIntakeSubmission.php';
 
+// ── AJAX: vendor/company lookup for the counterparty typeahead ──────────────
+// Public endpoint (this form has no login) — only exposes non-sensitive,
+// already-public-facing vendor contact fields, and only for active companies.
+if (($_GET['ajax'] ?? '') === 'vendor_lookup') {
+    header('Content-Type: application/json; charset=utf-8');
+    $q = trim((string)($_GET['q'] ?? ''));
+    $results = [];
+    if (strlen($q) >= 2) {
+        $stmt = db()->prepare(
+            "SELECT company_id, name, contact_name, email, phone
+             FROM companies
+             WHERE is_active = 1 AND name LIKE :q
+             ORDER BY name
+             LIMIT 10"
+        );
+        $stmt->execute([':q' => '%' . $q . '%']);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    echo json_encode($results, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // ── Load contract types for dropdown ─────────────────────────────────────────
 $contractTypes = db()->query(
     "SELECT contract_type_id, contract_type FROM contract_types WHERE is_active = 1 ORDER BY contract_type"
@@ -385,24 +407,27 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
     <div class="card-body">
       <p class="section-label">Vendor / Counterparty</p>
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-6 position-relative">
           <label class="form-label">Company Name</label>
-          <input type="text" class="form-control" name="counterparty_company" maxlength="200"
+          <input type="text" class="form-control" name="counterparty_company" id="counterparty_company" maxlength="200"
+                 autocomplete="off"
                  value="<?= h($old['counterparty_company'] ?? '') ?>">
+          <div id="vendorLookupResults" class="list-group shadow-sm" style="display:none; position:absolute; z-index:1050; width:100%; max-height:220px; overflow-y:auto;"></div>
+          <div class="form-text">Start typing to search existing vendors, or enter a new company name.</div>
         </div>
         <div class="col-md-6">
           <label class="form-label">Contact Name</label>
-          <input type="text" class="form-control" name="counterparty_contact" maxlength="100"
+          <input type="text" class="form-control" name="counterparty_contact" id="counterparty_contact" maxlength="100"
                  value="<?= h($old['counterparty_contact'] ?? '') ?>">
         </div>
         <div class="col-md-6">
           <label class="form-label">Contact Email</label>
-          <input type="email" class="form-control" name="counterparty_email" maxlength="200"
+          <input type="email" class="form-control" name="counterparty_email" id="counterparty_email" maxlength="200"
                  value="<?= h($old['counterparty_email'] ?? '') ?>">
         </div>
         <div class="col-md-6">
           <label class="form-label">Contact Phone</label>
-          <input type="tel" class="form-control" name="counterparty_phone" maxlength="30"
+          <input type="tel" class="form-control" name="counterparty_phone" id="counterparty_phone" maxlength="30"
                  value="<?= h($old['counterparty_phone'] ?? '') ?>">
         </div>
       </div>
@@ -514,6 +539,63 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
       btn.disabled = true;
       if (spinner) spinner.classList.remove('d-none');
       if (text) text.textContent = 'Submitting\u2026';
+    });
+  })();
+</script>
+<script>
+  (function () {
+    var input   = document.getElementById('counterparty_company');
+    var results = document.getElementById('vendorLookupResults');
+    var contactInput = document.getElementById('counterparty_contact');
+    var emailInput   = document.getElementById('counterparty_email');
+    var phoneInput   = document.getElementById('counterparty_phone');
+    if (!input || !results) return;
+
+    var debounceTimer = null;
+    var activeRequest = null;
+
+    function hideResults() {
+      results.style.display = 'none';
+      results.innerHTML = '';
+    }
+
+    function renderResults(vendors) {
+      results.innerHTML = '';
+      if (!vendors.length) { hideResults(); return; }
+      vendors.forEach(function (v) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'list-group-item list-group-item-action py-2';
+        item.textContent = v.name;
+        item.addEventListener('click', function () {
+          input.value = v.name;
+          if (contactInput && !contactInput.value && v.contact_name) contactInput.value = v.contact_name;
+          if (emailInput && !emailInput.value && v.email) emailInput.value = v.email;
+          if (phoneInput && !phoneInput.value && v.phone) phoneInput.value = v.phone;
+          hideResults();
+        });
+        results.appendChild(item);
+      });
+      results.style.display = 'block';
+    }
+
+    input.addEventListener('input', function () {
+      var q = input.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2) { hideResults(); return; }
+      debounceTimer = setTimeout(function () {
+        if (activeRequest) activeRequest.abort();
+        var controller = new AbortController();
+        activeRequest = controller;
+        fetch('/contract_intake.php?ajax=vendor_lookup&q=' + encodeURIComponent(q), { signal: controller.signal })
+          .then(function (r) { return r.json(); })
+          .then(renderResults)
+          .catch(function (err) { if (err.name !== 'AbortError') hideResults(); });
+      }, 250);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (e.target !== input && !results.contains(e.target)) hideResults();
     });
   })();
 </script>
