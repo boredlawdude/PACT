@@ -116,7 +116,9 @@ if (!function_exists('h')) {
                           onsubmit="return confirm('Delete this task?');">
                       <input type="hidden" name="task_id" value="<?= (int)$t['task_id'] ?>">
                       <input type="hidden" name="redirect" value="/index.php?page=tasks&view=<?= h($view) ?>&status=<?= h($curStatus) ?>">
+                      <?php if (!function_exists('can_delete_record') || can_delete_record(isset($t['created_by_person_id']) && $t['created_by_person_id'] !== null ? (int)$t['created_by_person_id'] : null)): ?>
                       <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                      <?php endif; ?>
                     </form>
                   </td>
                 </tr>

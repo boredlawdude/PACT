@@ -37,7 +37,9 @@ $isActive = (int)($company['is_active'] ?? 0) === 1;
 
     <div class="d-flex gap-2 flex-wrap justify-content-end">
       <a href="/index.php?page=companies" class="btn btn-outline-secondary btn-sm">Back to Companies</a>
+      <?php if (function_exists('can_edit_company') ? can_edit_company() : true): ?>
       <a href="/index.php?page=companies_edit&company_id=<?= $companyId ?>" class="btn btn-primary btn-sm">Edit Company</a>
+      <?php endif; ?>
       <a href="/index.php?page=contracts_search&company_id=<?= $companyId ?>" class="btn btn-outline-info btn-sm">See All Contracts</a>
     </div>
   </div>
@@ -212,8 +214,10 @@ $isActive = (int)($company['is_active'] ?? 0) === 1;
       <div class="card shadow-sm mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
           <h2 class="h6 mb-0">People at this Company</h2>
+          <?php if (function_exists('can_edit_company') ? can_edit_company() : true): ?>
           <a href="/index.php?page=companies_edit&company_id=<?= $companyId ?>#people"
              class="btn btn-outline-primary btn-sm">Manage People</a>
+          <?php endif; ?>
         </div>
         <div class="card-body p-0">
           <?php if (empty($employees)): ?>

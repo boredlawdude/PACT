@@ -425,11 +425,13 @@ if (!function_exists('format_utc_to_eastern')) {
                          class="btn btn-outline-secondary btn-sm">Edit</a>
                       <a href="/index.php?page=change_orders_generate_doc&change_order_id=<?= (int)$co['change_order_id'] ?>&format=docx"
                          class="btn btn-outline-primary btn-sm">&#128196; Generate Doc</a>
+                      <?php if (!function_exists('can_delete_record') || can_delete_record(null)): ?>
                       <form method="post" action="/index.php?page=change_orders_delete" class="d-inline"
                             onsubmit="return confirm('Delete change order <?= h($co['change_order_number']) ?>?');">
                         <input type="hidden" name="change_order_id" value="<?= (int)$co['change_order_id'] ?>">
                         <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
                       </form>
+                      <?php endif; ?>
                     </td>
                   </tr>
                 <?php endforeach; ?>
@@ -557,11 +559,13 @@ if (!function_exists('format_utc_to_eastern')) {
                     <td class="text-muted" style="max-width:320px;"><?= h($ms['notes'] ?? '') ?></td>
                     <td class="text-nowrap text-muted small"><?= h(trim($ms['created_by_name'] ?? '')) ?: '—' ?></td>
                     <td class="text-end text-nowrap">
+                      <?php if (!function_exists('can_delete_record') || can_delete_record(isset($ms['created_by_person_id']) && $ms['created_by_person_id'] !== null ? (int)$ms['created_by_person_id'] : null)): ?>
                       <form method="post" action="/index.php?page=contract_milestones_delete" class="d-inline"
                             onsubmit="return confirm('Delete this milestone?');">
                         <input type="hidden" name="milestone_id" value="<?= (int)$ms['milestone_id'] ?>">
                         <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
                       </form>
+                      <?php endif; ?>
                     </td>
                   </tr>
                 <?php endforeach; ?>
@@ -1545,11 +1549,13 @@ if (!function_exists('format_utc_to_eastern')) {
                     </td>
                     <td class="text-nowrap"><?= h($rec['created_by_name'] ?? '—') ?></td>
                     <td>
+                      <?php if (!function_exists('can_delete_record') || can_delete_record(isset($rec['created_by_person_id']) && $rec['created_by_person_id'] !== null ? (int)$rec['created_by_person_id'] : null)): ?>
                       <form method="post" action="/index.php?page=bidding_compliance_delete" onsubmit="return confirm('Delete this record?')">
                         <input type="hidden" name="compliance_id" value="<?= (int)$rec['compliance_id'] ?>">
                         <input type="hidden" name="contract_id" value="<?= (int)$contract['contract_id'] ?>">
                         <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
                       </form>
+                      <?php endif; ?>
                     </td>
                   </tr>
                 <?php endforeach; ?>

@@ -125,6 +125,8 @@ class BiddingComplianceController
 
     public function delete(): void
     {
+        require_login();
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             exit('Method not allowed.');
@@ -134,6 +136,19 @@ class BiddingComplianceController
         $contractId   = (int)($_POST['contract_id'] ?? 0);
 
         if ($complianceId > 0 && $contractId > 0) {
+            $ownerStmt = $this->db->prepare("SELECT created_by_person_id FROM bidding_compliance WHERE compliance_id = ? AND contract_id = ? LIMIT 1");
+            $ownerStmt->execute([$complianceId, $contractId]);
+            $ownerId = $ownerStmt->fetchColumn();
+
+            if ($ownerId === false) {
+                header('Location: /index.php?page=contracts_show&contract_id=' . $contractId . '#bidding-compliance');
+                exit;
+            }
+            if (!can_delete_record($ownerId !== null ? (int)$ownerId : null)) {
+                http_response_code(403);
+                exit('Forbidden.');
+            }
+
             $this->db->prepare("DELETE FROM bidding_compliance WHERE compliance_id = ? AND contract_id = ?")
                 ->execute([$complianceId, $contractId]);
         }

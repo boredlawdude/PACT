@@ -220,6 +220,8 @@ class ChangeOrdersController
      */
     public function delete(): void
     {
+        require_login();
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed.';
@@ -230,6 +232,13 @@ class ChangeOrdersController
         if (!$changeOrder) {
             http_response_code(404);
             echo 'Change order not found.';
+            return;
+        }
+        // change_orders has no created_by tracking, so a plain Town User can
+        // never be recognized as the "owner" and is denied by default.
+        if (!can_delete_record(null)) {
+            http_response_code(403);
+            echo 'Forbidden.';
             return;
         }
         $contractId = (int)$changeOrder['contract_id'];

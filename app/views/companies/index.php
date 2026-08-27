@@ -64,8 +64,10 @@ if (!function_exists('h')) {
                 onclick="return confirm('Delete selected companies? This cannot be undone.');">
             Delete Selected
         </button>
+        <?php if (function_exists('can_edit_company') ? can_edit_company() : true): ?>
         <a class="btn btn-primary btn-sm" href="/index.php?page=companies_create">New Company</a>
         <a class="btn btn-outline-secondary btn-sm" href="/index.php?page=companies_vendor_pdf_import">Import from PDF</a>
+        <?php endif; ?>
     </div>
 </div>
 

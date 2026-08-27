@@ -278,14 +278,41 @@ function is_town_user(): bool {
   return (bool)$stmt->fetchColumn();
 }
 
+/**
+ * True if the current user's ONLY assigned role is the base "Town User" role
+ * (role_key = TOWN_USER) — i.e. they hold no elevated/admin/department role.
+ * A user with no roles at all is treated the same as Town User, since they
+ * hold no elevated permissions either (most restrictive default).
+ */
+function is_town_user_only(): bool {
+  require_login();
+  $roles = array_map('strtoupper', current_person()['roles'] ?? []);
+  if (empty($roles)) return true;
+  return count($roles) === 1 && $roles[0] === 'TOWN_USER';
+}
+
+/**
+ * Whether the current user may delete a given record.
+ * - System admins can always delete.
+ * - Anyone holding a role beyond plain "Town User" keeps full delete rights
+ *   (unchanged from prior behavior).
+ * - A plain "Town User" may only delete a record they created themselves —
+ *   pass the record's owner/creator person_id (or null if unknown/untracked,
+ *   which denies the plain Town User by default).
+ */
+function can_delete_record(?int $ownerPersonId): bool {
+  if (is_system_admin()) return true;
+  if (!is_town_user_only()) return true;
+  return $ownerPersonId !== null && $ownerPersonId > 0 && $ownerPersonId === current_person_id();
+}
+
 /* ============================================================
    Contract permissions (dept-scoped)
    ============================================================ */
 function can_edit_company(): bool {
-  // simplest: system admin OR dept contract admin
+  // Everyone EXCEPT a plain "Town User" (no elevated role) may edit companies.
   if (is_system_admin()) return true;
-  // if you have a "global" contract admin role, check it here too
-  return person_has_role_key('DEPT_CONTRACT_ADMIN');
+  return !is_town_user_only();
 }
 
 function can_manage_contract_department(?int $department_id): bool {

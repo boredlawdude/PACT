@@ -250,6 +250,8 @@ class TasksController
 
     public function delete(): void
     {
+        require_login();
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed.';
@@ -261,6 +263,13 @@ class TasksController
         if (!$task) {
             http_response_code(404);
             echo 'Task not found.';
+            return;
+        }
+
+        $ownerId = $task['created_by_person_id'] ?? null;
+        if (!can_delete_record($ownerId !== null ? (int)$ownerId : null)) {
+            http_response_code(403);
+            echo 'Forbidden.';
             return;
         }
 

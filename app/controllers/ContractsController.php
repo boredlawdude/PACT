@@ -886,7 +886,7 @@ class ContractsController
 
         // Load milestones for this contract
         $msStmt = $this->db->prepare("
-            SELECT m.milestone_id, m.milestone_date, m.notes, m.created_at,
+            SELECT m.milestone_id, m.milestone_date, m.notes, m.created_at, m.created_by_person_id,
                    mt.name AS milestone_type_name,
                    COALESCE(NULLIF(p.full_name,''), TRIM(CONCAT(COALESCE(p.first_name,''),' ',COALESCE(p.last_name,'')))) AS created_by_name
             FROM contract_milestones m
@@ -1981,8 +1981,26 @@ class ContractsController
 
         // Handle file upload
         if (empty($_FILES['file_upload']) || $_FILES['file_upload']['error'] !== UPLOAD_ERR_OK) {
+            $uploadErr = $_FILES['file_upload']['error'] ?? null;
+            if ($uploadErr === null) {
+                // $_FILES/$_POST are empty entirely — almost always means the whole
+                // request body exceeded post_max_size before PHP could parse it.
+                $msg = 'File upload failed: the file is too large for this server to accept'
+                     . (ini_get('post_max_size') ? ' (server limit is ' . ini_get('post_max_size') . ').' : '.');
+            } else {
+                $messages = [
+                    UPLOAD_ERR_INI_SIZE   => 'the file exceeds the maximum upload size allowed (' . ini_get('upload_max_filesize') . ').',
+                    UPLOAD_ERR_FORM_SIZE  => 'the file exceeds the maximum upload size allowed by the form.',
+                    UPLOAD_ERR_PARTIAL    => 'the file was only partially uploaded. Please try again.',
+                    UPLOAD_ERR_NO_FILE    => 'no file was selected.',
+                    UPLOAD_ERR_NO_TMP_DIR => 'the server is missing a temporary folder for uploads.',
+                    UPLOAD_ERR_CANT_WRITE => 'the server failed to write the uploaded file to disk.',
+                    UPLOAD_ERR_EXTENSION  => 'a server extension blocked the file upload.',
+                ];
+                $msg = 'File upload failed: ' . ($messages[$uploadErr] ?? ('unknown error code ' . $uploadErr) . '.');
+            }
             http_response_code(400);
-            echo 'File upload failed.';
+            echo $msg;
             return;
         }
 

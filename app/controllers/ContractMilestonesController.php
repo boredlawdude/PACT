@@ -66,10 +66,8 @@ class ContractMilestonesController
             exit;
         }
 
-        $createdBy = $_SESSION['person_id'] ?? null;
-        if ($createdBy !== null) {
-            $createdBy = (int)$createdBy;
-        }
+        $createdBy = current_person_id();
+        $createdBy = $createdBy > 0 ? $createdBy : null;
 
         $stmt = $this->db->prepare("
             INSERT INTO contract_milestones (contract_id, milestone_type_id, milestone_date, notes, created_by_person_id)
@@ -92,6 +90,8 @@ class ContractMilestonesController
      */
     public function delete(): void
     {
+        require_login();
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed.';
@@ -105,7 +105,7 @@ class ContractMilestonesController
             return;
         }
 
-        $stmt = $this->db->prepare("SELECT contract_id FROM contract_milestones WHERE milestone_id = ? LIMIT 1");
+        $stmt = $this->db->prepare("SELECT contract_id, created_by_person_id FROM contract_milestones WHERE milestone_id = ? LIMIT 1");
         $stmt->execute([$milestoneId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -116,6 +116,12 @@ class ContractMilestonesController
         }
 
         $contractId = (int)$row['contract_id'];
+
+        if (!can_delete_record($row['created_by_person_id'] !== null ? (int)$row['created_by_person_id'] : null)) {
+            http_response_code(403);
+            echo 'Forbidden.';
+            return;
+        }
 
         $stmt = $this->db->prepare("DELETE FROM contract_milestones WHERE milestone_id = ?");
         $stmt->execute([$milestoneId]);

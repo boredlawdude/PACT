@@ -25,6 +25,13 @@ class CompaniesController
 
     public function create(): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to create companies.';
+            return;
+        }
+
         $mode = 'create';
         $errors = $_SESSION['flash_errors'] ?? [];
         unset($_SESSION['flash_errors']);
@@ -45,6 +52,13 @@ class CompaniesController
 
     public function store(): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to create companies.';
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed.';
@@ -186,6 +200,13 @@ class CompaniesController
 
     public function edit(int $companyId): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to edit companies.';
+            return;
+        }
+
         if ($companyId <= 0) {
             echo 'Missing company id';
             return;
@@ -232,6 +253,13 @@ class CompaniesController
 
     public function update(int $companyId): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to edit companies.';
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed.';
@@ -310,6 +338,13 @@ class CompaniesController
 
     public function linkPerson(int $companyId): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to edit companies.';
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed.';
@@ -332,6 +367,13 @@ class CompaniesController
 
     public function unlinkPerson(int $companyId): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to edit companies.';
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo 'Method not allowed.';
@@ -363,6 +405,13 @@ class CompaniesController
 
     public function vendorPdfImport(): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to create companies.';
+            return;
+        }
+
         $errors = $_SESSION['flash_errors'] ?? [];
         unset($_SESSION['flash_errors']);
         require APP_ROOT . '/app/views/companies/vendor_pdf_import.php';
@@ -370,6 +419,13 @@ class CompaniesController
 
     public function vendorPdfImportProcess(): void
     {
+        require_login();
+        if (!can_edit_company()) {
+            http_response_code(403);
+            echo 'Access denied. You do not have permission to create companies.';
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             exit;
