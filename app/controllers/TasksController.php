@@ -377,21 +377,32 @@ class TasksController
      * Open tasks assigned to a specific person (used by the dashboard's
      * "My Pending Approvals and Tasks" box).
      */
-    public function getMyOpenTasks(int $personId): array
+    public function getMyOpenTasks(int $personId, ?int $departmentId = null): array
     {
         if ($personId <= 0) {
             return [];
         }
+        if ($departmentId !== null && $departmentId <= 0) {
+            return [];
+        }
+
+        $departmentSql = $departmentId !== null
+            ? ' AND (t.contract_id IS NULL OR c.department_id = ?)'
+            : '';
         $stmt = $this->db->prepare("
             SELECT t.task_id, t.title, t.due_date, t.contract_id, t.status,
                    c.contract_number,
                    (t.status != 'done' AND t.updated_at < (NOW() - INTERVAL " . self::STALE_DAYS . " DAY)) AS is_stale
             FROM tasks t
             LEFT JOIN contracts c ON c.contract_id = t.contract_id
-            WHERE t.assigned_to_person_id = ? AND t.status != 'done'
+            WHERE t.assigned_to_person_id = ? AND t.status != 'done'" . $departmentSql . "
             ORDER BY t.due_date IS NULL, t.due_date ASC, t.created_at DESC
         ");
-        $stmt->execute([$personId]);
+        $params = [$personId];
+        if ($departmentId !== null) {
+            $params[] = $departmentId;
+        }
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

@@ -11,15 +11,7 @@ try {
 $orgName = $_orgRow['org_name'] ?? 'Your Organization';
 
 $email  = trim(strtolower($_POST['email'] ?? ''));
-$next   = (string)($_GET['next'] ?? $_POST['next'] ?? '/index.php?page=dashboard');
 $errors = [];
-
-function safe_next_local(string $next, string $fallback = '/index.php?page=dashboard'): string {
-    $next = trim($next);
-    if ($next === '') return $fallback;
-    if (strpos($next, '/') === 0 && strpos($next, '//') !== 0) return $next;
-    return $fallback;
-}
 
 if (current_person()) {
     header("Location: /index.php?page=dashboard");
@@ -36,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if (login_person($email, $pw)) {
             session_write_close();
-            header("Location: " . safe_next_local($next, '/index.php?page=dashboard'));
+            header("Location: /index.php?page=dashboard");
             exit;
         }
         $errors[] = "Invalid email or password.";
@@ -83,8 +75,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="post" action="/login.php" autocomplete="on">
-          <input type="hidden" name="next" value="<?= htmlspecialchars($next, ENT_QUOTES, 'UTF-8') ?>">
-
           <label class="form-label">Email</label>
           <input class="form-control" type="email" name="email" required
                  value="<?= htmlspecialchars($email, ENT_QUOTES, 'UTF-8') ?>" autocomplete="username">

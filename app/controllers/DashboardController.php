@@ -22,6 +22,28 @@ class DashboardController
         // Current user info
         $person = current_person();
 
+        // Users without an elevated, organization-wide role see only contracts
+        // belonging to their primary department on the Dashboard. This scope is
+        // intentionally local to this controller; the Contracts tab remains global.
+        $fullDashboardRoleKeys = [
+            'ADMIN',
+            'RISK_MANAGER',
+            'TOWN_COUNCIL',
+            'LEGAL_ADMIN',
+            'SUPERUSER',
+            'TOWN_ATTORNEY',
+            'PROCUREMENT',
+            'TOWN_CLERK',
+            'FINANCE_DIRECTOR',
+        ];
+        $normalizedRoles = array_map('strtoupper', $person['roles'] ?? []);
+        $scopeDashboardToDepartment = empty(array_intersect($normalizedRoles, $fullDashboardRoleKeys));
+        $dashboardDepartmentId = $scopeDashboardToDepartment
+            ? (int)($person['department_id'] ?? 0)
+            : 0;
+        $departmentSql = $scopeDashboardToDepartment ? ' AND c.department_id = ?' : '';
+        $departmentParams = $scopeDashboardToDepartment ? [$dashboardDepartmentId] : [];
+
         // Look up all roles (with descriptions) for this user
         $userRoles = [];
         if (!empty($person['roles'])) {
@@ -50,8 +72,9 @@ class DashboardController
               LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
               WHERE (c.end_date IS NULL OR YEAR(c.end_date) = 0)
                 AND LOWER(COALESCE(cs.contract_status_name,'')) NOT IN ($exPlaceholders)"
+                . $departmentSql
         );
-        $pendingStmt->execute($excludedStatuses);
+        $pendingStmt->execute(array_merge($excludedStatuses, $departmentParams));
         $pendingCount = (int)$pendingStmt->fetchColumn();
 
         // ── Stale-draft count + IDs ───────────────────────────────────────
@@ -63,8 +86,9 @@ class DashboardController
                OR LOWER(cs.contract_status_name) LIKE 'negotiat%'
               )
               AND c.created_at <= DATE_SUB(NOW(), INTERVAL 5 DAY)"
+                . $departmentSql
         );
-        $staleStmt->execute();
+        $staleStmt->execute($departmentParams);
         $staleIds = array_flip($staleStmt->fetchAll(PDO::FETCH_COLUMN));
         $staleCount = count($staleIds);
 
@@ -75,8 +99,9 @@ class DashboardController
             "SELECT COUNT(*) FROM contracts c
               LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
               WHERE LOWER(COALESCE(cs.contract_status_name,'')) IN ($rvPlaceholders)"
+                . $departmentSql
         );
-        $reviewStmt->execute($reviewStatuses);
+        $reviewStmt->execute(array_merge($reviewStatuses, $departmentParams));
         $reviewCount = (int)$reviewStmt->fetchColumn();
 
         // ── Town Council count ────────────────────────────────────────────
@@ -86,8 +111,9 @@ class DashboardController
             "SELECT COUNT(*) FROM contracts c
               LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
               WHERE LOWER(COALESCE(cs.contract_status_name,'')) IN ($tcPlaceholders)"
+                . $departmentSql
         );
-        $tcStmt->execute($tcStatuses);
+        $tcStmt->execute(array_merge($tcStatuses, $departmentParams));
         $townCouncilCount = (int)$tcStmt->fetchColumn();
 
         // ── Out for signature count ───────────────────────────────────────
@@ -95,8 +121,9 @@ class DashboardController
             "SELECT COUNT(*) FROM contracts c
               LEFT JOIN contract_statuses cs ON cs.contract_status_id = c.contract_status_id
               WHERE LOWER(COALESCE(cs.contract_status_name,'')) = 'out for signature'"
+                . $departmentSql
         );
-        $sigStmt->execute();
+        $sigStmt->execute($departmentParams);
         $outForSignatureCount = (int)$sigStmt->fetchColumn();
 
         // All statuses for radio filter
@@ -145,13 +172,16 @@ class DashboardController
 
         if (!empty($userApprovalKeys)) {
             // Fetch legacy approval date columns plus contract identifiers
-            $allContracts = $this->db->query("
+            $allContractsStmt = $this->db->prepare("
                 SELECT contract_id, total_contract_value, renewal_term_months, contract_type_id,
                        use_standard_contract, minimum_insurance_coi,
                        manager_approval_date, purchasing_approval_date, legal_approval_date,
                        risk_manager_approval_date, council_approval_date
                 FROM contracts
-            ")->fetchAll(PDO::FETCH_ASSOC);
+                WHERE 1=1" . $departmentSql
+            );
+            $allContractsStmt->execute($departmentParams);
+            $allContracts = $allContractsStmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Load all stamps for dynamic approval types, keyed by contract_id => [approval_key => date]
             $allStamps = [];
@@ -191,12 +221,19 @@ class DashboardController
             }
         }
 
-        // All contracts (unfiltered); JS handles client-side filtering
-        $contracts = $this->contractModel->search([]);
+        // Status/type filtering remains client-side after applying dashboard access scope.
+        $contracts = $scopeDashboardToDepartment
+            ? ($dashboardDepartmentId > 0
+                ? $this->contractModel->search(['department_id' => $dashboardDepartmentId])
+                : [])
+            : $this->contractModel->search([]);
 
         // ── My open tasks (shown alongside pending approvals) ──────────────
         require_once APP_ROOT . '/app/controllers/TasksController.php';
-        $myOpenTasksList = (new TasksController())->getMyOpenTasks(current_person_id());
+        $myOpenTasksList = (new TasksController())->getMyOpenTasks(
+            current_person_id(),
+            $scopeDashboardToDepartment ? $dashboardDepartmentId : null
+        );
 
         $ctStmt = $this->db->query("SELECT contract_type_id, contract_type FROM contract_types WHERE is_active = 1 ORDER BY contract_type ASC");
         $contractTypes = $ctStmt ? $ctStmt->fetchAll(\PDO::FETCH_ASSOC) : [];
