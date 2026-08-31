@@ -72,6 +72,7 @@ class Contract
             c.department_id,
             c.contract_status_id,
             cs.contract_status_name AS status_name,
+            c.created_at,
             c.start_date,
             c.end_date,
             c.total_contract_value,

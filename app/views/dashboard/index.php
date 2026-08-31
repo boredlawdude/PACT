@@ -221,6 +221,7 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
                     <tr>
                         <th style="width:32px;"><input type="checkbox" id="dashSelectAll" class="form-check-input"></th>
                         <th style="width:180px; cursor:pointer; user-select:none;" data-sort="text">Contract # <span class="sort-icon"></span></th>
+                        <th style="width:110px; cursor:pointer; user-select:none;" data-sort="text">Submitted <span class="sort-icon"></span></th>
                         <th style="width:120px; cursor:pointer; user-select:none;" data-sort="text">Status <span class="sort-icon"></span></th>
                         <th style="width:320px; cursor:pointer; user-select:none;" data-sort="text">Name <span class="sort-icon"></span></th>
                         <th style="width:55px; cursor:pointer; user-select:none;" data-sort="text">Dept <span class="sort-icon"></span></th>
@@ -242,6 +243,7 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
                         data-delete-url="/index.php?page=contracts_delete&contract_id=<?= (int)$c['contract_id'] ?>">
                         <td><input type="checkbox" class="form-check-input dash-row-check" value="<?= (int)$c['contract_id'] ?>"></td>
                         <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] !== null && $c['contract_number'] !== '' ? $c['contract_number'] : ('#' . $c['contract_id'])) ?></a></td>
+                        <td data-sort-value="<?= h($c['created_at'] ?? '') ?>"><?= h(format_date($c['created_at'] ?? null)) ?></td>
                         <td><span class="badge text-bg-<?= dashboard_status_badge($c['status_name'] ?? '') ?>"><?= h($c['status_name'] ?? '') ?></span></td>
                         <td class="<?= $isStale ? 'text-danger' : '' ?>">
                             <?php if (!empty($c['counterparty_company_name'])): ?>
@@ -517,8 +519,8 @@ function dashFilterRows() {
 
             const rows = Array.from(tbody.querySelectorAll('tr'));
             rows.sort(function (a, b) {
-                let aVal = a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '';
-                let bVal = b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '';
+                let aVal = a.cells[colIdx] ? (a.cells[colIdx].dataset.sortValue ?? a.cells[colIdx].textContent.trim()) : '';
+                let bVal = b.cells[colIdx] ? (b.cells[colIdx].dataset.sortValue ?? b.cells[colIdx].textContent.trim()) : '';
                 if (isNum) {
                     aVal = parseFloat(aVal.replace(/[$,]/g, '')) || 0;
                     bVal = parseFloat(bVal.replace(/[$,]/g, '')) || 0;
