@@ -392,8 +392,14 @@ function contractsFilterRows() {
 // ── Draggable column resize (with localStorage persistence) ─────────────
 (function () {
     function makeResizable(table) {
-        const storageKey = 'colWidths_' + table.id;
         const cols = table.querySelectorAll('thead th');
+        // Include a signature of the current headers so a stale layout's saved widths
+        // (e.g. from before a column was added/removed/reordered) are never misapplied
+        // to the wrong columns.
+        const signature = Array.from(cols).map(function (th) {
+            return th.textContent.trim();
+        }).join('|');
+        const storageKey = 'colWidths_' + table.id + '_' + signature;
         table.style.tableLayout = 'fixed';
 
         // Restore saved widths
