@@ -149,6 +149,34 @@ class DevelopmentAgreement
         $stmt->execute([$id]);
     }
 
+    /**
+     * The edit form only posts multi-parcel data via tracts[], so the legacy
+     * single-parcel columns below are never set by extractPost()/create()/update()
+     * anymore. Those legacy columns are still what feed the "da_property_*" merge
+     * fields (and the development_agreements list/show pages), so after tracts are
+     * saved, sync them from the primary (first, by sort order) tract.
+     */
+    public function syncPrimaryTractFields(int $id, ?array $primaryTract): void
+    {
+        $stmt = $this->db->prepare("
+            UPDATE development_agreements SET
+                property_address      = :property_address,
+                property_pin          = :property_pin,
+                property_realestateid = :property_realestateid,
+                property_acerage      = :property_acerage
+            WHERE dev_agreement_id = :id
+        ");
+        $nullStr = fn($v) => (trim((string)$v) !== '') ? trim((string)$v) : null;
+        $nullDec = fn($v) => ($v !== '' && $v !== null) ? $v : null;
+        $stmt->execute([
+            ':property_address'      => $nullStr($primaryTract['property_address'] ?? null),
+            ':property_pin'          => $nullStr($primaryTract['property_pin'] ?? null),
+            ':property_realestateid' => $nullStr($primaryTract['property_realestateid'] ?? null),
+            ':property_acerage'      => $nullDec($primaryTract['property_acerage'] ?? null),
+            ':id'                    => $id,
+        ]);
+    }
+
     private function bindParams(array $data): array
     {
         $nullOrInt  = fn($v) => ($v !== '' && $v !== null) ? (int)$v : null;

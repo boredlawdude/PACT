@@ -105,6 +105,9 @@ class DevelopmentAgreementsController
         // --- Save tracts ---
         $this->saveTracts($newId, $_POST['tracts'] ?? []);
 
+        // --- Sync legacy single-parcel columns (feed da_property_* merge fields) ---
+        $this->model->syncPrimaryTractFields($newId, $this->tracts->allForAgreement($newId)[0] ?? null);
+
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;
     }
@@ -179,6 +182,9 @@ class DevelopmentAgreementsController
             header('Location: /index.php?page=development_agreements_edit&dev_agreement_id=' . $id);
             exit;
         }
+
+        // Sync legacy single-parcel columns (feed da_property_* merge fields)
+        $this->model->syncPrimaryTractFields($id, $this->tracts->allForAgreement($id)[0] ?? null);
 
         // Keep linked contract name in sync with project_name
         $agreement = $this->model->find($id);
