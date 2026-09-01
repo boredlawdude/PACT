@@ -188,7 +188,9 @@ function status_badge(string $status): string {
                         <td><input type="checkbox" class="form-check-input contracts-row-check" value="<?= (int)$c['contract_id'] ?>"></td>
                         <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] !== null && $c['contract_number'] !== '' ? $c['contract_number'] : ('#' . $c['contract_id'])) ?></a></td>
                         <td data-sort-value="<?= h($c['created_at'] ?? '') ?>"><?= h(format_date($c['created_at'] ?? null)) ?></td>
-                        <td><span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>"><?= h($c['status_name'] ?? '') ?></span></td>
+                        <td style="max-width:120px;">
+                            <span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>" style="white-space:normal; word-break:break-word; display:inline-block; text-align:left;"><?= h($c['status_name'] ?? '') ?></span>
+                        </td>
                         <td>
                             <?php if (!empty($c['counterparty_company_name'])): ?>
                                 <small class="text-muted d-block"><?= h($c['counterparty_company_name']) ?></small>
