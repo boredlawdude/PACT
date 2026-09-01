@@ -698,7 +698,20 @@ class ContractsController
             'council'      => 'council_approval_date',
         ];
         $pa = trim($_GET['pending_approval'] ?? '');
-        if ($pa !== '' && isset($pendingApprovalColMap[$pa])) {
+        if ($pa === 'town_attorney') {
+            // 'town_attorney' is not wired into approval_rules and has no legacy
+            // date column — it's tracked only via contract_approval_stamps. Show
+            // every contract that does NOT yet have a town_attorney stamp,
+            // mirroring the "unconditional" logic used on the Dashboard widget.
+            $stampedStmt = $this->db->query(
+                "SELECT contract_id FROM contract_approval_stamps WHERE approval_key = 'town_attorney'"
+            );
+            $stampedIds = array_flip($stampedStmt->fetchAll(PDO::FETCH_COLUMN));
+
+            $contracts = array_filter($contracts, fn($c) => !isset($stampedIds[(int)$c['contract_id']]));
+            $pendingApprovalFilter = $pa;
+            $pendingApprovalLabel  = 'Town Attorney';
+        } elseif ($pa !== '' && isset($pendingApprovalColMap[$pa])) {
             require_once APP_ROOT . '/app/controllers/ApprovalRulesController.php';
             $col = $pendingApprovalColMap[$pa];
 
