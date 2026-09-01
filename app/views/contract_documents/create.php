@@ -5,6 +5,10 @@ if (!function_exists('h')) {
 }
 $contractId = (int)($contractId ?? $_GET['contract_id'] ?? 0);
 $changeOrderId = (int)($changeOrderId ?? $_GET['change_order_id'] ?? 0);
+if (!isset($documentCategories)) {
+    require_once APP_ROOT . '/app/models/DocumentCategory.php';
+    $documentCategories = (new DocumentCategory(db()))->active();
+}
 ?>
 <div class="container mt-4" style="max-width: 600px;">
     <h2 class="h5 mb-3">Upload Document for Contract #<?= $contractId ?></h2>
@@ -20,10 +24,9 @@ $changeOrderId = (int)($changeOrderId ?? $_GET['change_order_id'] ?? 0);
             <label class="form-label">Document Category</label>
             <select id="doc_category" name="doc_category" class="form-select" required onchange="toggleExhibitFields()">
                 <option value="">— Select —</option>
-                <option value="revised_vendor">Revised by Vendor</option>
-                <option value="revised_internal">Revised Internally</option>
-                <option value="exhibit">Exhibit</option>
-                <option value="change_order">Change Order &amp; Supporting Documents</option>
+                <?php foreach ($documentCategories as $cat): ?>
+                    <option value="<?= h($cat['category_key']) ?>"><?= h($cat['label']) ?></option>
+                <?php endforeach; ?>
             </select>
         </div>
 

@@ -1939,8 +1939,9 @@ class ContractsController
         }
 
         $category = $_POST['doc_category'] ?? '';
-        $allowedCategories = ['revised_vendor', 'revised_internal', 'exhibit', 'change_order'];
-        if (!in_array($category, $allowedCategories, true)) {
+        require_once APP_ROOT . '/app/models/DocumentCategory.php';
+        $categoryRow = (new DocumentCategory($this->db))->findByKey($category);
+        if (!$categoryRow || empty($categoryRow['is_active'])) {
             http_response_code(400);
             echo 'Invalid document category.';
             return;
@@ -1974,8 +1975,12 @@ class ContractsController
         } elseif ($category === 'change_order') {
             $docType = 'CO Supporting Docs';
             $description = '';
-        } else {
+        } elseif ($category === 'revised_internal') {
             $docType = 'Revised Internally';
+            $description = '';
+        } else {
+            // Custom, admin-added category — use its configured label as-is.
+            $docType = $categoryRow['label'];
             $description = '';
         }
 

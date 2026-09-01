@@ -143,7 +143,30 @@ switch ($page) {
         case 'contract_documents_create':
         case 'contract_document_create':
             $contractId = (int)($_GET['contract_id'] ?? 0);
+            require_once APP_ROOT . '/app/models/DocumentCategory.php';
+            $documentCategories = (new DocumentCategory(db()))->active();
             require APP_ROOT . '/app/views/contract_documents/create.php';
+            break;
+
+        case 'admin_document_categories':
+            require_once APP_ROOT . '/app/controllers/DocumentCategoryController.php';
+            (new DocumentCategoryController())->index();
+            break;
+        case 'admin_document_categories_create':
+            require_once APP_ROOT . '/app/controllers/DocumentCategoryController.php';
+            (new DocumentCategoryController())->create();
+            break;
+        case 'admin_document_categories_update':
+            require_once APP_ROOT . '/app/controllers/DocumentCategoryController.php';
+            (new DocumentCategoryController())->update();
+            break;
+        case 'admin_document_categories_delete':
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                require_once APP_ROOT . '/app/controllers/DocumentCategoryController.php';
+                (new DocumentCategoryController())->delete();
+            } else {
+                http_response_code(405);
+            }
             break;
 
         case 'contract_documents_store':
