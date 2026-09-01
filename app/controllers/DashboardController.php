@@ -161,10 +161,24 @@ class DashboardController
             'council'      => 'council_approval_date',
         ];
 
+        // Dashboard-specific overrides for the "My Pending Approvals" widget:
+        // - 'legal' (Legal Admin) is intentionally excluded from this widget — it
+        //   remains a fully functional, separate approval type everywhere else
+        //   (Approval Rules admin, Contracts detail Approvals panel); it's just
+        //   not surfaced on the Dashboard.
+        // - 'town_attorney' is a distinct approval type that is NOT wired into
+        //   approval_rules (it's used only for manual per-contract overrides via
+        //   contract_approval_stamps), so instead of checking whether it's
+        //   "required" we simply count every contract missing a town_attorney
+        //   stamp.
+        $dashboardExcludedApprovalKeys      = ['legal'];
+        $dashboardUnconditionalApprovalKeys = ['town_attorney'];
+
         // Determine which approval types this user can act on
         $userApprovalKeys = [];
         $approvalLabels   = [];
         foreach ($approvalTypeRows as $at) {
+            if (in_array($at['approval_key'], $dashboardExcludedApprovalKeys, true)) continue;
             $approvalLabels[$at['approval_key']] = $at['role_name'];
             $holds = (function_exists('person_has_role_key') && person_has_role_key($at['role_key']));
             if ($holds) $userApprovalKeys[] = $at['approval_key'];
@@ -198,7 +212,8 @@ class DashboardController
                 $cid      = (int)$contract['contract_id'];
                 $required = ApprovalRulesController::requiredApprovalsFor($this->db, $contract);
                 foreach ($userApprovalKeys as $approvalKey) {
-                    if (!in_array($approvalKey, $required, true)) continue;
+                    $isUnconditional = in_array($approvalKey, $dashboardUnconditionalApprovalKeys, true);
+                    if (!$isUnconditional && !in_array($approvalKey, $required, true)) continue;
                     // Check legacy column first, then stamps table
                     $approvedDate = ($legacyCols[$approvalKey] ?? null)
                         ? ($contract[$legacyCols[$approvalKey]] ?? null)
