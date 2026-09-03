@@ -10,6 +10,10 @@ require_once __DIR__ . '/../includes/init.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// Large scanned-PDF exhibits can need well over the default 512M when FPDI
+// decodes their image streams; this only raises the limit for this request.
+ini_set('memory_limit', '2048M');
+
 $db = db();
 
 use setasign\Fpdi\Fpdi;
