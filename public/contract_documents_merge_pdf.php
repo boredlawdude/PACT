@@ -25,6 +25,10 @@ if ($contractId <= 0) {
     exit;
 }
 
+// Show a friendly page (not a blank 500) if the merge dies with an uncatchable
+// fatal error, e.g. memory exhausted on a very large scanned exhibit.
+register_friendly_fatal_handler('/index.php?page=contracts_show&contract_id=' . $contractId, 'Back to Contract');
+
 $stmt = $db->prepare("SELECT contract_id, contract_number, name FROM contracts WHERE contract_id = ?");
 $stmt->execute([$contractId]);
 $contract = $stmt->fetch(PDO::FETCH_ASSOC);
