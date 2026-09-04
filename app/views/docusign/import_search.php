@@ -34,6 +34,17 @@ $statusOptions = [
     Contract: <strong><?= h($contractLabel) ?></strong>
   </p>
 
+  <div class="alert alert-secondary py-2 small mb-3">
+    Connected to DocuSign <strong><?= h($dsEnvLabel) ?></strong> account
+    <?php if ($dsAccountId !== ''): ?>
+      <code><?= h($dsAccountId) ?></code> at <code><?= h($dsBaseUri) ?></code>.
+    <?php endif; ?>
+    If envelopes you created on the real docusign.com site aren't showing up below, this is
+    almost always because that account doesn't match the one shown here — a sandbox/developer
+    integration key can only ever see sandbox envelopes, never your production account's, and
+    vice versa. See <code>DOCUSIGN_ENV</code> in <code>.env</code>.
+  </div>
+
   <?php if ($dsFlashError !== null): ?>
     <div class="alert alert-danger"><?= h($dsFlashError) ?></div>
   <?php endif; ?>
@@ -78,7 +89,10 @@ $statusOptions = [
 
   <?php if ($didSearch): ?>
     <?php if (empty($envelopes)): ?>
-      <div class="text-muted">No envelopes matched your search.</div>
+      <div class="text-muted">
+        No envelopes matched your search<?php if ($totalSetSize !== null): ?> (DocuSign reports <?= (int)$totalSetSize ?> total match<?= $totalSetSize === 1 ? '' : 'es' ?> for this filter)<?php endif; ?>.
+        Try widening the date range, clearing the search text, or setting Status to "Any status".
+      </div>
     <?php else: ?>
       <div class="table-responsive">
         <table class="table table-hover align-middle">

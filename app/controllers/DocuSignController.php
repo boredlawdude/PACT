@@ -12,9 +12,15 @@ declare(strict_types=1);
  *   DOCUSIGN_REDIRECT_URI    – Must match exactly what is registered in DocuSign
  *                              e.g. https://yourapp.example.com/index.php?page=docusign_callback
  *   DOCUSIGN_WEBHOOK_HMAC_KEY – (optional) HMAC key configured in DocuSign Connect
+ *   DOCUSIGN_ENV              – (optional) "sandbox" (default) or "production".
+ *                              Must match the account your integration key was created in —
+ *                              a sandbox/developer key (from admindemo.docusign.com) can NEVER
+ *                              authenticate against production, and vice versa. If envelopes
+ *                              you manually created on the real docusign.com site aren't showing
+ *                              up in search/send here, this is almost always why.
  *
- * Sandbox auth server: https://account-d.docusign.com
- * Sandbox API base:    https://demo.docusign.net
+ * Sandbox auth server:    https://account-d.docusign.com (API base https://demo.docusign.net)
+ * Production auth server: https://account.docusign.com   (API base returned per-account by DocuSign)
  */
 class DocuSignController
 {
@@ -31,14 +37,16 @@ class DocuSignController
 
     private function config(): array
     {
+        $isProduction = in_array(strtolower((string)($_ENV['DOCUSIGN_ENV'] ?? 'sandbox')), ['production', 'prod', 'live'], true);
         return [
             'client_id'    => (string)($_ENV['DOCUSIGN_CLIENT_ID']       ?? ''),
             'client_secret'=> (string)($_ENV['DOCUSIGN_CLIENT_SECRET']    ?? ''),
             'redirect_uri' => (string)($_ENV['DOCUSIGN_REDIRECT_URI']     ?? ''),
-            'auth_server'  => 'https://account-d.docusign.com',
+            'auth_server'  => $isProduction ? 'https://account.docusign.com' : 'https://account-d.docusign.com',
             'webhook_hmac' => (string)($_ENV['DOCUSIGN_WEBHOOK_HMAC_KEY'] ?? ''),
         ];
     }
+
 
     /**
      * Returns a valid access token from session, attempting a refresh if expired.
@@ -187,6 +195,7 @@ class DocuSignController
 
     /**
      * Calls the DocuSign "List Envelopes" (ListStatusChanges) endpoint.
+     * Returns the raw decoded response (includes totalSetSize for diagnostics), or false on error.
      */
     private function searchEnvelopes(string $token, string $fromDate, string $toDate, string $status, string $searchText): array|false
     {
@@ -226,8 +235,7 @@ class DocuSignController
         if ($code !== 200) {
             return false;
         }
-        $data = json_decode((string)$resp, true);
-        return (array)($data['envelopes'] ?? []);
+        return (array)json_decode((string)$resp, true);
     }
 
     private function getEnvelope(string $token, string $baseUri, string $accountId, string $envelopeId): array|false
@@ -802,18 +810,27 @@ class DocuSignController
         $toDate        = trim((string)($_GET['to_date']     ?? ''));
         $statusFilter  = trim((string)($_GET['status']      ?? 'completed'));
 
-        $envelopes   = [];
-        $searchError = null;
-        $didSearch   = isset($_GET['search']);
+        $envelopes    = [];
+        $totalSetSize = null;
+        $searchError  = null;
+        $didSearch    = isset($_GET['search']);
 
         if ($didSearch) {
             $result = $this->searchEnvelopes($token, $fromDate, $toDate, $statusFilter, $searchText);
             if ($result === false) {
                 $searchError = 'Could not retrieve envelopes from DocuSign. Please try again.';
             } else {
-                $envelopes = $result;
+                $envelopes    = (array)($result['envelopes'] ?? []);
+                $totalSetSize = isset($result['totalSetSize']) ? (int)$result['totalSetSize'] : null;
             }
         }
+
+        // Shown on the page so it's obvious which DocuSign account/environment
+        // this search actually ran against (sandbox vs production mismatches
+        // are the most common reason a "successful" search finds nothing).
+        $dsEnvLabel   = in_array(strtolower((string)($_ENV['DOCUSIGN_ENV'] ?? 'sandbox')), ['production', 'prod', 'live'], true) ? 'Production' : 'Sandbox/Developer';
+        $dsAccountId  = (string)($_SESSION['ds_account_id'] ?? '');
+        $dsBaseUri    = (string)($_SESSION['ds_base_uri']   ?? '');
 
         require APP_ROOT . '/app/views/docusign/import_search.php';
     }
