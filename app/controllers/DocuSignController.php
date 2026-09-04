@@ -170,6 +170,103 @@ class DocuSignController
         return $stmt->fetch();
     }
 
+    private function loadContractSummary(int $contractId): array|false
+    {
+        $stmt = $this->db->prepare("
+            SELECT c.contract_id, c.name AS contract_name, c.contract_number,
+                   CONCAT(cp.first_name, ' ', cp.last_name) AS counterparty_name,
+                   cc.name AS counterparty_company_name
+            FROM contracts c
+            LEFT JOIN people cp ON cp.person_id = c.counterparty_primary_contact_id
+            LEFT JOIN companies cc ON cc.company_id = c.counterparty_company_id
+            WHERE c.contract_id = :id
+        ");
+        $stmt->execute([':id' => $contractId]);
+        return $stmt->fetch();
+    }
+
+    /**
+     * Calls the DocuSign "List Envelopes" (ListStatusChanges) endpoint.
+     */
+    private function searchEnvelopes(string $token, string $fromDate, string $toDate, string $status, string $searchText): array|false
+    {
+        $accountId = (string)($_SESSION['ds_account_id'] ?? '');
+        $baseUri   = (string)($_SESSION['ds_base_uri']   ?? '');
+        if ($accountId === '' || $baseUri === '') {
+            return false;
+        }
+
+        $params = [
+            'from_date' => $fromDate . 'T00:00:00Z',
+            'include'   => 'recipients',
+            'order_by'  => 'sent',
+            'order'     => 'desc',
+            'count'     => 50,
+        ];
+        if ($toDate !== '') {
+            $params['to_date'] = $toDate . 'T23:59:59Z';
+        }
+        if ($status !== '' && $status !== 'any') {
+            $params['status'] = $status;
+        }
+        if ($searchText !== '') {
+            $params['search_text'] = $searchText;
+        }
+
+        $ch = curl_init($baseUri . '/restapi/v2.1/accounts/' . rawurlencode($accountId) . '/envelopes?' . http_build_query($params));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token, 'Accept: application/json'],
+            CURLOPT_TIMEOUT        => 30,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($code !== 200) {
+            return false;
+        }
+        $data = json_decode((string)$resp, true);
+        return (array)($data['envelopes'] ?? []);
+    }
+
+    private function getEnvelope(string $token, string $baseUri, string $accountId, string $envelopeId): array|false
+    {
+        $ch = curl_init($baseUri . '/restapi/v2.1/accounts/' . rawurlencode($accountId) . '/envelopes/' . rawurlencode($envelopeId));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token, 'Accept: application/json'],
+            CURLOPT_TIMEOUT        => 20,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($code !== 200) {
+            return false;
+        }
+        return (array)json_decode((string)$resp, true);
+    }
+
+    private function getEnvelopeDocuments(string $token, string $baseUri, string $accountId, string $envelopeId): array|false
+    {
+        $ch = curl_init($baseUri . '/restapi/v2.1/accounts/' . rawurlencode($accountId) . '/envelopes/' . rawurlencode($envelopeId) . '/documents');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token, 'Accept: application/json'],
+            CURLOPT_TIMEOUT        => 20,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($code !== 200) {
+            return false;
+        }
+        $data = json_decode((string)$resp, true);
+        return (array)($data['envelopeDocuments'] ?? []);
+    }
+
     /**
      * Returns people who hold a given role_key as [{name, email}].
      */
@@ -190,24 +287,29 @@ class DocuSignController
     // -------------------------------------------------------------------------
     // Action: Initiate OAuth
     // GET  /index.php?page=docusign_auth&doc_id=X&contract_id=Y
+    // GET  /index.php?page=docusign_auth&mode=import&contract_id=Y   (import flow, no doc yet)
     // -------------------------------------------------------------------------
 
     public function initiateAuth(): void
     {
         $docId      = (int)($_GET['doc_id']      ?? 0);
         $contractId = (int)($_GET['contract_id'] ?? 0);
+        $mode       = ((string)($_GET['mode'] ?? 'send') === 'import') ? 'import' : 'send';
 
-        if ($docId <= 0 || $contractId <= 0) {
+        if ($contractId <= 0 || ($mode === 'send' && $docId <= 0)) {
             http_response_code(400);
             exit('Invalid parameters.');
         }
 
         $_SESSION['ds_pending_doc_id']      = $docId;
         $_SESSION['ds_pending_contract_id'] = $contractId;
+        $_SESSION['ds_pending_mode']        = $mode;
+
+        $landingPage = $mode === 'import' ? 'docusign_import_search' : 'docusign_send';
 
         // If already authenticated and token is still valid, skip OAuth
         if ($this->getToken() !== null && !empty($_SESSION['ds_account_id'])) {
-            header('Location: /index.php?page=docusign_send');
+            header('Location: /index.php?page=' . $landingPage);
             exit;
         }
 
@@ -249,7 +351,7 @@ class DocuSignController
         if (!empty($_GET['error'])) {
             $errDesc = htmlspecialchars((string)($_GET['error_description'] ?? $_GET['error']), ENT_QUOTES, 'UTF-8');
             $contractId = (int)($_SESSION['ds_pending_contract_id'] ?? 0);
-            unset($_SESSION['ds_pending_doc_id'], $_SESSION['ds_pending_contract_id']);
+            unset($_SESSION['ds_pending_doc_id'], $_SESSION['ds_pending_contract_id'], $_SESSION['ds_pending_mode']);
             $_SESSION['docusign_flash_error'] = 'DocuSign authorization failed: ' . $errDesc;
             header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
             exit;
@@ -300,7 +402,9 @@ class DocuSignController
             exit('Could not retrieve DocuSign account information.');
         }
 
-        header('Location: /index.php?page=docusign_send');
+        $mode        = (string)($_SESSION['ds_pending_mode'] ?? 'send');
+        $landingPage = $mode === 'import' ? 'docusign_import_search' : 'docusign_send';
+        header('Location: /index.php?page=' . $landingPage);
         exit;
     }
 
@@ -663,6 +767,204 @@ class DocuSignController
             $_SESSION['docusign_flash_error'] = htmlspecialchars($errMsg, ENT_QUOTES, 'UTF-8');
         }
 
+        header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // Action: Search existing DocuSign envelopes to import a signed document
+    // GET  /index.php?page=docusign_import_search
+    // -------------------------------------------------------------------------
+
+    public function showImportSearch(): void
+    {
+        $contractId = (int)($_SESSION['ds_pending_contract_id'] ?? 0);
+        if ($contractId <= 0) {
+            header('Location: /index.php?page=contracts');
+            exit;
+        }
+
+        $token = $this->getToken();
+        if ($token === null) {
+            header('Location: /index.php?page=docusign_auth&mode=import&contract_id=' . $contractId);
+            exit;
+        }
+
+        $contract = $this->loadContractSummary($contractId);
+        if ($contract === false) {
+            http_response_code(404);
+            exit('Contract not found.');
+        }
+
+        $defaultSearch = trim((string)($contract['counterparty_company_name'] ?? $contract['counterparty_name'] ?? ''));
+        $searchText    = trim((string)($_GET['search_text'] ?? $defaultSearch));
+        $fromDate      = trim((string)($_GET['from_date']   ?? date('Y-m-d', strtotime('-2 years'))));
+        $toDate        = trim((string)($_GET['to_date']     ?? ''));
+        $statusFilter  = trim((string)($_GET['status']      ?? 'completed'));
+
+        $envelopes   = [];
+        $searchError = null;
+        $didSearch   = isset($_GET['search']);
+
+        if ($didSearch) {
+            $result = $this->searchEnvelopes($token, $fromDate, $toDate, $statusFilter, $searchText);
+            if ($result === false) {
+                $searchError = 'Could not retrieve envelopes from DocuSign. Please try again.';
+            } else {
+                $envelopes = $result;
+            }
+        }
+
+        require APP_ROOT . '/app/views/docusign/import_search.php';
+    }
+
+    // -------------------------------------------------------------------------
+    // Action: List the documents inside a chosen envelope so the user can
+    // pick which one(s) to bring into the contract's document list.
+    // GET  /index.php?page=docusign_import_documents&envelope_id=X
+    // -------------------------------------------------------------------------
+
+    public function listImportDocuments(): void
+    {
+        $contractId = (int)($_SESSION['ds_pending_contract_id'] ?? 0);
+        $envelopeId = trim((string)($_GET['envelope_id'] ?? ''));
+
+        if ($contractId <= 0 || $envelopeId === '') {
+            header('Location: /index.php?page=contracts');
+            exit;
+        }
+
+        $token     = $this->getToken();
+        $accountId = (string)($_SESSION['ds_account_id'] ?? '');
+        $baseUri   = (string)($_SESSION['ds_base_uri']   ?? '');
+
+        if ($token === null || $accountId === '' || $baseUri === '') {
+            header('Location: /index.php?page=docusign_auth&mode=import&contract_id=' . $contractId);
+            exit;
+        }
+
+        $contract = $this->loadContractSummary($contractId);
+        $envelope = $this->getEnvelope($token, $baseUri, $accountId, $envelopeId);
+        $docs     = $this->getEnvelopeDocuments($token, $baseUri, $accountId, $envelopeId);
+
+        if ($envelope === false || $docs === false) {
+            $_SESSION['docusign_flash_error'] = 'Could not load that envelope\'s documents from DocuSign.';
+            header('Location: /index.php?page=docusign_import_search');
+            exit;
+        }
+
+        require APP_ROOT . '/app/views/docusign/import_documents.php';
+    }
+
+    // -------------------------------------------------------------------------
+    // Action: Download the chosen document from DocuSign and save it into
+    // this contract's document list.
+    // POST /index.php?page=docusign_import_confirm
+    // -------------------------------------------------------------------------
+
+    public function importDocument(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            exit;
+        }
+
+        $contractId  = (int)($_POST['contract_id']  ?? 0);
+        $envelopeId  = trim((string)($_POST['envelope_id'] ?? ''));
+        $documentId  = trim((string)($_POST['document_id'] ?? 'combined'));
+        $description = trim((string)($_POST['description'] ?? ''));
+
+        $token     = $this->getToken();
+        $accountId = (string)($_SESSION['ds_account_id'] ?? '');
+        $baseUri   = (string)($_SESSION['ds_base_uri']   ?? '');
+
+        if ($contractId <= 0 || $envelopeId === '' || $token === null || $accountId === '' || $baseUri === '') {
+            $_SESSION['docusign_flash_error'] = 'DocuSign session expired. Please search again.';
+            header('Location: /index.php?page=docusign_import_search');
+            exit;
+        }
+
+        if (!can_manage_contract($contractId)) {
+            http_response_code(403);
+            exit('Forbidden.');
+        }
+
+        // --- Download the document bytes from DocuSign ---
+        $ch = curl_init($baseUri . '/restapi/v2.1/accounts/' . rawurlencode($accountId)
+            . '/envelopes/' . rawurlencode($envelopeId) . '/documents/' . rawurlencode($documentId));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token],
+            CURLOPT_TIMEOUT        => 60,
+        ]);
+        $fileContent = curl_exec($ch);
+        $httpCode    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || $fileContent === false) {
+            $_SESSION['docusign_flash_error'] = 'Could not download the document from DocuSign (HTTP ' . $httpCode . ').';
+            header('Location: /index.php?page=docusign_import_documents&envelope_id=' . urlencode($envelopeId));
+            exit;
+        }
+
+        $envelope    = $this->getEnvelope($token, $baseUri, $accountId, $envelopeId);
+        $envStatus   = (string)($envelope['status'] ?? 'completed');
+        $completedAt = (string)($envelope['completedDateTime'] ?? '');
+        $emailSubject = (string)($envelope['emailSubject'] ?? '');
+
+        $relativeDir = rtrim(get_contract_document_rel_dir($contractId), '/') . '/';
+        $outputDir   = APP_ROOT . '/' . $relativeDir;
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0775, true);
+        }
+
+        $person   = current_person();
+        $personId = (int)($person['person_id'] ?? 0) ?: null;
+
+        if ($description === '' && $emailSubject !== '') {
+            $description = $emailSubject;
+        }
+
+        // Insert row first to get the doc ID for file naming, matching the
+        // convention used elsewhere when writing a file after the DB row exists.
+        $stmt = $this->db->prepare(
+            "INSERT INTO contract_documents
+                (contract_id, doc_type, description, file_name, file_path, mime_type,
+                 docusign_envelope_id, docusign_status, docusign_completed_at,
+                 created_by_person_id, created_at)
+             VALUES (?, 'Signed via DocuSign', ?, '', '', 'application/pdf', ?, ?, ?, ?, NOW())"
+        );
+        $stmt->execute([
+            $contractId,
+            $description !== '' ? $description : null,
+            $envelopeId,
+            $envStatus,
+            $completedAt !== '' ? gmdate('Y-m-d H:i:s', strtotime($completedAt)) : null,
+            $personId,
+        ]);
+        $docId = (int)$this->db->lastInsertId();
+
+        $fileName   = $contractId . '_DocuSign_' . preg_replace('/[^A-Za-z0-9-]/', '', $envelopeId) . '_v' . $docId . '.pdf';
+        $outputPath = $outputDir . $fileName;
+
+        if (file_put_contents($outputPath, $fileContent) === false) {
+            $this->db->prepare("DELETE FROM contract_documents WHERE contract_document_id = ?")->execute([$docId]);
+            $_SESSION['docusign_flash_error'] = 'Failed to save the downloaded document.';
+            header('Location: /index.php?page=docusign_import_documents&envelope_id=' . urlencode($envelopeId));
+            exit;
+        }
+
+        $relativePath = $relativeDir . $fileName;
+        $this->db->prepare("UPDATE contract_documents SET file_name = ?, file_path = ? WHERE contract_document_id = ?")
+            ->execute([$fileName, $relativePath, $docId]);
+
+        $this->db->prepare(
+            "INSERT INTO contract_status_history (contract_id, event_type, old_status, new_status, changed_by, changed_at, notes)
+              VALUES (?, 'docusign', NULL, 'Imported', ?, UTC_TIMESTAMP(), ?)"
+        )->execute([$contractId, $personId, 'Imported signed document from DocuSign envelope ' . $envelopeId]);
+
+        unset($_SESSION['ds_pending_doc_id'], $_SESSION['ds_pending_contract_id'], $_SESSION['ds_pending_mode']);
+        $_SESSION['docusign_flash_success'] = 'Document imported from DocuSign successfully.';
         header('Location: /index.php?page=contracts_show&contract_id=' . $contractId);
         exit;
     }

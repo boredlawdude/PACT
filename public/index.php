@@ -820,6 +820,24 @@ case 'departments_store':
         }
         break;
 
+    case 'docusign_import_search':
+        // Search existing DocuSign envelopes to import a signed document
+        (new DocuSignController())->showImportSearch();
+        break;
+
+    case 'docusign_import_documents':
+        // List the documents inside a chosen envelope
+        (new DocuSignController())->listImportDocuments();
+        break;
+
+    case 'docusign_import_confirm':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            (new DocuSignController())->importDocument();
+        } else {
+            http_response_code(405);
+        }
+        break;
+
     // ── Development Agreements ──────────────────────────────────────────
     case 'development_agreements':
         (new DevelopmentAgreementsController())->index();

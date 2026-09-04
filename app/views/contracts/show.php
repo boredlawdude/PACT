@@ -1164,6 +1164,7 @@ if (!function_exists('format_utc_to_eastern')) {
             <a href="/index.php?page=contract_documents_merge_pdf&contract_id=<?= (int)$contract['contract_id'] ?>" id="mergePdfBtn" class="btn btn-outline-dark btn-sm" onclick="startMergePdf(this)">Merge as PDF</a>
             <a href="/index.php?page=contract_document_compare&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-info btn-sm">Compare Documents</a>
             <a href="/index.php?page=contract_document_create&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-secondary btn-sm">Upload Document</a>
+            <a href="/index.php?page=docusign_auth&mode=import&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-secondary btn-sm">Import from DocuSign</a>
             <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addBlankDocModal">Add Blank Doc</button>
             <a href="/index.php?page=contracts_generate_word&contract_id=<?= (int)$contract['contract_id'] ?>" class="btn btn-outline-primary btn-sm">Generate Related Doc</a>
             <a href="/index.php?page=contracts_generate_html&contract_id=<?= (int)$contract['contract_id'] ?>" target="_blank" class="btn btn-outline-success btn-sm">Generate HTML</a>
