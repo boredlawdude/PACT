@@ -191,7 +191,7 @@ class DashboardController
                        use_standard_contract, minimum_insurance_coi,
                        manager_approval_date, purchasing_approval_date, legal_approval_date,
                        risk_manager_approval_date, council_approval_date
-                FROM contracts
+                FROM contracts c
                 WHERE 1=1" . $departmentSql
             );
             $allContractsStmt->execute($departmentParams);

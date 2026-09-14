@@ -319,7 +319,19 @@ function can_manage_contract_department(?int $department_id): bool {
   if (is_system_admin()) return true;
   if (!$department_id || $department_id <= 0) return false;
 
-  return person_has_department_role_key((int)$department_id, 'DEPT_CONTRACT_ADMIN');
+  // Department-scoped roles are assigned as global roles (person_roles) today via the
+  // People admin UI, which never writes to person_department_roles — that table is empty
+  // in practice, so DEPT_ADMIN/DEPT_CONTRACT_ADMIN are treated as scoped to the role
+  // holder's own department (people.department_id) instead.
+  $ownDepartmentId = (int)(current_person()['department_id'] ?? 0);
+  if ($ownDepartmentId > 0 && $ownDepartmentId === $department_id
+      && (person_has_role_key('DEPT_CONTRACT_ADMIN') || person_has_role_key('DEPT_ADMIN'))) {
+    return true;
+  }
+
+  // Fall back to explicit person_department_roles assignments, if any exist.
+  return person_has_department_role_key((int)$department_id, 'DEPT_CONTRACT_ADMIN')
+      || person_has_department_role_key((int)$department_id, 'DEPT_ADMIN');
 }
 
 function can_manage_contract(int $contract_id): bool {
@@ -330,7 +342,7 @@ function can_manage_contract(int $contract_id): bool {
   $stmt->execute([$contract_id]);
   $dept_id = (int)($stmt->fetchColumn() ?? 0);
 
-  return $dept_id > 0 && person_has_department_role_key($dept_id, 'DEPT_CONTRACT_ADMIN');
+  return $dept_id > 0 && can_manage_contract_department($dept_id);
 }
 
 /** Safe redirect helper (prevents open redirects) */
