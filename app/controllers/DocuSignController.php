@@ -553,6 +553,9 @@ class DocuSignController
                 'name'         => $name,
                 'recipientId'  => $routingOrder,
                 'routingOrder' => $routingOrder,
+                // Account-level "recipient authentication" setting now requires this on every recipient,
+                // otherwise DocuSign rejects with "Each recipient must have an authentication type specified."
+                'idCheckConfigurationName' => 'None',
             ];
             if ($company !== '') {
                 $signerDef['company'] = $company;
