@@ -78,6 +78,7 @@ class Contract
             c.total_contract_value,
             c.status_comment,
             c.owner_primary_contact_id,
+            c.submitted_by_person_id,
             c.contract_type_id,
             ct.contract_type AS contract_type_name,
             d.department_name,
@@ -86,7 +87,11 @@ class Contract
             COALESCE(
                 NULLIF(op.full_name, ''),
                 TRIM(CONCAT(COALESCE(op.first_name, ''), ' ', COALESCE(op.last_name, '')))
-            ) AS owner_primary_contact_name
+            ) AS owner_primary_contact_name,
+            COALESCE(
+                NULLIF(sb.full_name, ''),
+                TRIM(CONCAT(COALESCE(sb.first_name, ''), ' ', COALESCE(sb.last_name, '')))
+            ) AS submitted_by_name
         FROM contracts c
         LEFT JOIN departments d
             ON c.department_id = d.department_id
@@ -94,6 +99,8 @@ class Contract
             ON c.counterparty_company_id = co.company_id
         LEFT JOIN people op
             ON c.owner_primary_contact_id = op.person_id
+        LEFT JOIN people sb
+            ON c.submitted_by_person_id = sb.person_id
         LEFT JOIN contract_statuses cs
             ON c.contract_status_id = cs.contract_status_id
         LEFT JOIN contract_types ct
@@ -139,6 +146,11 @@ class Contract
         $params['owner_primary_contact_id'] = (int)$filters['owner_primary_contact_id'];
     }
 
+    if (!empty($filters['submitted_by_person_id'])) {
+        $sql .= " AND c.submitted_by_person_id = :submitted_by_person_id";
+        $params['submitted_by_person_id'] = (int)$filters['submitted_by_person_id'];
+    }
+
     if (!empty($filters['end_date_from'])) {
         $sql .= " AND c.end_date >= :end_date_from";
         $params['end_date_from'] = $filters['end_date_from'];
@@ -171,6 +183,8 @@ class Contract
                    op.officephone AS owner_primary_contact_office_phone,
                    op.cellphone AS owner_primary_contact_cell_phone,
                    COALESCE(op.full_name, op.display_name) AS owner_primary_contact_name,
+                   sb.email AS submitted_by_email,
+                   COALESCE(sb.full_name, sb.display_name) AS submitted_by_name,
                    COALESCE(c.counterparty_contact_email, cp.email) AS counterparty_primary_contact_email,
                    COALESCE(c.counterparty_contact_name, cp.full_name, cp.display_name) AS counterparty_primary_contact_name,
                    cs.contract_status_name AS status_name,
@@ -186,6 +200,7 @@ class Contract
             LEFT JOIN companies co ON c.counterparty_company_id = co.company_id
             LEFT JOIN departments d ON c.department_id = d.department_id
             LEFT JOIN people op ON c.owner_primary_contact_id = op.person_id
+            LEFT JOIN people sb ON c.submitted_by_person_id = sb.person_id
             LEFT JOIN people cp ON c.counterparty_primary_contact_id = cp.person_id
             LEFT JOIN contract_statuses cs ON c.contract_status_id = cs.contract_status_id
             LEFT JOIN town_locations tl ON c.town_location_id = tl.location_id
@@ -306,6 +321,7 @@ class Contract
                 counterparty_contact_email,
                 owner_company_id,
                 owner_primary_contact_id,
+                submitted_by_person_id,
                 town_location_id,
                 department_id,
                 governing_law,
@@ -346,6 +362,7 @@ class Contract
                 :counterparty_contact_email,
                 :owner_company_id,
                 :owner_primary_contact_id,
+                :submitted_by_person_id,
                 :town_location_id,
                 :department_id,
                 :governing_law,
@@ -402,6 +419,7 @@ class Contract
                 counterparty_contact_email = :counterparty_contact_email,
                 owner_company_id = :owner_company_id,
                 owner_primary_contact_id = :owner_primary_contact_id,
+                submitted_by_person_id = :submitted_by_person_id,
                 town_location_id = :town_location_id,
                 department_id = :department_id,
                 governing_law = :governing_law,
@@ -488,6 +506,7 @@ class Contract
             'counterparty_contact_email' => $this->nullIfEmpty($data['counterparty_contact_email'] ?? null),
             'owner_company_id' => $this->nullIfEmpty($data['owner_company_id'] ?? 3),
             'owner_primary_contact_id' => $this->nullIfEmpty($data['owner_primary_contact_id'] ?? null),
+            'submitted_by_person_id' => $this->nullIfEmpty($data['submitted_by_person_id'] ?? null),
             'town_location_id' => $this->nullIfEmpty($data['town_location_id'] ?? null),
             'department_id' => $this->nullIfEmpty($data['department_id'] ?? null),
             'governing_law' => $this->nullIfEmpty($data['governing_law'] ?? 'North Carolina'),

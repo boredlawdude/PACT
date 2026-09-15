@@ -237,11 +237,15 @@ class DashboardController
         }
 
         // Status/type filtering remains client-side after applying dashboard access scope.
+        // "Show only my submitted contracts" is a separate, explicit opt-in toggle.
+        $onlyMine = !empty($_GET['only_mine']);
+        $dashFilters = $onlyMine ? ['submitted_by_person_id' => current_person_id()] : [];
         $contracts = $scopeDashboardToDepartment
             ? ($dashboardDepartmentId > 0
-                ? $this->contractModel->search(['department_id' => $dashboardDepartmentId])
+                ? $this->contractModel->search($dashFilters + ['department_id' => $dashboardDepartmentId])
                 : [])
-            : $this->contractModel->search([]);
+            : $this->contractModel->search($dashFilters);
+
 
         // ── My open tasks (shown alongside pending approvals) ──────────────
         require_once APP_ROOT . '/app/controllers/TasksController.php';

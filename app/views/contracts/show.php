@@ -199,6 +199,16 @@ if (!function_exists('format_utc_to_eastern')) {
               <div><?= h($contract['payment_terms_name'] ?? '') ?: '—' ?></div>
             </div>
 
+            <div class="col-md-6">
+              <div class="small text-muted">Submitted By</div>
+              <div><?= h($contract['submitted_by_name'] ?? '') ?: '—' ?></div>
+              <?php if (!empty($contract['submitted_by_email'])): ?>
+                ( <a href="mailto:<?= h($contract['submitted_by_email']) ?>">
+                  <?= h($contract['submitted_by_email']) ?>
+                </a> )
+              <?php endif; ?>
+            </div>
+
            
            
         

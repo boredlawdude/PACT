@@ -295,6 +295,26 @@ if (!function_exists('h')) {
                         </div>
 
                         <div class="col-12">
+                            <label class="form-label fw-semibold">Submitted By</label>
+                            <select class="form-select" name="submitted_by_person_id">
+                                <option value="">(none)</option>
+                                <?php foreach (($ownerPeople ?? []) as $p): ?>
+                                    <?php
+                                    $nm = trim((string)($p['full_name'] ?? ''));
+                                    if ($nm === '') {
+                                        $nm = trim((string)($p['first_name'] ?? '') . ' ' . (string)($p['last_name'] ?? ''));
+                                    }
+                                    $label = $nm . (!empty($p['email']) ? ' — ' . $p['email'] : '');
+                                    ?>
+                                    <option value="<?= (int)$p['person_id'] ?>"
+                                        <?= ((string)($contract['submitted_by_person_id'] ?? '') === (string)$p['person_id']) ? 'selected' : '' ?>>
+                                        <?= h($label) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
                             <label class="form-label fw-semibold">Project</label>
                             <select class="form-select" name="project_id">
                                 <option value="">(none)</option>

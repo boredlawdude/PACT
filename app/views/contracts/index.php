@@ -97,6 +97,14 @@ function status_badge(string $status): string {
                 <a href="/index.php?page=contracts" class="btn btn-outline-secondary">Reset</a>
             </div>
 
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="only_mine" value="1" id="onlyMineCheck"
+                        <?= !empty($_GET['only_mine']) ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="onlyMineCheck">Show only contracts I submitted</label>
+                </div>
+            </div>
+
         </div>
     </div>
 </form>
@@ -171,6 +179,7 @@ function status_badge(string $status): string {
                         <th style="width:420px; cursor:pointer; user-select:none;" data-sort="text">Name <span class="sort-icon"></span></th>
                         <th style="width:55px; cursor:pointer; user-select:none;" data-sort="text">Dept <span class="sort-icon"></span></th>
                         <th style="width:130px; cursor:pointer; user-select:none; white-space:nowrap;" data-sort="text">Responsible <span class="sort-icon"></span></th>
+                        <th style="width:130px; cursor:pointer; user-select:none; white-space:nowrap;" data-sort="text">Submitted By <span class="sort-icon"></span></th>
                         <th style="width:75px; cursor:pointer; user-select:none;" data-sort="num">Value <span class="sort-icon"></span></th>
                         <th data-sort="text" style="cursor:pointer; user-select:none;">Comment <span class="sort-icon"></span></th>
                         <th style="width:0;"></th>
@@ -199,6 +208,7 @@ function status_badge(string $status): string {
                         </td>
                         <td><span title="<?= h($c['department_name'] ?? '') ?>"><?= h($c['department_code'] ?? $c['department_name'] ?? '') ?></span></td>
                         <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
+                        <td><?= h($c['submitted_by_name'] ?? '') ?></td>
                         <td>
                             <?php if (!empty($c['total_contract_value'])): ?>
                                 $<?= number_format((float)$c['total_contract_value'], 2) ?>

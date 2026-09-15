@@ -59,6 +59,7 @@ function row(string $label, mixed $value, bool $money = false): void {
         <?php row('End Date',        $sub['end_date']   ? date('m/d/Y', strtotime($sub['end_date']))   : null); ?>
         <?php row('PO Number',       $sub['po_number']); ?>
         <?php row('Account Number',  $sub['account_number']); ?>
+        <?php row('Responsible Person', $sub['responsible_person_name'] ?? null); ?>
       </div>
       <?php if (!empty($sub['contract_description'])): ?>
         <div class="mt-2">

@@ -9,7 +9,8 @@ class ContractIntakeSubmission
     {
         $stmt = $this->db->prepare("
             INSERT INTO contract_intake_submissions
-                (submitter_name, submitter_email, submitter_phone, submitter_department,
+                (submitter_name, submitter_email, submitter_phone, submitter_department, submitter_person_id,
+                 responsible_person_id,
                  contract_name, contract_description, contract_type_id,
                  counterparty_company, counterparty_contact, counterparty_email, counterparty_phone,
                  estimated_value, start_date, end_date,
@@ -19,7 +20,8 @@ class ContractIntakeSubmission
                  counterparty_signer3_name, counterparty_signer3_title, counterparty_signer3_email,
                  esign_consent)
             VALUES
-                (:submitter_name, :submitter_email, :submitter_phone, :submitter_department,
+                (:submitter_name, :submitter_email, :submitter_phone, :submitter_department, :submitter_person_id,
+                 :responsible_person_id,
                  :contract_name, :contract_description, :contract_type_id,
                  :counterparty_company, :counterparty_contact, :counterparty_email, :counterparty_phone,
                  :estimated_value, :start_date, :end_date,
@@ -34,6 +36,8 @@ class ContractIntakeSubmission
             ':submitter_email'      => $data['submitter_email'],
             ':submitter_phone'      => $this->n($data['submitter_phone']      ?? null),
             ':submitter_department' => $this->n($data['submitter_department'] ?? null),
+            ':submitter_person_id'  => $this->n($data['submitter_person_id']  ?? null),
+            ':responsible_person_id' => $this->n($data['responsible_person_id'] ?? null),
             ':contract_name'        => $data['contract_name'],
             ':contract_description' => $this->n($data['contract_description'] ?? null),
             ':contract_type_id'     => $this->n($data['contract_type_id']     ?? null),
@@ -64,9 +68,11 @@ class ContractIntakeSubmission
     public function findAll(string $status = 'pending'): array
     {
         $stmt = $this->db->prepare("
-            SELECT s.*, ct.contract_type
+            SELECT s.*, ct.contract_type,
+                   COALESCE(rp.full_name, rp.display_name) AS responsible_person_name
             FROM   contract_intake_submissions s
             LEFT JOIN contract_types ct ON ct.contract_type_id = s.contract_type_id
+            LEFT JOIN people rp ON rp.person_id = s.responsible_person_id
             WHERE  s.status = ?
             ORDER  BY s.created_at DESC
         ");
@@ -77,9 +83,11 @@ class ContractIntakeSubmission
     public function find(int $id): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT s.*, ct.contract_type
+            SELECT s.*, ct.contract_type,
+                   COALESCE(rp.full_name, rp.display_name) AS responsible_person_name
             FROM   contract_intake_submissions s
             LEFT JOIN contract_types ct ON ct.contract_type_id = s.contract_type_id
+            LEFT JOIN people rp ON rp.person_id = s.responsible_person_id
             WHERE  s.submission_id = ?
         ");
         $stmt->execute([$id]);

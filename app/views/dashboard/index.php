@@ -158,6 +158,17 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
 </div>
 <?php endif; ?>
 
+<!-- ── "Show only my submitted contracts" toggle (reloads page) ─────────── -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="dashOnlyMine" <?= !empty($onlyMine) ? 'checked' : '' ?>
+                   onchange="window.location.href = '/index.php?page=dashboard' + (this.checked ? '&only_mine=1' : '');">
+            <label class="form-check-label" for="dashOnlyMine">Show only contracts I submitted</label>
+        </div>
+    </div>
+</div>
+
 <!-- ── Status Checkbox Filter ───────────────────────────────────────────── -->
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
@@ -226,6 +237,7 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
                         <th style="width:320px; cursor:pointer; user-select:none;" data-sort="text">Name <span class="sort-icon"></span></th>
                         <th style="width:55px; cursor:pointer; user-select:none;" data-sort="text">Dept <span class="sort-icon"></span></th>
                         <th style="width:130px; cursor:pointer; user-select:none; white-space:nowrap;" data-sort="text">Responsible <span class="sort-icon"></span></th>
+                        <th style="width:130px; cursor:pointer; user-select:none; white-space:nowrap;" data-sort="text">Submitted By <span class="sort-icon"></span></th>
                         <th style="width:75px; cursor:pointer; user-select:none;" data-sort="num">Value <span class="sort-icon"></span></th>
                         <th data-sort="text" style="cursor:pointer; user-select:none;">Comment <span class="sort-icon"></span></th>
                         <th style="width:0;"></th>
@@ -253,6 +265,7 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
                         </td>
                         <td><span title="<?= h($c['department_name'] ?? '') ?>"><?= h($c['department_code'] ?? $c['department_name'] ?? '') ?></span></td>
                         <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
+                        <td><?= h($c['submitted_by_name'] ?? '') ?></td>
                         <td>
                             <?php if (!empty($c['total_contract_value'])): ?>
                                 $<?= number_format((float)$c['total_contract_value'], 2) ?>

@@ -759,6 +759,7 @@ class ContractsController
             'end_date_to' => isset($_GET['end_date_to']) && $_GET['end_date_to'] !== '' ? $_GET['end_date_to'] : null,
             'company_id' => (isset($_GET['company_id']) && $_GET['company_id'] !== '' && $_GET['company_id'] !== '0') ? (int)$_GET['company_id'] : null,
             'project_id' => (isset($_GET['project_id']) && $_GET['project_id'] !== '' && $_GET['project_id'] !== '0') ? (int)$_GET['project_id'] : null,
+            'submitted_by_person_id' => !empty($_GET['only_mine']) ? (int)(current_person()['person_id'] ?? 0) : null,
         ];
         // Pass filters directly — the model uses !empty() guards so nulls are safely ignored
         $contracts = $this->contracts->search($filters);
@@ -947,6 +948,13 @@ class ContractsController
             }
         }
 
+        if (empty($contract['submitted_by_person_id'])) {
+            $person = current_person();
+            if (!empty($person['person_id'])) {
+                $contract['submitted_by_person_id'] = (int)$person['person_id'];
+            }
+        }
+
         if (empty($contract['project_id']) && !empty($_GET['project_id'])) {
             $contract['project_id'] = (int)$_GET['project_id'];
         }
@@ -982,6 +990,10 @@ class ContractsController
         }
 
         $data = $this->collectFormData($_POST);
+        // Default to the actual logged-in user only if the form didn't specify a submitter.
+        if (empty($data['submitted_by_person_id'])) {
+            $data['submitted_by_person_id'] = (int)(current_person()['person_id'] ?? 0) ?: null;
+        }
         // Auto-generate contract number if not provided
         if (empty($data['contract_number'])) {
             $data['contract_number'] = $this->generateContractNumber($data);
@@ -1139,6 +1151,7 @@ class ContractsController
             $ownerPeople = $this->getPeopleByCompany((int)$contract['owner_company_id']);
         }
         $ownerPeople = $this->ensureSelectedPersonInList($ownerPeople, (int)($contract['owner_primary_contact_id'] ?? 0));
+        $ownerPeople = $this->ensureSelectedPersonInList($ownerPeople, (int)($contract['submitted_by_person_id'] ?? 0));
         $townLocations = $this->getTownLocations();
         $complianceInfoLink = $this->getSystemSetting('compliance_info_link');
         $riskManagerEmails  = $this->getRiskManagerEmails();

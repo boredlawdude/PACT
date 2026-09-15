@@ -25,9 +25,41 @@ if (($_GET['ajax'] ?? '') === 'vendor_lookup') {
     exit;
 }
 
+// ── AJAX: town employee lookup for the "Your Name" typeahead ────────────────
+// Public endpoint — only exposes name/email/department for active town employees.
+if (($_GET['ajax'] ?? '') === 'person_lookup') {
+    header('Content-Type: application/json; charset=utf-8');
+    $q = trim((string)($_GET['q'] ?? ''));
+    $results = [];
+    if (strlen($q) >= 2) {
+        $stmt = db()->prepare(
+            "SELECT p.person_id, COALESCE(p.full_name, p.display_name) AS name, p.email,
+                    d.department_name
+             FROM people p
+             LEFT JOIN departments d ON d.department_id = p.department_id
+             WHERE p.is_active = 1 AND p.is_town_employee = 1
+               AND (p.first_name LIKE :q OR p.last_name LIKE :q OR p.full_name LIKE :q)
+             ORDER BY name
+             LIMIT 10"
+        );
+        $stmt->execute([':q' => '%' . $q . '%']);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    echo json_encode($results, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // ── Load contract types for dropdown ─────────────────────────────────────────
 $contractTypes = db()->query(
     "SELECT contract_type_id, contract_type FROM contract_types WHERE is_active = 1 ORDER BY contract_type"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Load town employees for the "Responsible Person / Contract Manager" dropdown ──
+$responsiblePeopleOptions = db()->query(
+    "SELECT person_id, COALESCE(full_name, display_name) AS name
+     FROM people
+     WHERE is_active = 1 AND is_town_employee = 1
+     ORDER BY name"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 // ── File upload helpers ──────────────────────────────────────────────────────
@@ -172,6 +204,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $submitterEmail = trim((string)($_POST['submitter_email'] ?? ''));
         $contractName   = trim((string)($_POST['contract_name']   ?? ''));
 
+        // Only trust the hidden person_id if it actually matches an active town employee.
+        $submitterPersonId = null;
+        $rawSubmitterPersonId = trim((string)($_POST['submitter_person_id'] ?? ''));
+        if ($rawSubmitterPersonId !== '' && ctype_digit($rawSubmitterPersonId)) {
+            $checkStmt = db()->prepare(
+                "SELECT person_id FROM people WHERE person_id = ? AND is_active = 1 AND is_town_employee = 1"
+            );
+            $checkStmt->execute([(int)$rawSubmitterPersonId]);
+            if ($checkStmt->fetchColumn()) {
+                $submitterPersonId = (int)$rawSubmitterPersonId;
+            }
+        }
+
+        // Validate the selected responsible person / contract manager dropdown value.
+        $responsiblePersonId = null;
+        $rawResponsiblePersonId = trim((string)($_POST['responsible_person_id'] ?? ''));
+        if ($rawResponsiblePersonId !== '' && ctype_digit($rawResponsiblePersonId)) {
+            $checkStmt = db()->prepare(
+                "SELECT person_id FROM people WHERE person_id = ? AND is_active = 1 AND is_town_employee = 1"
+            );
+            $checkStmt->execute([(int)$rawResponsiblePersonId]);
+            if ($checkStmt->fetchColumn()) {
+                $responsiblePersonId = (int)$rawResponsiblePersonId;
+            }
+        }
+
         if ($submitterName  === '') $errors[] = 'Your name is required.';
         if ($submitterEmail === '') $errors[] = 'Your email address is required.';
         elseif (!filter_var($submitterEmail, FILTER_VALIDATE_EMAIL)) $errors[] = 'Please enter a valid email address.';
@@ -225,6 +283,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'submitter_email'      => $submitterEmail,
                 'submitter_phone'      => trim((string)($_POST['submitter_phone']      ?? '')),
                 'submitter_department' => trim((string)($_POST['submitter_department'] ?? '')),
+                'submitter_person_id'  => $submitterPersonId,
+                'responsible_person_id' => $responsiblePersonId,
                 'contract_name'        => $contractName,
                 'contract_description' => trim((string)($_POST['contract_description'] ?? '')),
                 'contract_type_id'     => $contractTypeId,
@@ -320,10 +380,15 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
     <div class="card-body">
       <p class="section-label">Your Information</p>
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-6 position-relative">
           <label class="form-label">Your Name <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" name="submitter_name" required maxlength="100"
+          <input type="text" class="form-control" name="submitter_name" id="submitter_name" required maxlength="100"
+                 autocomplete="off"
                  value="<?= h($old['submitter_name'] ?? '') ?>">
+          <input type="hidden" name="submitter_person_id" id="submitter_person_id"
+                 value="<?= h($old['submitter_person_id'] ?? '') ?>">
+          <div id="personLookupResults" class="list-group shadow-sm" style="display:none; position:absolute; z-index:1050; width:100%; max-height:220px; overflow-y:auto;"></div>
+          <div class="form-text">Start typing to find your name in the Town directory, or just type it in if you're not listed.</div>
         </div>
         <div class="col-md-6">
           <label class="form-label">Your Email <span class="text-danger">*</span></label>
@@ -344,6 +409,7 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
       </div>
     </div>
   </div>
+
 
   <!-- ── Contract Information ──────────────────────────────────────────────── -->
   <div class="card shadow-sm mb-4">
@@ -371,6 +437,19 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
               </option>
             <?php endforeach; ?>
           </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Responsible Person / Contract Manager</label>
+          <select class="form-select" name="responsible_person_id">
+            <option value="">— Not sure / let Town staff assign —</option>
+            <?php foreach ($responsiblePeopleOptions as $rp): ?>
+              <option value="<?= (int)$rp['person_id'] ?>"
+                <?= ((string)($old['responsible_person_id'] ?? '') === (string)$rp['person_id']) ? 'selected' : '' ?>>
+                <?= h($rp['name']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <div class="form-text">Who at the Town will be responsible for administering this contract?</div>
         </div>
         <div class="col-md-6">
           <label class="form-label">Estimated Value ($)</label>
@@ -588,6 +667,64 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
         var controller = new AbortController();
         activeRequest = controller;
         fetch('/contract_intake.php?ajax=vendor_lookup&q=' + encodeURIComponent(q), { signal: controller.signal })
+          .then(function (r) { return r.json(); })
+          .then(renderResults)
+          .catch(function (err) { if (err.name !== 'AbortError') hideResults(); });
+      }, 250);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (e.target !== input && !results.contains(e.target)) hideResults();
+    });
+  })();
+</script>
+<script>
+  (function () {
+    var input   = document.getElementById('submitter_name');
+    var results = document.getElementById('personLookupResults');
+    var personIdInput = document.getElementById('submitter_person_id');
+    var emailInput = document.querySelector('input[name="submitter_email"]');
+    var deptInput  = document.querySelector('input[name="submitter_department"]');
+    if (!input || !results) return;
+
+    var debounceTimer = null;
+    var activeRequest = null;
+
+    function hideResults() {
+      results.style.display = 'none';
+      results.innerHTML = '';
+    }
+
+    function renderResults(people) {
+      results.innerHTML = '';
+      if (!people.length) { hideResults(); return; }
+      people.forEach(function (p) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'list-group-item list-group-item-action py-2';
+        item.textContent = p.name + (p.department_name ? ' — ' + p.department_name : '');
+        item.addEventListener('click', function () {
+          input.value = p.name;
+          personIdInput.value = p.person_id;
+          if (emailInput && !emailInput.value && p.email) emailInput.value = p.email;
+          if (deptInput && !deptInput.value && p.department_name) deptInput.value = p.department_name;
+          hideResults();
+        });
+        results.appendChild(item);
+      });
+      results.style.display = 'block';
+    }
+
+    input.addEventListener('input', function () {
+      personIdInput.value = ''; // a manual edit invalidates any prior selection
+      var q = input.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2) { hideResults(); return; }
+      debounceTimer = setTimeout(function () {
+        if (activeRequest) activeRequest.abort();
+        var controller = new AbortController();
+        activeRequest = controller;
+        fetch('/contract_intake.php?ajax=person_lookup&q=' + encodeURIComponent(q), { signal: controller.signal })
           .then(function (r) { return r.json(); })
           .then(renderResults)
           .catch(function (err) { if (err.name !== 'AbortError') hideResults(); });

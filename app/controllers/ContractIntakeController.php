@@ -106,6 +106,8 @@ class ContractIntakeController
             'name'               => $sub['contract_name'],
             'description'        => $sub['contract_description'] ?? '',
             'contract_type_id'   => $sub['contract_type_id'],
+            'submitted_by_person_id' => $sub['submitter_person_id'] ?? null,
+            'owner_primary_contact_id' => $sub['responsible_person_id'] ?? null,
             'total_contract_value' => $sub['estimated_value'],
             'start_date'         => $sub['start_date'],
             'end_date'           => $sub['end_date'],
