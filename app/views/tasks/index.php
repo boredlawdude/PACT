@@ -98,12 +98,32 @@ if (!function_exists('h')) {
                   </td>
                   <td class="text-end text-nowrap">
                     <?php if ($t['status'] !== 'done'): ?>
-                      <form method="post" action="/index.php?page=tasks_set_status" class="d-inline">
-                        <input type="hidden" name="task_id" value="<?= (int)$t['task_id'] ?>">
-                        <input type="hidden" name="status" value="done">
-                        <input type="hidden" name="redirect" value="/index.php?page=tasks&view=<?= h($view) ?>&status=<?= h($curStatus) ?>">
-                        <button type="submit" class="btn btn-sm btn-outline-success">Complete</button>
-                      </form>
+                      <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal"
+                              data-bs-target="#completeTaskModal<?= (int)$t['task_id'] ?>">Complete</button>
+                      <div class="modal fade" id="completeTaskModal<?= (int)$t['task_id'] ?>" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                          <div class="modal-content">
+                            <form method="post" action="/index.php?page=tasks_set_status">
+                              <div class="modal-header">
+                                <h5 class="modal-title">Complete Task: <?= h($t['title']) ?></h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body">
+                                <input type="hidden" name="task_id" value="<?= (int)$t['task_id'] ?>">
+                                <input type="hidden" name="status" value="done">
+                                <input type="hidden" name="redirect" value="/index.php?page=tasks&view=<?= h($view) ?>&status=<?= h($curStatus) ?>">
+                                <label class="form-label">Explanation <span class="fw-normal text-muted">(optional)</span></label>
+                                <textarea name="completion_notes" class="form-control" rows="3"
+                                          placeholder="Describe how you completed this task…"></textarea>
+                              </div>
+                              <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-success">Mark Complete</button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
                     <?php else: ?>
                       <form method="post" action="/index.php?page=tasks_set_status" class="d-inline">
                         <input type="hidden" name="task_id" value="<?= (int)$t['task_id'] ?>">

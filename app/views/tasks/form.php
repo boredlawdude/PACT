@@ -46,6 +46,13 @@ $action = $isEdit ? '/index.php?page=tasks_update&task_id=' . (int)$task['task_i
           <textarea name="description" class="form-control" rows="3"><?= h($task['description'] ?? '') ?></textarea>
         </div>
 
+        <?php if ($isEdit && !empty($task['completion_notes'])): ?>
+          <div class="alert alert-light border mb-3">
+            <div class="small text-muted mb-1">Completion Explanation</div>
+            <div><?= nl2br(h($task['completion_notes'])) ?></div>
+          </div>
+        <?php endif; ?>
+
         <div class="row">
           <div class="col-md-6 mb-3">
             <label class="form-label">Assign To <span class="text-danger">*</span></label>

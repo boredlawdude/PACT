@@ -121,6 +121,9 @@ class TasksController
             $data['contract_id'],
             $data['due_date'],
         ]);
+        $taskId = (int)$this->db->lastInsertId();
+
+        $this->notifyTaskAssigned($taskId);
 
         $_SESSION['flash_messages'] = ['Task assigned.'];
 
@@ -232,8 +235,14 @@ class TasksController
         }
 
         if ($newStatus === 'done') {
-            $stmt = $this->db->prepare("UPDATE tasks SET status = 'done', completed_at = NOW() WHERE task_id = ?");
-            $stmt->execute([$taskId]);
+            $completionNotes = trim((string)($_POST['completion_notes'] ?? '')) ?: null;
+            $stmt = $this->db->prepare("
+                UPDATE tasks SET status = 'done', completed_at = NOW(), completion_notes = ?
+                WHERE task_id = ?
+            ");
+            $stmt->execute([$completionNotes, $taskId]);
+
+            $this->notifyTaskCompleted($taskId, $completionNotes);
         } else {
             $stmt = $this->db->prepare("UPDATE tasks SET status = ?, completed_at = NULL WHERE task_id = ?");
             $stmt->execute([$newStatus, $taskId]);
@@ -421,5 +430,174 @@ class TasksController
         ");
         $stmt->execute([$contractId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // ── Email notifications ─────────────────────────────────────────────────
+
+    /**
+     * Best-effort email to the assignee when a task is created. Never blocks task creation.
+     */
+    private function notifyTaskAssigned(int $taskId): void
+    {
+        try {
+            $task = $this->findTask($taskId);
+            if (!$task) {
+                return;
+            }
+            $assignee = $this->findPerson((int)$task['assigned_to_person_id']);
+            if (!$assignee || empty($assignee['email'])) {
+                return;
+            }
+            // Skip notifying someone who assigned a task to themselves.
+            if (!empty($task['created_by_person_id']) && (int)$task['created_by_person_id'] === (int)$task['assigned_to_person_id']) {
+                return;
+            }
+
+            $creator        = !empty($task['created_by_person_id']) ? $this->findPerson((int)$task['created_by_person_id']) : null;
+            $creatorName    = $creator['display_name'] ?? 'A colleague';
+            $contract       = !empty($task['contract_id']) ? $this->findContract((int)$task['contract_id']) : null;
+            $taskUrl        = $this->baseUrl() . '/index.php?page=tasks_edit&task_id=' . $taskId;
+
+            $this->sendTaskEmail(
+                toEmail: $assignee['email'],
+                toName: $assignee['display_name'] ?? '',
+                subject: 'New Task Assigned: ' . $task['title'],
+                intro: "{$creatorName} assigned you a new task.",
+                task: $task,
+                contract: $contract,
+                taskUrl: $taskUrl,
+                actionLabel: 'View Task'
+            );
+        } catch (\Throwable $e) {
+            error_log('Task assignment email failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Best-effort email to the task creator when the assignee marks it done. Never blocks completion.
+     */
+    private function notifyTaskCompleted(int $taskId, ?string $completionNotes): void
+    {
+        try {
+            $task = $this->findTask($taskId);
+            if (!$task || empty($task['created_by_person_id'])) {
+                return;
+            }
+            // Skip notifying someone who completed their own self-assigned task.
+            if ((int)$task['created_by_person_id'] === (int)$task['assigned_to_person_id']) {
+                return;
+            }
+
+            $creator = $this->findPerson((int)$task['created_by_person_id']);
+            if (!$creator || empty($creator['email'])) {
+                return;
+            }
+
+            $assignee    = $this->findPerson((int)$task['assigned_to_person_id']);
+            $doneByName  = $assignee['display_name'] ?? 'The assignee';
+            $contract    = !empty($task['contract_id']) ? $this->findContract((int)$task['contract_id']) : null;
+            $taskUrl     = $this->baseUrl() . '/index.php?page=tasks_edit&task_id=' . $taskId;
+
+            $this->sendTaskEmail(
+                toEmail: $creator['email'],
+                toName: $creator['display_name'] ?? '',
+                subject: 'Task Completed: ' . $task['title'],
+                intro: "{$doneByName} marked this task as complete.",
+                task: $task,
+                contract: $contract,
+                taskUrl: $taskUrl,
+                actionLabel: 'View Task',
+                completionNotes: $completionNotes
+            );
+        } catch (\Throwable $e) {
+            error_log('Task completion email failed: ' . $e->getMessage());
+        }
+    }
+
+    private function findPerson(int $personId): ?array
+    {
+        if ($personId <= 0) {
+            return null;
+        }
+        $stmt = $this->db->prepare("SELECT person_id, email, display_name FROM people WHERE person_id = ? LIMIT 1");
+        $stmt->execute([$personId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    private function baseUrl(): string
+    {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return $scheme . '://' . $host;
+    }
+
+    private function sendTaskEmail(
+        string $toEmail,
+        string $toName,
+        string $subject,
+        string $intro,
+        array $task,
+        ?array $contract,
+        string $taskUrl,
+        string $actionLabel,
+        ?string $completionNotes = null
+    ): void {
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        $mail->SMTPDebug   = 0;
+        $mail->Debugoutput = function ($str, $level) { error_log("SMTPDBG[$level] $str"); };
+
+        $mail->isSMTP();
+        $mail->Host       = $_ENV['SMTP_HOST'];
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $_ENV['SMTP_USERNAME'];
+        $mail->Password   = $_ENV['SMTP_PASSWORD'];
+        $mail->SMTPSecure = (($_ENV['SMTP_SECURE'] ?? 'tls') === 'ssl')
+            ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS
+            : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port    = (int) $_ENV['SMTP_PORT'];
+        $mail->Timeout = 15;
+
+        $mail->setFrom($_ENV['MAIL_FROM_EMAIL'], $_ENV['MAIL_FROM_NAME'] ?? '');
+        $mail->addAddress($toEmail, $toName);
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+
+        $safeIntro = htmlspecialchars($intro, ENT_QUOTES, 'UTF-8');
+        $safeTitle = htmlspecialchars((string)$task['title'], ENT_QUOTES, 'UTF-8');
+        $safeUrl   = htmlspecialchars($taskUrl, ENT_QUOTES, 'UTF-8');
+        $safeDesc  = !empty($task['description']) ? nl2br(htmlspecialchars((string)$task['description'], ENT_QUOTES, 'UTF-8')) : null;
+        $safeDue   = !empty($task['due_date']) ? date('m/d/Y', strtotime((string)$task['due_date'])) : null;
+
+        $bodyLines = ["<p>{$safeIntro}</p>", "<p><strong>{$safeTitle}</strong></p>"];
+        $altLines  = [$intro, '', $task['title']];
+
+        if ($contract) {
+            $contractLabel = $contract['contract_number'] ?? ('#' . $contract['contract_id']);
+            $safeContract  = htmlspecialchars((string)$contractLabel, ENT_QUOTES, 'UTF-8');
+            $bodyLines[]   = "<p>Linked contract: <strong>{$safeContract}</strong></p>";
+            $altLines[]    = "Linked contract: {$contractLabel}";
+        }
+        if ($safeDue) {
+            $bodyLines[] = "<p>Due: {$safeDue}</p>";
+            $altLines[]  = "Due: {$safeDue}";
+        }
+        if ($safeDesc) {
+            $bodyLines[] = "<p>{$safeDesc}</p>";
+            $altLines[]  = strip_tags((string)$task['description']);
+        }
+        if ($completionNotes !== null && $completionNotes !== '') {
+            $safeNotes   = nl2br(htmlspecialchars($completionNotes, ENT_QUOTES, 'UTF-8'));
+            $bodyLines[] = "<p><strong>Explanation:</strong><br>{$safeNotes}</p>";
+            $altLines[]  = "Explanation: {$completionNotes}";
+        }
+
+        $safeAction = htmlspecialchars($actionLabel, ENT_QUOTES, 'UTF-8');
+        $bodyLines[] = "<p><a href=\"{$safeUrl}\">{$safeAction}</a></p>";
+        $altLines[]  = "{$actionLabel}: {$taskUrl}";
+
+        $mail->Body    = implode("\n", $bodyLines);
+        $mail->AltBody = implode("\n", $altLines);
+
+        $mail->send();
     }
 }
