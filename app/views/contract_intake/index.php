@@ -85,7 +85,9 @@ $currentStatus = $status ?? 'pending';
             <td class="small"><?= h($sub['submitter_department'] ?? '—') ?></td>
             <td class="small"><?= h($sub['counterparty_company'] ?? '—') ?></td>
             <td class="small"><?= $sub['estimated_value'] !== null ? '$' . number_format((float)$sub['estimated_value'], 0) : '—' ?></td>
-            <td class="small text-muted"><?= date('m/d/Y', strtotime($sub['created_at'])) ?></td>
+            <td class="small text-muted text-nowrap" title="<?= h(date('F j, Y g:i A', strtotime($sub['created_at']))) ?>">
+              <?= h(date('m/d/Y g:i A', strtotime($sub['created_at']))) ?>
+            </td>
             <td>
               <?php
                 $badgeClass = match($sub['status']) {
