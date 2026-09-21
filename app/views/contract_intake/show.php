@@ -22,7 +22,7 @@ function row(string $label, mixed $value, bool $money = false): void {
   <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
       <h1 class="h4 mb-0"><?= h($sub['contract_name']) ?></h1>
-      <p class="text-muted small mb-0">Submission #<?= (int)$sub['submission_id'] ?> &mdash; received <?= date('F j, Y g:i a', strtotime($sub['created_at'])) ?></p>
+      <p class="text-muted small mb-0">Submission #<?= (int)$sub['submission_id'] ?> &mdash; received <?= h(format_utc_to_eastern($sub['created_at'], 'F j, Y g:i A T')) ?></p>
     </div>
     <?php
       $badgeClass = match($sub['status']) {

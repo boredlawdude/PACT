@@ -21,6 +21,29 @@ function dd($value): void
 }
 
 /**
+ * Format a naive UTC datetime string (e.g. a TIMESTAMP column filled by MySQL's
+ * SYSTEM/UTC clock) as Eastern time for display. Use this for any timestamp column
+ * whose value was written by MySQL's own clock (NOW()/CURRENT_TIMESTAMP) on a server
+ * whose MySQL time_zone is UTC, since PHP's date_default_timezone_set() alone does
+ * NOT convert already-parsed datetime strings.
+ */
+function format_utc_to_eastern($value, string $format = 'm/d/Y g:i A'): string
+{
+    $raw = trim((string)$value);
+    if ($raw === '') {
+        return '—';
+    }
+
+    try {
+        $dt = new DateTime($raw, new DateTimeZone('UTC'));
+        $dt->setTimezone(new DateTimeZone('America/New_York'));
+        return $dt->format($format);
+    } catch (Throwable $e) {
+        return h($raw);
+    }
+}
+
+/**
  * Registers a shutdown handler that renders a friendly HTML error page instead of
  * a blank 500 when the script dies from an uncatchable fatal error (e.g. memory
  * exhausted) that try/catch cannot intercept. Call near the top of scripts that

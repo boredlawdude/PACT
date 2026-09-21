@@ -18,7 +18,7 @@ class ContractIntakeSubmission
                  counterparty_signer1_name, counterparty_signer1_title, counterparty_signer1_email,
                  counterparty_signer2_name, counterparty_signer2_title, counterparty_signer2_email,
                  counterparty_signer3_name, counterparty_signer3_title, counterparty_signer3_email,
-                 esign_consent)
+                 esign_consent, created_at)
             VALUES
                 (:submitter_name, :submitter_email, :submitter_phone, :submitter_department, :submitter_person_id,
                  :responsible_person_id,
@@ -29,7 +29,7 @@ class ContractIntakeSubmission
                  :counterparty_signer1_name, :counterparty_signer1_title, :counterparty_signer1_email,
                  :counterparty_signer2_name, :counterparty_signer2_title, :counterparty_signer2_email,
                  :counterparty_signer3_name, :counterparty_signer3_title, :counterparty_signer3_email,
-                 :esign_consent)
+                 :esign_consent, UTC_TIMESTAMP())
         ");
         $stmt->execute([
             ':submitter_name'       => $data['submitter_name'],
