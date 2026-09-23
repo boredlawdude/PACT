@@ -16,6 +16,8 @@ node_modules/
 # -------------------------
 storage/*
 !storage/.gitkeep
+!storage/templates/
+!storage/templates/**
 
 # temp document generation
 storage/__tmp/*
@@ -61,3 +63,4 @@ deploy_db_export.sql
 *.swp
 *.swo
 *~
+schifano_home/
