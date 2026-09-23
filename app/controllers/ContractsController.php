@@ -990,6 +990,10 @@ class ContractsController
         }
 
         $data = $this->collectFormData($_POST);
+	// New contracts default to Draft/Negotiate.
+		if (empty($data['contract_status_id'])) {
+    			$data['contract_status_id'] = 1;
+		}
         // Default to the actual logged-in user only if the form didn't specify a submitter.
         if (empty($data['submitted_by_person_id'])) {
             $data['submitted_by_person_id'] = (int)(current_person()['person_id'] ?? 0) ?: null;
