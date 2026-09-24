@@ -599,7 +599,315 @@ else
 fi
 
 # ------------------------------------------------------------
-# 13. Final verification
+# 13. Optional ONLYOFFICE Docs installation
+# ------------------------------------------------------------
+
+section "ONLYOFFICE Docs"
+
+ONLYOFFICE_INSTALLED="no"
+
+if [ ! -f "/var/www/nextcloud/occ" ]; then
+    echo "Nextcloud is not installed on this server."
+    echo "Skipping ONLYOFFICE/Nextcloud integration."
+else
+
+    read -r -p "Install ONLYOFFICE Docs and integrate it with Nextcloud? [y/N]: " INSTALL_ONLYOFFICE
+    INSTALL_ONLYOFFICE="${INSTALL_ONLYOFFICE:-n}"
+
+    if [[ "$INSTALL_ONLYOFFICE" =~ ^[Yy]$ ]]; then
+
+        # ----------------------------------------------------
+        # Resource checks
+        # ----------------------------------------------------
+
+        OO_RAM_MB="$(free -m | awk '/^Mem:/ {print $2}')"
+        OO_SWAP_MB="$(free -m | awk '/^Swap:/ {print $2}')"
+        OO_DISK_GB="$(df -BG / | awk 'NR==2 {gsub("G","",$4); print $4}')"
+
+        echo
+        echo "ONLYOFFICE resource check:"
+        echo "  RAM:       ${OO_RAM_MB} MB"
+        echo "  Swap:      ${OO_SWAP_MB} MB"
+        echo "  Free disk: ${OO_DISK_GB} GB"
+        echo
+
+        if [ "$OO_RAM_MB" -lt 4000 ]; then
+            die "ONLYOFFICE requires at least 4 GB RAM for this provisioner."
+        fi
+
+        if [ "$OO_SWAP_MB" -lt 3900 ]; then
+            die "ONLYOFFICE requires approximately 4 GB swap for this provisioner."
+        fi
+
+        if [ "$OO_DISK_GB" -lt 40 ]; then
+            die "ONLYOFFICE requires at least 40 GB free disk for this provisioner."
+        fi
+
+        if ! command_exists docker; then
+            die "Docker is required for ONLYOFFICE."
+        fi
+
+        # ----------------------------------------------------
+        # Determine hostnames
+        # ----------------------------------------------------
+
+        read -r -p "Nextcloud hostname [cloud-test.local]: " OO_NEXTCLOUD_HOST
+        OO_NEXTCLOUD_HOST="${OO_NEXTCLOUD_HOST:-cloud-test.local}"
+
+        read -r -p "ONLYOFFICE hostname [office-test.local]: " OO_HOST
+        OO_HOST="${OO_HOST:-office-test.local}"
+
+        echo
+        echo "Nextcloud:  http://${OO_NEXTCLOUD_HOST}"
+        echo "ONLYOFFICE: http://${OO_HOST}"
+        echo
+
+        # ----------------------------------------------------
+        # Persistent storage / JWT
+        # ----------------------------------------------------
+
+        section "Preparing ONLYOFFICE Storage"
+
+        sudo mkdir -p \
+            /opt/onlyoffice/logs \
+            /opt/onlyoffice/data \
+            /opt/onlyoffice/lib \
+            /opt/onlyoffice/db
+
+        if [ ! -f /opt/onlyoffice/jwt.secret ]; then
+            sudo bash -c \
+                'openssl rand -hex 32 > /opt/onlyoffice/jwt.secret'
+            sudo chmod 600 /opt/onlyoffice/jwt.secret
+            echo "Generated ONLYOFFICE JWT secret."
+        else
+            echo "Existing ONLYOFFICE JWT secret retained."
+        fi
+
+        # ----------------------------------------------------
+        # Docker container
+        # ----------------------------------------------------
+
+        section "Installing ONLYOFFICE Document Server"
+
+        sudo docker pull onlyoffice/documentserver
+
+       OO_JWT_SECRET="$(sudo cat /opt/onlyoffice/jwt.secret)"
+
+if sudo docker ps -a \
+    --format '{{.Names}}' \
+    | grep -qx 'onlyoffice-documentserver'; then
+
+    echo "Existing ONLYOFFICE container found."
+
+    if ! sudo docker ps \
+        --format '{{.Names}}' \
+        | grep -qx 'onlyoffice-documentserver'; then
+
+        echo "Starting existing ONLYOFFICE container."
+        sudo docker start onlyoffice-documentserver >/dev/null
+    else
+        echo "ONLYOFFICE container is already running."
+    fi
+
+else
+
+    echo "Creating ONLYOFFICE Document Server container."
+
+    sudo docker run -d \
+        --name onlyoffice-documentserver \
+        --restart=always \
+        -p 127.0.0.1:8081:80 \
+        --add-host="${OO_NEXTCLOUD_HOST}:host-gateway" \
+        -e JWT_ENABLED=true \
+        -e JWT_SECRET="$OO_JWT_SECRET" \
+        -v /opt/onlyoffice/logs:/var/log/onlyoffice \
+        -v /opt/onlyoffice/data:/var/www/onlyoffice/Data \
+        -v /opt/onlyoffice/lib:/var/lib/onlyoffice \
+        -v /opt/onlyoffice/db:/var/lib/postgresql \
+        onlyoffice/documentserver >/dev/null
+
+fi
+        echo "Waiting for ONLYOFFICE to initialize..."
+
+        OO_READY="no"
+
+        for i in $(seq 1 60); do
+            if curl -fsS \
+                http://127.0.0.1:8081/healthcheck \
+                2>/dev/null | grep -qi 'true'; then
+                OO_READY="yes"
+                break
+            fi
+
+            sleep 5
+        done
+
+        if [ "$OO_READY" != "yes" ]; then
+            unset OO_JWT_SECRET
+            die "ONLYOFFICE did not become healthy within 5 minutes."
+        fi
+
+        echo "ONLYOFFICE Document Server is healthy."
+
+        # ----------------------------------------------------
+        # Apache reverse proxy
+        # ----------------------------------------------------
+
+        section "Configuring ONLYOFFICE Apache Proxy"
+
+        sudo a2enmod \
+            proxy \
+            proxy_http \
+            proxy_wstunnel \
+            headers >/dev/null
+
+        SAFE_OO_SITE="$(printf '%s' "$OO_HOST" | tr '.-' '__')"
+        OO_APACHE_SITE="/etc/apache2/sites-available/${SAFE_OO_SITE}.conf"
+
+        sudo tee "$OO_APACHE_SITE" >/dev/null <<APACHE
+<VirtualHost *:80>
+    ServerName ${OO_HOST}
+
+    ProxyPreserveHost On
+    ProxyRequests Off
+
+    RequestHeader set X-Forwarded-Proto "http"
+    RequestHeader set X-Forwarded-Host "${OO_HOST}"
+
+    ProxyPassMatch "^/(.*)/websocket$" "ws://127.0.0.1:8081/\$1/websocket"
+
+    ProxyPass        / http://127.0.0.1:8081/ retry=0 timeout=300
+    ProxyPassReverse / http://127.0.0.1:8081/
+
+    ErrorLog \${APACHE_LOG_DIR}/${SAFE_OO_SITE}_error.log
+    CustomLog \${APACHE_LOG_DIR}/${SAFE_OO_SITE}_access.log combined
+</VirtualHost>
+APACHE
+
+        sudo a2ensite "$(basename "$OO_APACHE_SITE")" >/dev/null
+
+        if ! sudo apache2ctl configtest; then
+            unset OO_JWT_SECRET
+            die "Apache configuration failed after adding ONLYOFFICE."
+        fi
+
+        sudo systemctl reload apache2
+
+        # ----------------------------------------------------
+        # Local hostname resolution
+        # ----------------------------------------------------
+
+        section "Configuring Internal Hostnames"
+
+        if ! grep -qE \
+            "^[[:space:]]*127\.0\.0\.1[[:space:]].*${OO_NEXTCLOUD_HOST//./\\.}([[:space:]]|$)" \
+            /etc/hosts; then
+            echo "127.0.0.1 ${OO_NEXTCLOUD_HOST}" \
+                | sudo tee -a /etc/hosts >/dev/null
+        fi
+
+        if ! grep -qE \
+            "^[[:space:]]*127\.0\.0\.1[[:space:]].*${OO_HOST//./\\.}([[:space:]]|$)" \
+            /etc/hosts; then
+            echo "127.0.0.1 ${OO_HOST}" \
+                | sudo tee -a /etc/hosts >/dev/null
+        fi
+
+        # Confirm container can reach Nextcloud.
+
+        if ! sudo docker exec onlyoffice-documentserver \
+            curl -fsSI "http://${OO_NEXTCLOUD_HOST}/" >/dev/null; then
+            unset OO_JWT_SECRET
+            die "ONLYOFFICE container cannot reach Nextcloud."
+        fi
+
+        # ----------------------------------------------------
+        # Nextcloud connector
+        # ----------------------------------------------------
+
+        section "Installing Nextcloud ONLYOFFICE Connector"
+
+        if ! sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ app:list \
+            | grep -q 'onlyoffice:'; then
+
+            sudo -u www-data php \
+                --define apc.enable_cli=1 \
+                /var/www/nextcloud/occ app:install onlyoffice
+        fi
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ app:enable onlyoffice
+
+        # Public browser-facing Document Server URL.
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ \
+            config:app:set onlyoffice DocumentServerUrl \
+            --value="http://${OO_HOST}/"
+
+        # Internal Nextcloud -> Document Server URL.
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ \
+            config:app:set onlyoffice DocumentServerInternalUrl \
+            --value="http://${OO_HOST}/"
+
+        # Internal Document Server -> Nextcloud callback/storage URL.
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ \
+            config:app:set onlyoffice StorageUrl \
+            --value="http://${OO_NEXTCLOUD_HOST}/"
+
+        # Shared JWT secret.
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ \
+            config:app:set onlyoffice jwt_secret \
+            --value="$OO_JWT_SECRET"
+
+        unset OO_JWT_SECRET
+
+        # ----------------------------------------------------
+        # End-to-end verification
+        # ----------------------------------------------------
+
+        section "Verifying ONLYOFFICE Integration"
+
+        if sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ \
+            onlyoffice:documentserver --check; then
+
+            ONLYOFFICE_INSTALLED="yes"
+
+            echo
+            echo "ONLYOFFICE integration verified successfully."
+            echo
+            echo "Nextcloud:"
+            echo "  http://${OO_NEXTCLOUD_HOST}"
+            echo
+            echo "ONLYOFFICE:"
+            echo "  http://${OO_HOST}"
+            echo
+        else
+            die "Nextcloud could not verify the ONLYOFFICE Document Server."
+        fi
+
+    else
+        echo "Skipping ONLYOFFICE."
+    fi
+fi
+
+# ------------------------------------------------------------
+# 14. Final verification
 # ------------------------------------------------------------
 
 section "Provisioning Summary"
@@ -656,8 +964,44 @@ echo "  Root free disk: ${AVAILABLE_DISK_GB} GB"
 echo "  Swap:           ${SWAP_MB} MB"
 echo
 
+echo "Platform services:"
+
+if [ -f /var/www/nextcloud/occ ]; then
+    if sudo -u www-data php --define apc.enable_cli=1 \
+        /var/www/nextcloud/occ status >/dev/null 2>&1; then
+        echo "  Nextcloud                     INSTALLED / OK"
+    else
+        echo "  Nextcloud                     INSTALLED / CHECK REQUIRED"
+    fi
+else
+    echo "  Nextcloud                     NOT INSTALLED"
+fi
+
+if sudo docker ps --format '{{.Names}}' 2>/dev/null \
+    | grep -qx 'onlyoffice-documentserver'; then
+    echo "  ONLYOFFICE Docs               RUNNING"
+
+    if [ -f /var/www/nextcloud/occ ]; then
+        if sudo -u www-data php --define apc.enable_cli=1 \
+            /var/www/nextcloud/occ \
+            onlyoffice:documentserver --check >/dev/null 2>&1; then
+            echo "  Nextcloud <-> ONLYOFFICE      CONNECTED / OK"
+        else
+            echo "  Nextcloud <-> ONLYOFFICE      CHECK REQUIRED"
+        fi
+    fi
+else
+    if sudo docker ps -a --format '{{.Names}}' 2>/dev/null \
+        | grep -qx 'onlyoffice-documentserver'; then
+        echo "  ONLYOFFICE Docs               INSTALLED / NOT RUNNING"
+    else
+        echo "  ONLYOFFICE Docs               NOT INSTALLED"
+    fi
+fi
+
+echo
 echo "============================================================"
-echo " Base server provisioning completed successfully."
+echo " Server provisioning completed successfully."
 echo "============================================================"
 echo
 
@@ -668,11 +1012,6 @@ if [ "$DOCKER_GROUP_ADDED" = "yes" ]; then
     echo
 fi
 
-echo "This server is now ready for:"
-echo
-echo "  1. Nextcloud provisioning"
-echo "  2. ONLYOFFICE Docs provisioning"
-echo "  3. PACT installation"
-echo
-echo "PACT itself should be installed separately using install.sh."
+echo "PACT application installation is handled separately."
+echo "Run ./install.sh when you are ready to install PACT."
 echo
