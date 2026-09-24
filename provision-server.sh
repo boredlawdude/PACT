@@ -890,6 +890,16 @@ APACHE
 
             echo
             echo "ONLYOFFICE integration verified successfully."
+
+            # Persist non-secret platform configuration for application installers.
+            sudo tee /etc/pact-platform.conf >/dev/null <<EOF
+NEXTCLOUD_HOST="${OO_NEXTCLOUD_HOST}"
+ONLYOFFICE_HOST="${OO_HOST}"
+ONLYOFFICE_PORT="8081"
+EOF
+
+            sudo chmod 644 /etc/pact-platform.conf
+            echo "Platform configuration saved to /etc/pact-platform.conf."
             echo
             echo "Nextcloud:"
             echo "  http://${OO_NEXTCLOUD_HOST}"

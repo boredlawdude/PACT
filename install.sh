@@ -12,6 +12,9 @@ SCHEMA_FILE="$APP_DIR/database/schema.sql"
 SEED_FILE="$APP_DIR/database/seeds/reference_data.sql"
 ENV_FILE="$APP_DIR/.env"
 
+PLATFORM_CONFIG="/etc/pact-platform.conf"
+ONLYOFFICE_JWT_FILE="/opt/onlyoffice/jwt.secret"
+
 DB_HOST="localhost"
 DB_PORT="3306"
 DB_NAME_OVERRIDE=""
@@ -476,6 +479,52 @@ if [ "$WRITE_ENV" = "yes" ]; then
     DB_PASS_ENV="$(env_escape "$DB_PASS")"
     ORG_NAME_ENV="$(env_escape "$ORG_NAME")"
 
+    # --------------------------------------------------------
+    # Detect provisioned ONLYOFFICE platform
+    # --------------------------------------------------------
+
+    ONLYOFFICE_DOCUMENT_SERVER_URL=""
+    ONLYOFFICE_APP_BASE_URL=""
+    ONLYOFFICE_JWT_SECRET_VALUE=""
+
+    if [ -f "$PLATFORM_CONFIG" ] && [ -s "$ONLYOFFICE_JWT_FILE" ]; then
+
+        PLATFORM_ONLYOFFICE_HOST="$(
+            grep '^ONLYOFFICE_HOST=' "$PLATFORM_CONFIG" 2>/dev/null \
+            | head -1 \
+            | cut -d= -f2- \
+            | tr -d '"'
+        )"
+
+        if [ -n "$PLATFORM_ONLYOFFICE_HOST" ]; then
+            echo
+            echo "Provisioned ONLYOFFICE Docs installation detected:"
+            echo "  http://${PLATFORM_ONLYOFFICE_HOST}/"
+            echo
+
+            read -r -p "Configure PACT to use this ONLYOFFICE server? [Y/n]: " USE_ONLYOFFICE
+            USE_ONLYOFFICE="${USE_ONLYOFFICE:-y}"
+
+            if [[ "$USE_ONLYOFFICE" =~ ^[Yy]$ ]]; then
+
+                ONLYOFFICE_DOCUMENT_SERVER_URL="http://${PLATFORM_ONLYOFFICE_HOST}/"
+                ONLYOFFICE_APP_BASE_URL="http://${SERVER_NAME}"
+
+                ONLYOFFICE_JWT_SECRET_VALUE="$(
+                    sudo cat "$ONLYOFFICE_JWT_FILE"
+                )"
+
+                if [ -z "$ONLYOFFICE_JWT_SECRET_VALUE" ]; then
+                    die "ONLYOFFICE JWT secret could not be read."
+                fi
+
+                echo "PACT will be configured for ONLYOFFICE."
+            else
+                echo "PACT ONLYOFFICE integration skipped."
+            fi
+        fi
+    fi
+
     cat > "$ENV_FILE" <<EOF
 APP_NAME="PACT"
 APP_ENV=production
@@ -503,10 +552,10 @@ DOCUSIGN_CLIENT_SECRET=
 DOCUSIGN_REDIRECT_URI=
 DOCUSIGN_WEBHOOK_HMAC_KEY=
 
-ONLYOFFICE_DOCUMENT_SERVER_URL=
-ONLYOFFICE_APP_BASE_URL=
-ONLYOFFICE_JWT_SECRET=
-OO_SECRET=
+ONLYOFFICE_DOCUMENT_SERVER_URL="${ONLYOFFICE_DOCUMENT_SERVER_URL}"
+ONLYOFFICE_APP_BASE_URL="${ONLYOFFICE_APP_BASE_URL}"
+ONLYOFFICE_JWT_SECRET="${ONLYOFFICE_JWT_SECRET_VALUE}"
+OO_SECRET="${ONLYOFFICE_JWT_SECRET_VALUE}"
 
 NEXTCLOUD_BASE_URL=
 NEXTCLOUD_WEBDAV_ROOT=
