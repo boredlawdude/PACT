@@ -126,6 +126,7 @@ sudo apt-get install -y \
     wget \
     unzip \
     zip \
+    bzip2 \
     git \
     rsync \
     gnupg \
@@ -348,7 +349,257 @@ sudo systemctl start cron
 echo "Cron is running."
 
 # ------------------------------------------------------------
-# 12. Final verification
+# 12. Optional Nextcloud installation
+# ------------------------------------------------------------
+
+section "Nextcloud"
+
+read -r -p "Install Nextcloud on this server? [y/N]: " INSTALL_NEXTCLOUD
+INSTALL_NEXTCLOUD="${INSTALL_NEXTCLOUD:-n}"
+
+NEXTCLOUD_INSTALLED="no"
+
+if [[ "$INSTALL_NEXTCLOUD" =~ ^[Yy]$ ]]; then
+
+    NEXTCLOUD_DIR="/var/www/nextcloud"
+    NEXTCLOUD_DATA="/var/nextcloud-data"
+    NEXTCLOUD_DB="nextcloud"
+    NEXTCLOUD_DB_USER="nextcloud"
+
+    read -r -p "Nextcloud hostname [cloud-test.local]: " NEXTCLOUD_HOST
+    NEXTCLOUD_HOST="${NEXTCLOUD_HOST:-cloud-test.local}"
+
+    echo
+    echo "Nextcloud configuration:"
+    echo "  Hostname:       $NEXTCLOUD_HOST"
+    echo "  Install path:   $NEXTCLOUD_DIR"
+    echo "  Data path:      $NEXTCLOUD_DATA"
+    echo "  Database:       $NEXTCLOUD_DB"
+    echo "  Database user:  $NEXTCLOUD_DB_USER"
+    echo
+
+    if [ -f "$NEXTCLOUD_DIR/config/config.php" ]; then
+        echo "An existing Nextcloud installation was detected at:"
+        echo "  $NEXTCLOUD_DIR"
+        echo
+        echo "Skipping fresh Nextcloud installation."
+        NEXTCLOUD_INSTALLED="existing"
+    else
+
+        section "Installing Nextcloud Dependencies"
+
+        sudo apt-get install -y \
+            php-gmp \
+            php-redis \
+            redis-server \
+            ffmpeg
+
+        sudo systemctl enable redis-server
+        sudo systemctl start redis-server
+
+        # Nextcloud recommends APCu for local caching. occ also needs
+        # APCu enabled for PHP CLI operations.
+        PHP_CLI_INI="/etc/php/${PHP_VERSION}/cli/conf.d/99-nextcloud-apcu.ini"
+
+        echo "apc.enable_cli=1" | sudo tee "$PHP_CLI_INI" >/dev/null
+
+        section "Downloading Nextcloud"
+
+        TMP_NEXTCLOUD="$(mktemp -d)"
+
+        curl -fsSL \
+            https://download.nextcloud.com/server/releases/latest.tar.bz2 \
+            -o "$TMP_NEXTCLOUD/nextcloud.tar.bz2"
+
+        tar -xjf "$TMP_NEXTCLOUD/nextcloud.tar.bz2" \
+            -C "$TMP_NEXTCLOUD"
+
+        if [ ! -f "$TMP_NEXTCLOUD/nextcloud/occ" ]; then
+            rm -rf "$TMP_NEXTCLOUD"
+            die "Downloaded Nextcloud archive does not contain occ."
+        fi
+
+        if [ -e "$NEXTCLOUD_DIR" ]; then
+            die "$NEXTCLOUD_DIR already exists but does not appear to be an installed Nextcloud instance."
+        fi
+
+        sudo mv "$TMP_NEXTCLOUD/nextcloud" "$NEXTCLOUD_DIR"
+        rm -rf "$TMP_NEXTCLOUD"
+
+        sudo mkdir -p "$NEXTCLOUD_DATA"
+
+        sudo chown -R www-data:www-data "$NEXTCLOUD_DIR"
+        sudo chown -R www-data:www-data "$NEXTCLOUD_DATA"
+
+        section "Creating Nextcloud Database"
+
+        NEXTCLOUD_DB_PASS="$(openssl rand -hex 24)"
+
+        SQL_DB_PASS="${NEXTCLOUD_DB_PASS//\'/\'\'}"
+
+        sudo mysql <<SQL
+CREATE DATABASE IF NOT EXISTS \`${NEXTCLOUD_DB}\`
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_general_ci;
+
+CREATE USER IF NOT EXISTS '${NEXTCLOUD_DB_USER}'@'localhost'
+    IDENTIFIED BY '${SQL_DB_PASS}';
+
+GRANT ALL PRIVILEGES
+    ON \`${NEXTCLOUD_DB}\`.*
+    TO '${NEXTCLOUD_DB_USER}'@'localhost';
+
+FLUSH PRIVILEGES;
+SQL
+
+        section "Creating Nextcloud Administrator"
+
+        read -r -p "Nextcloud administrator username [admin]: " NEXTCLOUD_ADMIN
+        NEXTCLOUD_ADMIN="${NEXTCLOUD_ADMIN:-admin}"
+
+        while true; do
+            read -r -s -p "Nextcloud administrator password: " NEXTCLOUD_ADMIN_PASS
+            echo
+            read -r -s -p "Confirm administrator password: " NEXTCLOUD_ADMIN_PASS_CONFIRM
+            echo
+
+            if [ -z "$NEXTCLOUD_ADMIN_PASS" ]; then
+                echo "Password cannot be blank."
+                continue
+            fi
+
+            if [ "$NEXTCLOUD_ADMIN_PASS" != "$NEXTCLOUD_ADMIN_PASS_CONFIRM" ]; then
+                echo "Passwords do not match. Try again."
+                continue
+            fi
+
+            break
+        done
+
+        section "Installing Nextcloud"
+
+        # Passwords are supplied interactively to occ rather than placed
+        # directly in the command line.
+        printf '%s\n%s\n' \
+            "$NEXTCLOUD_DB_PASS" \
+            "$NEXTCLOUD_ADMIN_PASS" \
+        | sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" \
+            maintenance:install \
+            --database mysql \
+            --database-name "$NEXTCLOUD_DB" \
+            --database-host localhost \
+            --database-user "$NEXTCLOUD_DB_USER" \
+            --data-dir "$NEXTCLOUD_DATA" \
+            --admin-user "$NEXTCLOUD_ADMIN"
+
+        unset NEXTCLOUD_ADMIN_PASS
+        unset NEXTCLOUD_ADMIN_PASS_CONFIRM
+        unset NEXTCLOUD_DB_PASS
+        unset SQL_DB_PASS
+
+        section "Configuring Nextcloud"
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" \
+            config:system:set trusted_domains 1 \
+            --value="$NEXTCLOUD_HOST"
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" \
+            config:system:set memcache.local \
+            --value='\OC\Memcache\APCu'
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" \
+            config:system:set memcache.locking \
+            --value='\OC\Memcache\Redis'
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" \
+            config:system:set redis host \
+            --value='127.0.0.1'
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" \
+            config:system:set redis port \
+            --type=integer \
+            --value=6379
+
+        section "Configuring Nextcloud Apache Site"
+
+        SAFE_NC_SITE="$(printf '%s' "$NEXTCLOUD_HOST" | tr '.-' '__')"
+        NEXTCLOUD_APACHE_SITE="/etc/apache2/sites-available/${SAFE_NC_SITE}.conf"
+
+        sudo tee "$NEXTCLOUD_APACHE_SITE" >/dev/null <<APACHE
+<VirtualHost *:80>
+    ServerName ${NEXTCLOUD_HOST}
+    DocumentRoot ${NEXTCLOUD_DIR}
+
+    <Directory ${NEXTCLOUD_DIR}>
+        Require all granted
+        AllowOverride All
+        Options FollowSymLinks MultiViews
+    </Directory>
+
+    ErrorLog \${APACHE_LOG_DIR}/${SAFE_NC_SITE}_error.log
+    CustomLog \${APACHE_LOG_DIR}/${SAFE_NC_SITE}_access.log combined
+</VirtualHost>
+APACHE
+
+        sudo a2enmod rewrite headers env dir mime setenvif
+        sudo a2ensite "$(basename "$NEXTCLOUD_APACHE_SITE")" >/dev/null
+
+        if ! sudo apache2ctl configtest; then
+            die "Apache configuration test failed after adding Nextcloud."
+        fi
+
+        sudo systemctl reload apache2
+
+        section "Configuring Nextcloud Cron"
+
+        NEXTCLOUD_CRON="*/5 * * * * php -f ${NEXTCLOUD_DIR}/cron.php"
+
+        (
+            sudo crontab -u www-data -l 2>/dev/null \
+                | grep -vF "${NEXTCLOUD_DIR}/cron.php" || true
+            echo "$NEXTCLOUD_CRON"
+        ) | sudo crontab -u www-data -
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" \
+            background:cron
+
+        section "Verifying Nextcloud"
+
+        sudo -u www-data php \
+            --define apc.enable_cli=1 \
+            "$NEXTCLOUD_DIR/occ" status
+
+        NEXTCLOUD_INSTALLED="yes"
+
+        echo
+        echo "Nextcloud installation completed."
+        echo
+        echo "Hostname: $NEXTCLOUD_HOST"
+        echo "URL:      http://$NEXTCLOUD_HOST"
+        echo
+
+    fi
+
+else
+    echo "Skipping Nextcloud."
+fi
+
+# ------------------------------------------------------------
+# 13. Final verification
 # ------------------------------------------------------------
 
 section "Provisioning Summary"
