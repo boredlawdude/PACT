@@ -514,7 +514,8 @@ NEXTCLOUD_WEBDAV_ROOT=
 PROJECT_MANAGER_APP_URL=
 EOF
 
-    chmod 600 "$ENV_FILE"
+    sudo chown "$(id -un)":www-data "$ENV_FILE"
+    sudo chmod 640 "$ENV_FILE"
 
     echo "  .env created."
 
