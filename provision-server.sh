@@ -651,6 +651,9 @@ else
         # Determine hostnames
         # ----------------------------------------------------
 
+        read -r -p "PACT hostname [pact.local]: " PACT_HOST
+        PACT_HOST="${PACT_HOST:-pact.local}"
+
         read -r -p "Nextcloud hostname [cloud-test.local]: " OO_NEXTCLOUD_HOST
         OO_NEXTCLOUD_HOST="${OO_NEXTCLOUD_HOST:-cloud-test.local}"
 
@@ -658,6 +661,7 @@ else
         OO_HOST="${OO_HOST:-office-test.local}"
 
         echo
+        echo "PACT:       http://${PACT_HOST}"
         echo "Nextcloud:  http://${OO_NEXTCLOUD_HOST}"
         echo "ONLYOFFICE: http://${OO_HOST}"
         echo
@@ -691,42 +695,73 @@ else
 
         sudo docker pull onlyoffice/documentserver
 
-       OO_JWT_SECRET="$(sudo cat /opt/onlyoffice/jwt.secret)"
+        OO_JWT_SECRET="$(sudo cat /opt/onlyoffice/jwt.secret)"
+        OO_CREATE_CONTAINER="no"
 
-if sudo docker ps -a \
-    --format '{{.Names}}' \
-    | grep -qx 'onlyoffice-documentserver'; then
+        if sudo docker ps -a \
+            --format '{{.Names}}' \
+            | grep -qx 'onlyoffice-documentserver'; then
 
-    echo "Existing ONLYOFFICE container found."
+            echo "Existing ONLYOFFICE container found."
 
-    if ! sudo docker ps \
-        --format '{{.Names}}' \
-        | grep -qx 'onlyoffice-documentserver'; then
+            OO_EXTRA_HOSTS="$(
+                sudo docker inspect onlyoffice-documentserver \
+                    --format '{{json .HostConfig.ExtraHosts}}' \
+                    2>/dev/null || true
+            )"
 
-        echo "Starting existing ONLYOFFICE container."
-        sudo docker start onlyoffice-documentserver >/dev/null
-    else
-        echo "ONLYOFFICE container is already running."
-    fi
+            OO_MAPPING_OK="yes"
 
-else
+            if [[ "$OO_EXTRA_HOSTS" != *"${OO_NEXTCLOUD_HOST}:host-gateway"* ]]; then
+                echo "Missing Docker host mapping for Nextcloud: ${OO_NEXTCLOUD_HOST}"
+                OO_MAPPING_OK="no"
+            fi
 
-    echo "Creating ONLYOFFICE Document Server container."
+            if [[ "$OO_EXTRA_HOSTS" != *"${PACT_HOST}:host-gateway"* ]]; then
+                echo "Missing Docker host mapping for PACT: ${PACT_HOST}"
+                OO_MAPPING_OK="no"
+            fi
 
-    sudo docker run -d \
-        --name onlyoffice-documentserver \
-        --restart=always \
-        -p 127.0.0.1:8081:80 \
-        --add-host="${OO_NEXTCLOUD_HOST}:host-gateway" \
-        -e JWT_ENABLED=true \
-        -e JWT_SECRET="$OO_JWT_SECRET" \
-        -v /opt/onlyoffice/logs:/var/log/onlyoffice \
-        -v /opt/onlyoffice/data:/var/www/onlyoffice/Data \
-        -v /opt/onlyoffice/lib:/var/lib/onlyoffice \
-        -v /opt/onlyoffice/db:/var/lib/postgresql \
-        onlyoffice/documentserver >/dev/null
+            if [ "$OO_MAPPING_OK" = "no" ]; then
+                echo "Recreating ONLYOFFICE container with required host mappings."
+                echo "Persistent ONLYOFFICE data and JWT secret will be retained."
 
-fi
+                sudo docker rm -f onlyoffice-documentserver >/dev/null
+                OO_CREATE_CONTAINER="yes"
+
+            elif ! sudo docker ps \
+                --format '{{.Names}}' \
+                | grep -qx 'onlyoffice-documentserver'; then
+
+                echo "Starting existing ONLYOFFICE container."
+                sudo docker start onlyoffice-documentserver >/dev/null
+
+            else
+                echo "ONLYOFFICE container is already running with required host mappings."
+            fi
+
+        else
+            OO_CREATE_CONTAINER="yes"
+        fi
+
+        if [ "$OO_CREATE_CONTAINER" = "yes" ]; then
+
+            echo "Creating ONLYOFFICE Document Server container."
+
+            sudo docker run -d \
+                --name onlyoffice-documentserver \
+                --restart=always \
+                -p 127.0.0.1:8081:80 \
+                --add-host="${OO_NEXTCLOUD_HOST}:host-gateway" \
+                --add-host="${PACT_HOST}:host-gateway" \
+                -e JWT_ENABLED=true \
+                -e JWT_SECRET="$OO_JWT_SECRET" \
+                -v /opt/onlyoffice/logs:/var/log/onlyoffice \
+                -v /opt/onlyoffice/data:/var/www/onlyoffice/Data \
+                -v /opt/onlyoffice/lib:/var/lib/onlyoffice \
+                -v /opt/onlyoffice/db:/var/lib/postgresql \
+                onlyoffice/documentserver >/dev/null
+        fi
         echo "Waiting for ONLYOFFICE to initialize..."
 
         OO_READY="no"
@@ -893,6 +928,7 @@ APACHE
 
             # Persist non-secret platform configuration for application installers.
             sudo tee /etc/pact-platform.conf >/dev/null <<EOF
+PACT_HOST="${PACT_HOST}"
 NEXTCLOUD_HOST="${OO_NEXTCLOUD_HOST}"
 ONLYOFFICE_HOST="${OO_HOST}"
 ONLYOFFICE_PORT="8081"
