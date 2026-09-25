@@ -637,6 +637,12 @@ elif [ "$CONFIGURE_ONLYOFFICE" = "yes" ]; then
     echo "  $BACKUP"
 
 fi
+# Ensure Apache/PHP can read the application environment file,
+# including when an existing .env was preserved.
+if [ -f "$ENV_FILE" ]; then
+    sudo chown "$(id -un)":www-data "$ENV_FILE"
+    sudo chmod 640 "$ENV_FILE"
+fi
 
 # ============================================================
 # 8. Organization and initial SUPERUSER
