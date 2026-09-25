@@ -928,8 +928,12 @@ ADMIN_CHECK="$(
         FROM person_roles pr
         JOIN roles r
           ON r.role_id = pr.role_id
-        WHERE pr.person_id = $ADMIN_ID
-          AND r.role_key = 'SUPERUSER';
+        JOIN people p
+          ON p.person_id = pr.person_id
+        WHERE r.role_key = 'SUPERUSER'
+          AND r.is_active = 1
+          AND p.is_active = 1
+          AND p.can_login = 1;
     "
 )"
 
