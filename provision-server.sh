@@ -128,6 +128,7 @@ sudo apt-get install -y \
     zip \
     bzip2 \
     git \
+    vim \
     rsync \
     gnupg \
     lsb-release \
