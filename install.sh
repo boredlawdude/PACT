@@ -177,11 +177,15 @@ echo
 
 EXISTING_DB_NAME="$(get_env_value DB_NAME)"
 EXISTING_DB_USER="$(get_env_value DB_USER)"
+EXISTING_DB_PASS="$(get_env_value DB_PASS)"
 EXISTING_APP_URL="$(get_env_value APP_URL)"
 
 DEFAULT_DB_NAME="${EXISTING_DB_NAME:-contract_manager}"
 DEFAULT_DB_USER="${EXISTING_DB_USER:-contract_user}"
-DEFAULT_SERVER_NAME="pact.local"
+DEFAULT_SERVER_NAME="$(
+    printf '%s' "${EXISTING_APP_URL:-http://pact.local}" \
+        | sed -E 's#^https?://##; s#/.*$##'
+)"
 DEFAULT_ORG_NAME="Town of Holly Springs"
 
 if [ -n "$DB_NAME_OVERRIDE" ]; then
@@ -193,8 +197,23 @@ fi
 DB_USER="$(prompt_default "Database user" "$DEFAULT_DB_USER")"
 
 echo
-read -r -s -p "Database password: " DB_PASS
-echo
+
+if [ -n "$EXISTING_DB_PASS" ]; then
+    echo "Existing database credentials were found in .env."
+    read -r -p "Use the existing database password? [Y/n]: " USE_EXISTING_DB_PASS
+    USE_EXISTING_DB_PASS="${USE_EXISTING_DB_PASS:-y}"
+
+    if [[ "$USE_EXISTING_DB_PASS" =~ ^[Yy]$ ]]; then
+        DB_PASS="$EXISTING_DB_PASS"
+        echo "  Existing database password will be reused."
+    else
+        read -r -s -p "Database password: " DB_PASS
+        echo
+    fi
+else
+    read -r -s -p "Database password: " DB_PASS
+    echo
+fi
 
 if [ -z "$DB_PASS" ]; then
     die "Database password cannot be blank."
@@ -444,10 +463,55 @@ do
 done
 
 # ============================================================
-# 7. Generate .env
+# 7. Configure .env
 # ============================================================
 
 echo "[7/10] Configuring .env..."
+
+# ------------------------------------------------------------
+# Detect provisioned ONLYOFFICE platform
+# ------------------------------------------------------------
+
+ONLYOFFICE_DOCUMENT_SERVER_URL=""
+ONLYOFFICE_APP_BASE_URL=""
+ONLYOFFICE_JWT_SECRET_VALUE=""
+CONFIGURE_ONLYOFFICE="no"
+
+if [ -f "$PLATFORM_CONFIG" ] && [ -s "$ONLYOFFICE_JWT_FILE" ]; then
+
+    PLATFORM_ONLYOFFICE_HOST="$(
+        grep '^ONLYOFFICE_HOST=' "$PLATFORM_CONFIG" 2>/dev/null \
+            | head -1 \
+            | cut -d= -f2- \
+            | tr -d '"'
+    )"
+
+    if [ -n "$PLATFORM_ONLYOFFICE_HOST" ]; then
+        echo
+        echo "Provisioned ONLYOFFICE Docs installation detected:"
+        echo "  http://${PLATFORM_ONLYOFFICE_HOST}/"
+        echo
+
+        read -r -p "Configure PACT to use this ONLYOFFICE server? [Y/n]: " USE_ONLYOFFICE
+        USE_ONLYOFFICE="${USE_ONLYOFFICE:-y}"
+
+        if [[ "$USE_ONLYOFFICE" =~ ^[Yy]$ ]]; then
+
+            ONLYOFFICE_DOCUMENT_SERVER_URL="http://${PLATFORM_ONLYOFFICE_HOST}/"
+            ONLYOFFICE_APP_BASE_URL="http://${SERVER_NAME}"
+
+            ONLYOFFICE_JWT_SECRET_VALUE="$(
+                sudo cat "$ONLYOFFICE_JWT_FILE"
+            )"
+
+            if [ -z "$ONLYOFFICE_JWT_SECRET_VALUE" ]; then
+                die "ONLYOFFICE JWT secret could not be read."
+            fi
+
+            CONFIGURE_ONLYOFFICE="yes"
+        fi
+    fi
+fi
 
 WRITE_ENV="yes"
 
@@ -456,8 +520,10 @@ if [ -f "$ENV_FILE" ]; then
     echo "An existing .env file was found:"
     echo "  $ENV_FILE"
     echo
+    echo "Existing application settings will be preserved by default."
+    echo
 
-    read -r -p "Replace it with the new installation settings? [y/N]: " REPLACE_ENV
+    read -r -p "Replace the entire .env with new installation settings? [y/N]: " REPLACE_ENV
 
     case "$REPLACE_ENV" in
         y|Y|yes|YES)
@@ -469,7 +535,7 @@ if [ -f "$ENV_FILE" ]; then
             ;;
         *)
             WRITE_ENV="no"
-            echo "  Existing .env will be left unchanged."
+            echo "  Existing .env will be preserved."
             ;;
     esac
 fi
@@ -478,52 +544,6 @@ if [ "$WRITE_ENV" = "yes" ]; then
 
     DB_PASS_ENV="$(env_escape "$DB_PASS")"
     ORG_NAME_ENV="$(env_escape "$ORG_NAME")"
-
-    # --------------------------------------------------------
-    # Detect provisioned ONLYOFFICE platform
-    # --------------------------------------------------------
-
-    ONLYOFFICE_DOCUMENT_SERVER_URL=""
-    ONLYOFFICE_APP_BASE_URL=""
-    ONLYOFFICE_JWT_SECRET_VALUE=""
-
-    if [ -f "$PLATFORM_CONFIG" ] && [ -s "$ONLYOFFICE_JWT_FILE" ]; then
-
-        PLATFORM_ONLYOFFICE_HOST="$(
-            grep '^ONLYOFFICE_HOST=' "$PLATFORM_CONFIG" 2>/dev/null \
-            | head -1 \
-            | cut -d= -f2- \
-            | tr -d '"'
-        )"
-
-        if [ -n "$PLATFORM_ONLYOFFICE_HOST" ]; then
-            echo
-            echo "Provisioned ONLYOFFICE Docs installation detected:"
-            echo "  http://${PLATFORM_ONLYOFFICE_HOST}/"
-            echo
-
-            read -r -p "Configure PACT to use this ONLYOFFICE server? [Y/n]: " USE_ONLYOFFICE
-            USE_ONLYOFFICE="${USE_ONLYOFFICE:-y}"
-
-            if [[ "$USE_ONLYOFFICE" =~ ^[Yy]$ ]]; then
-
-                ONLYOFFICE_DOCUMENT_SERVER_URL="http://${PLATFORM_ONLYOFFICE_HOST}/"
-                ONLYOFFICE_APP_BASE_URL="http://${SERVER_NAME}"
-
-                ONLYOFFICE_JWT_SECRET_VALUE="$(
-                    sudo cat "$ONLYOFFICE_JWT_FILE"
-                )"
-
-                if [ -z "$ONLYOFFICE_JWT_SECRET_VALUE" ]; then
-                    die "ONLYOFFICE JWT secret could not be read."
-                fi
-
-                echo "PACT will be configured for ONLYOFFICE."
-            else
-                echo "PACT ONLYOFFICE integration skipped."
-            fi
-        fi
-    fi
 
     cat > "$ENV_FILE" <<EOF
 APP_NAME="PACT"
@@ -568,9 +588,55 @@ EOF
 
     echo "  .env created."
 
-fi
+elif [ "$CONFIGURE_ONLYOFFICE" = "yes" ]; then
 
-echo
+    echo
+    echo "Updating ONLYOFFICE settings in existing .env..."
+
+    BACKUP="$ENV_FILE.backup.$(date +%Y%m%d_%H%M%S)"
+    cp "$ENV_FILE" "$BACKUP"
+    chmod 600 "$BACKUP"
+
+    update_env_value() {
+        local key="$1"
+        local value="$2"
+
+        if grep -q "^${key}=" "$ENV_FILE"; then
+            KEY="$key" VALUE="$value" perl -0pi -e '
+                $key = $ENV{KEY};
+                $value = $ENV{VALUE};
+                s/^\Q$key\E=.*$/$key="$value"/m;
+            ' "$ENV_FILE"
+        else
+            printf '%s="%s"\n' "$key" "$value" >> "$ENV_FILE"
+        fi
+    }
+
+    update_env_value \
+        "ONLYOFFICE_DOCUMENT_SERVER_URL" \
+        "$ONLYOFFICE_DOCUMENT_SERVER_URL"
+
+    update_env_value \
+        "ONLYOFFICE_APP_BASE_URL" \
+        "$ONLYOFFICE_APP_BASE_URL"
+
+    update_env_value \
+        "ONLYOFFICE_JWT_SECRET" \
+        "$ONLYOFFICE_JWT_SECRET_VALUE"
+
+    update_env_value \
+        "OO_SECRET" \
+        "$ONLYOFFICE_JWT_SECRET_VALUE"
+
+    sudo chown "$(id -un)":www-data "$ENV_FILE"
+    sudo chmod 640 "$ENV_FILE"
+
+    echo "  ONLYOFFICE settings updated."
+    echo "  All other .env settings were preserved."
+    echo "  Backup created:"
+    echo "  $BACKUP"
+
+fi
 
 # ============================================================
 # 8. Organization and initial SUPERUSER
@@ -579,88 +645,126 @@ echo
 echo "[8/10] Initial administrator..."
 echo
 
-read -r -p "Administrator first name: " ADMIN_FIRST
-read -r -p "Administrator last name: " ADMIN_LAST
-read -r -p "Administrator email: " ADMIN_EMAIL
-
-if [ -z "$ADMIN_FIRST" ]; then
-    die "Administrator first name is required."
-fi
-
-if [ -z "$ADMIN_LAST" ]; then
-    die "Administrator last name is required."
-fi
-
-if [ -z "$ADMIN_EMAIL" ]; then
-    die "Administrator email is required."
-fi
-
-if [[ "$ADMIN_EMAIL" != *@*.* ]]; then
-    die "Administrator email does not appear valid."
-fi
-
-while true; do
-
-    echo
-    read -r -s -p "Administrator password: " ADMIN_PASS
-    echo
-
-    read -r -s -p "Confirm administrator password: " ADMIN_PASS2
-    echo
-
-    if [ "$ADMIN_PASS" != "$ADMIN_PASS2" ]; then
-        echo "Passwords do not match. Try again."
-        continue
-    fi
-
-    if [ "${#ADMIN_PASS}" -lt 12 ]; then
-        echo "Password must contain at least 12 characters."
-        continue
-    fi
-
-    break
-
-done
-
-# Generate the password hash using the same PHP password_hash()
-# mechanism used by PACT.
-
-ADMIN_HASH="$(
-    printf '%s' "$ADMIN_PASS" |
-        php -r '
-            $password = stream_get_contents(STDIN);
-            echo password_hash($password, PASSWORD_DEFAULT);
-        '
-)"
-
-if [ -z "$ADMIN_HASH" ]; then
-    die "Could not generate administrator password hash."
-fi
-
-ADMIN_FIRST_SQL="$(sql_escape "$ADMIN_FIRST")"
-ADMIN_LAST_SQL="$(sql_escape "$ADMIN_LAST")"
-ADMIN_EMAIL_SQL="$(sql_escape "$ADMIN_EMAIL")"
-ADMIN_HASH_SQL="$(sql_escape "$ADMIN_HASH")"
-ORG_NAME_SQL="$(sql_escape "$ORG_NAME")"
-
-EXISTING_ADMIN="$(
+# Find the active SUPERUSER role first.
+SUPERUSER_ROLE_ID="$(
     mysql "${MYSQL_ARGS[@]}" "$DB_NAME" -Nse "
-        SELECT person_id
-        FROM people
-        WHERE email = '$ADMIN_EMAIL_SQL'
+        SELECT role_id
+        FROM roles
+        WHERE role_key = 'SUPERUSER'
+          AND is_active = 1
         LIMIT 1;
     "
 )"
 
-if [ -n "$EXISTING_ADMIN" ]; then
+if [[ ! "$SUPERUSER_ROLE_ID" =~ ^[0-9]+$ ]]; then
+    die "Active SUPERUSER role was not found."
+fi
 
-    if [[ ! "$EXISTING_ADMIN" =~ ^[0-9]+$ ]]; then
-        die "Unexpected administrator person_id."
+# Determine whether this installation already has a SUPERUSER.
+EXISTING_SUPERUSER_ID="$(
+    mysql "${MYSQL_ARGS[@]}" "$DB_NAME" -Nse "
+        SELECT pr.person_id
+        FROM person_roles pr
+        INNER JOIN people p
+            ON p.person_id = pr.person_id
+        WHERE pr.role_id = $SUPERUSER_ROLE_ID
+        LIMIT 1;
+    "
+)"
+
+if [ -n "$EXISTING_SUPERUSER_ID" ]; then
+
+    if [[ ! "$EXISTING_SUPERUSER_ID" =~ ^[0-9]+$ ]]; then
+        die "Unexpected existing SUPERUSER person_id."
     fi
 
-    ADMIN_ID="$EXISTING_ADMIN"
+    echo "  Existing SUPERUSER account detected."
+    echo "  Administrator creation skipped."
+    echo
 
-    mysql "${MYSQL_ARGS[@]}" "$DB_NAME" <<SQL
+else
+
+    read -r -p "Administrator first name: " ADMIN_FIRST
+    read -r -p "Administrator last name: " ADMIN_LAST
+    read -r -p "Administrator email: " ADMIN_EMAIL
+
+    if [ -z "$ADMIN_FIRST" ]; then
+        die "Administrator first name is required."
+    fi
+
+    if [ -z "$ADMIN_LAST" ]; then
+        die "Administrator last name is required."
+    fi
+
+    if [ -z "$ADMIN_EMAIL" ]; then
+        die "Administrator email is required."
+    fi
+
+    if [[ "$ADMIN_EMAIL" != *@*.* ]]; then
+        die "Administrator email does not appear valid."
+    fi
+
+    while true; do
+
+        echo
+        read -r -s -p "Administrator password: " ADMIN_PASS
+        echo
+
+        read -r -s -p "Confirm administrator password: " ADMIN_PASS2
+        echo
+
+        if [ "$ADMIN_PASS" != "$ADMIN_PASS2" ]; then
+            echo "Passwords do not match. Try again."
+            continue
+        fi
+
+        if [ "${#ADMIN_PASS}" -lt 12 ]; then
+            echo "Password must contain at least 12 characters."
+            continue
+        fi
+
+        break
+
+    done
+
+    ADMIN_HASH="$(
+        printf '%s' "$ADMIN_PASS" |
+            php -r '
+                $password = stream_get_contents(STDIN);
+                echo password_hash($password, PASSWORD_DEFAULT);
+            '
+    )"
+
+    if [ -z "$ADMIN_HASH" ]; then
+        die "Could not generate administrator password hash."
+    fi
+
+    ADMIN_FIRST_SQL="$(sql_escape "$ADMIN_FIRST")"
+    ADMIN_LAST_SQL="$(sql_escape "$ADMIN_LAST")"
+    ADMIN_EMAIL_SQL="$(sql_escape "$ADMIN_EMAIL")"
+    ADMIN_HASH_SQL="$(sql_escape "$ADMIN_HASH")"
+
+    # A person with this email may already exist without having
+    # the SUPERUSER role. Reuse that person rather than creating
+    # a duplicate account.
+    EXISTING_ADMIN="$(
+        mysql "${MYSQL_ARGS[@]}" "$DB_NAME" -Nse "
+            SELECT person_id
+            FROM people
+            WHERE email = '$ADMIN_EMAIL_SQL'
+            LIMIT 1;
+        "
+    )"
+
+    if [ -n "$EXISTING_ADMIN" ]; then
+
+        if [[ ! "$EXISTING_ADMIN" =~ ^[0-9]+$ ]]; then
+            die "Unexpected administrator person_id."
+        fi
+
+        ADMIN_ID="$EXISTING_ADMIN"
+
+        mysql "${MYSQL_ARGS[@]}" "$DB_NAME" <<SQL
 UPDATE people
 SET
     first_name = '$ADMIN_FIRST_SQL',
@@ -671,11 +775,11 @@ SET
 WHERE person_id = $ADMIN_ID;
 SQL
 
-    echo "  Existing person enabled for login."
+        echo "  Existing person enabled for login."
 
-else
+    else
 
-    mysql "${MYSQL_ARGS[@]}" "$DB_NAME" <<SQL
+        mysql "${MYSQL_ARGS[@]}" "$DB_NAME" <<SQL
 INSERT INTO people
 (
     first_name,
@@ -700,46 +804,41 @@ VALUES
 );
 SQL
 
-    ADMIN_ID="$(
-        mysql "${MYSQL_ARGS[@]}" "$DB_NAME" -Nse "
-            SELECT person_id
-            FROM people
-            WHERE email = '$ADMIN_EMAIL_SQL'
-            LIMIT 1;
-        "
-    )"
+        ADMIN_ID="$(
+            mysql "${MYSQL_ARGS[@]}" "$DB_NAME" -Nse "
+                SELECT person_id
+                FROM people
+                WHERE email = '$ADMIN_EMAIL_SQL'
+                LIMIT 1;
+            "
+        )"
 
-    if [[ ! "$ADMIN_ID" =~ ^[0-9]+$ ]]; then
-        die "Could not determine administrator person_id."
+        if [[ ! "$ADMIN_ID" =~ ^[0-9]+$ ]]; then
+            die "Could not determine administrator person_id."
+        fi
+
+        echo "  Administrator person created."
+
     fi
 
-    echo "  Administrator person created."
-
-fi
-
-SUPERUSER_ROLE_ID="$(
-    mysql "${MYSQL_ARGS[@]}" "$DB_NAME" -Nse "
-        SELECT role_id
-        FROM roles
-        WHERE role_key = 'SUPERUSER'
-          AND is_active = 1
-        LIMIT 1;
-    "
-)"
-
-if [[ ! "$SUPERUSER_ROLE_ID" =~ ^[0-9]+$ ]]; then
-    die "Active SUPERUSER role was not found."
-fi
-
-mysql "${MYSQL_ARGS[@]}" "$DB_NAME" <<SQL
+    mysql "${MYSQL_ARGS[@]}" "$DB_NAME" <<SQL
 INSERT IGNORE INTO person_roles
     (person_id, role_id)
 VALUES
     ($ADMIN_ID, $SUPERUSER_ROLE_ID);
 SQL
 
-# Replace the seed organization's name with the organization
-# supplied during installation.
+    unset ADMIN_PASS
+    unset ADMIN_PASS2
+    unset ADMIN_HASH
+
+    echo "  SUPERUSER role assigned."
+fi
+
+# Organization configuration is safe to apply on both a fresh
+# installation and an installer rerun.
+
+ORG_NAME_SQL="$(sql_escape "$ORG_NAME")"
 
 mysql "${MYSQL_ARGS[@]}" "$DB_NAME" <<SQL
 UPDATE organization_settings
@@ -751,11 +850,6 @@ SET name = '$ORG_NAME_SQL'
 WHERE company_id = 3;
 SQL
 
-unset ADMIN_PASS
-unset ADMIN_PASS2
-unset ADMIN_HASH
-
-echo "  SUPERUSER role assigned."
 echo "  Organization name configured."
 echo
 
