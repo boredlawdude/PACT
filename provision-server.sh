@@ -807,12 +807,15 @@ else
     ProxyPreserveHost On
     ProxyRequests Off
 
-    RequestHeader set X-Forwarded-Proto "http"
-    RequestHeader set X-Forwarded-Host "${OO_HOST}"
+    # Preserve external HTTPS information when an upstream reverse proxy
+    # (Cloudflare Tunnel, load balancer, etc.) supplies it.
+    SetEnvIf X-Forwarded-Proto "^https$" forwarded_https
+    RequestHeader set X-Forwarded-Proto "https" env=forwarded_https
+    RequestHeader set X-Forwarded-Host "%{HTTP_HOST}s"
 
-    ProxyPassMatch "^/(.*)/websocket$" "ws://127.0.0.1:8081/\$1/websocket"
-
-    ProxyPass        / http://127.0.0.1:8081/ retry=0 timeout=300
+    # Apache 2.4.47+ proxy_http handles WebSocket upgrades.
+    # This is required for ONLYOFFICE editing sessions.
+    ProxyPass        / http://127.0.0.1:8081/ upgrade=websocket retry=0 timeout=300
     ProxyPassReverse / http://127.0.0.1:8081/
 
     ErrorLog \${APACHE_LOG_DIR}/${SAFE_OO_SITE}_error.log
