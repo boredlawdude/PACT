@@ -33,9 +33,11 @@ class ContractIntakeController
         if ($status === 'all') {
             // fetch all statuses
             $stmt = $this->db->query("
-                SELECT s.*, ct.contract_type
+                SELECT s.*, ct.contract_type,
+                       pc.contract_number AS parent_contract_number, pc.name AS parent_contract_name
                 FROM   contract_intake_submissions s
                 LEFT JOIN contract_types ct ON ct.contract_type_id = s.contract_type_id
+                LEFT JOIN contracts pc ON pc.contract_id = s.parent_contract_id
                 ORDER  BY s.created_at DESC
             ");
             $submissions = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -106,6 +108,9 @@ class ContractIntakeController
             'name'               => $sub['contract_name'],
             'description'        => $sub['contract_description'] ?? '',
             'contract_type_id'   => $sub['contract_type_id'],
+            'is_change_order_contract' => !empty($sub['parent_contract_id']) ? 1 : 0,
+            'parent_contract_id' => $sub['parent_contract_id'] ?? null,
+            'project_id'         => $sub['project_id'] ?? null,
             'submitted_by_person_id' => $sub['submitter_person_id'] ?? null,
             'owner_primary_contact_id' => $sub['responsible_person_id'] ?? null,
             'total_contract_value' => $sub['estimated_value'],

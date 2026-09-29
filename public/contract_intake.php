@@ -25,6 +25,27 @@ if (($_GET['ajax'] ?? '') === 'vendor_lookup') {
     exit;
 }
 
+// ── AJAX: existing contract lookup for the "Change Order to" typeahead ──────
+// Public endpoint — only exposes contract number/name (no values, parties, etc.).
+if (($_GET['ajax'] ?? '') === 'contract_lookup') {
+    header('Content-Type: application/json; charset=utf-8');
+    $q = trim((string)($_GET['q'] ?? ''));
+    $results = [];
+    if (strlen($q) >= 2) {
+        $stmt = db()->prepare(
+            "SELECT contract_id, contract_number, name
+             FROM contracts
+             WHERE name LIKE :q OR contract_number LIKE :q
+             ORDER BY name
+             LIMIT 10"
+        );
+        $stmt->execute([':q' => '%' . $q . '%']);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    echo json_encode($results, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // ── AJAX: town employee lookup for the "Your Name" typeahead ────────────────
 // Public endpoint — only exposes name/email/department for active town employees.
 if (($_GET['ajax'] ?? '') === 'person_lookup') {
@@ -61,6 +82,15 @@ $responsiblePeopleOptions = db()->query(
      WHERE is_active = 1 AND is_town_employee = 1
      ORDER BY name"
 )->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Load projects for dropdown (shared table from project_manager_app; best-effort) ──
+try {
+    $projectOptions = db()->query(
+        "SELECT project_id, project_code, project_name FROM projects ORDER BY project_name ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    $projectOptions = [];
+}
 
 // ── File upload helpers ──────────────────────────────────────────────────────
 define('INTAKE_EXHIBIT_DIR', APP_ROOT . '/storage/intake_exhibits/');
@@ -263,6 +293,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rawType = trim((string)($_POST['contract_type_id'] ?? ''));
         if ($rawType !== '' && ctype_digit($rawType)) $contractTypeId = (int)$rawType;
 
+        $projectId = null;
+        $rawProjectId = trim((string)($_POST['project_id'] ?? ''));
+        if ($rawProjectId !== '' && ctype_digit($rawProjectId)) $projectId = (int)$rawProjectId;
+
+        // "Is this a Change Order to an existing contract?" — only trust the
+        // hidden id if it matches a real contract, and only when the checkbox was checked.
+        $parentContractId = null;
+        if (!empty($_POST['is_change_order'])) {
+            $rawParentId = trim((string)($_POST['parent_contract_id'] ?? ''));
+            if ($rawParentId !== '' && ctype_digit($rawParentId)) {
+                $checkStmt = db()->prepare("SELECT contract_id FROM contracts WHERE contract_id = ?");
+                $checkStmt->execute([(int)$rawParentId]);
+                if ($checkStmt->fetchColumn()) {
+                    $parentContractId = (int)$rawParentId;
+                }
+            }
+            if ($parentContractId === null) {
+                $errors[] = 'Please search for and select the existing contract this Change Order applies to.';
+            }
+        }
+
         $startDate = null;
         $rawStart = trim((string)($_POST['start_date'] ?? ''));
         if ($rawStart !== '' && strtotime($rawStart) !== false) $startDate = $rawStart;
@@ -288,6 +339,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'contract_name'        => $contractName,
                 'contract_description' => trim((string)($_POST['contract_description'] ?? '')),
                 'contract_type_id'     => $contractTypeId,
+                'parent_contract_id'   => $parentContractId,
+                'project_id'           => $projectId,
                 'counterparty_company' => trim((string)($_POST['counterparty_company'] ?? '')),
                 'counterparty_contact' => trim((string)($_POST['counterparty_contact'] ?? '')),
                 'counterparty_email'   => $counterpartyEmail,
@@ -417,7 +470,7 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
       <p class="section-label">Contract Information</p>
       <div class="row g-3">
         <div class="col-12">
-          <label class="form-label">Contract / Project Name <span class="text-danger">*</span></label>
+          <label class="form-label">Contract Name (Short Description)</label>
           <input type="text" class="form-control" name="contract_name" required maxlength="200"
                  value="<?= h($old['contract_name'] ?? '') ?>">
         </div>
@@ -425,6 +478,25 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
           <label class="form-label">Description / Scope of Work</label>
           <textarea class="form-control" name="contract_description" rows="3" maxlength="2000"><?= h($old['contract_description'] ?? '') ?></textarea>
           <div class="form-text">Briefly describe what services, goods, or work this contract covers.</div>
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="is_change_order" name="is_change_order" value="1"
+                   <?= !empty($old['is_change_order']) ? 'checked' : '' ?>
+                   onchange="document.getElementById('parent_contract_picker').style.display = this.checked ? '' : 'none';">
+            <label class="form-check-label fw-semibold" for="is_change_order">
+              Is this a Change Order to an existing contract?
+            </label>
+          </div>
+          <div id="parent_contract_picker" class="mt-2 position-relative" style="<?= empty($old['is_change_order']) ? 'display:none;' : '' ?>">
+            <label class="form-label small mb-0">Existing Contract</label>
+            <input type="text" class="form-control" id="parent_contract_search" name="parent_contract_search"
+                   placeholder="Search by contract name or number…" autocomplete="off"
+                   value="<?= h($old['parent_contract_search'] ?? '') ?>">
+            <div id="parentContractLookupResults" class="list-group shadow-sm" style="display:none; position:absolute; z-index:1050; width:100%; max-height:220px; overflow-y:auto;"></div>
+            <input type="hidden" name="parent_contract_id" id="parent_contract_id" value="<?= h($old['parent_contract_id'] ?? '') ?>">
+            <div class="form-text">Start typing to find the contract this Change Order applies to.</div>
+          </div>
         </div>
         <div class="col-md-6">
           <label class="form-label">Contract Type</label>
@@ -450,6 +522,19 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
             <?php endforeach; ?>
           </select>
           <div class="form-text">Who at the Town will be responsible for administering this contract?</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Project</label>
+          <select class="form-select" name="project_id">
+            <option value="">(none)</option>
+            <?php foreach ($projectOptions as $proj): ?>
+              <option value="<?= (int)$proj['project_id'] ?>"
+                <?= ((string)($old['project_id'] ?? '') === (string)$proj['project_id']) ? 'selected' : '' ?>>
+                <?= h($proj['project_code']) ?> — <?= h($proj['project_name']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <div class="form-text">If known, links this request to a project in the Project Manager app.</div>
         </div>
         <div class="col-md-6">
           <label class="form-label">Estimated Value ($)</label>
@@ -725,6 +810,60 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
         var controller = new AbortController();
         activeRequest = controller;
         fetch('/contract_intake.php?ajax=person_lookup&q=' + encodeURIComponent(q), { signal: controller.signal })
+          .then(function (r) { return r.json(); })
+          .then(renderResults)
+          .catch(function (err) { if (err.name !== 'AbortError') hideResults(); });
+      }, 250);
+    });
+
+    document.addEventListener('click', function (e) {
+      if (e.target !== input && !results.contains(e.target)) hideResults();
+    });
+  })();
+</script>
+<script>
+  (function () {
+    var input   = document.getElementById('parent_contract_search');
+    var results = document.getElementById('parentContractLookupResults');
+    var idInput = document.getElementById('parent_contract_id');
+    if (!input || !results) return;
+
+    var debounceTimer = null;
+    var activeRequest = null;
+
+    function hideResults() {
+      results.style.display = 'none';
+      results.innerHTML = '';
+    }
+
+    function renderResults(contracts) {
+      results.innerHTML = '';
+      if (!contracts.length) { hideResults(); return; }
+      contracts.forEach(function (c) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'list-group-item list-group-item-action py-2';
+        item.textContent = (c.contract_number ? c.contract_number + ' — ' : '') + c.name;
+        item.addEventListener('click', function () {
+          input.value = item.textContent;
+          idInput.value = c.contract_id;
+          hideResults();
+        });
+        results.appendChild(item);
+      });
+      results.style.display = 'block';
+    }
+
+    input.addEventListener('input', function () {
+      idInput.value = ''; // a manual edit invalidates any prior selection
+      var q = input.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2) { hideResults(); return; }
+      debounceTimer = setTimeout(function () {
+        if (activeRequest) activeRequest.abort();
+        var controller = new AbortController();
+        activeRequest = controller;
+        fetch('/contract_intake.php?ajax=contract_lookup&q=' + encodeURIComponent(q), { signal: controller.signal })
           .then(function (r) { return r.json(); })
           .then(renderResults)
           .catch(function (err) { if (err.name !== 'AbortError') hideResults(); });

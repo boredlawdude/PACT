@@ -79,7 +79,11 @@ $currentStatus = $status ?? 'pending';
           <?php foreach ($submissions as $sub): ?>
           <tr>
             <td class="text-muted small"><?= (int)$sub['submission_id'] ?></td>
-            <td><a href="?page=contract_intake_show&id=<?= (int)$sub['submission_id'] ?>"><?= h($sub['contract_name']) ?></a></td>
+            <td><a href="?page=contract_intake_show&id=<?= (int)$sub['submission_id'] ?>"><?= h($sub['contract_name']) ?></a>
+              <?php if (!empty($sub['parent_contract_id'])): ?>
+                <span class="badge bg-info text-dark ms-1" title="Change Order request">CO</span>
+              <?php endif; ?>
+            </td>
             <td class="small"><?= h($sub['contract_type'] ?? '—') ?></td>
             <td class="small"><?= h($sub['submitter_name']) ?><br><span class="text-muted"><?= h($sub['submitter_email']) ?></span></td>
             <td class="small"><?= h($sub['submitter_department'] ?? '—') ?></td>

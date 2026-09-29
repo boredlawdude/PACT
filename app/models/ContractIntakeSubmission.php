@@ -11,7 +11,7 @@ class ContractIntakeSubmission
             INSERT INTO contract_intake_submissions
                 (submitter_name, submitter_email, submitter_phone, submitter_department, submitter_person_id,
                  responsible_person_id,
-                 contract_name, contract_description, contract_type_id,
+                 contract_name, contract_description, contract_type_id, parent_contract_id, project_id,
                  counterparty_company, counterparty_contact, counterparty_email, counterparty_phone,
                  estimated_value, start_date, end_date,
                  po_number, account_number, notes,
@@ -22,7 +22,7 @@ class ContractIntakeSubmission
             VALUES
                 (:submitter_name, :submitter_email, :submitter_phone, :submitter_department, :submitter_person_id,
                  :responsible_person_id,
-                 :contract_name, :contract_description, :contract_type_id,
+                 :contract_name, :contract_description, :contract_type_id, :parent_contract_id, :project_id,
                  :counterparty_company, :counterparty_contact, :counterparty_email, :counterparty_phone,
                  :estimated_value, :start_date, :end_date,
                  :po_number, :account_number, :notes,
@@ -41,6 +41,8 @@ class ContractIntakeSubmission
             ':contract_name'        => $data['contract_name'],
             ':contract_description' => $this->n($data['contract_description'] ?? null),
             ':contract_type_id'     => $this->n($data['contract_type_id']     ?? null),
+            ':parent_contract_id'   => $this->n($data['parent_contract_id']    ?? null),
+            ':project_id'           => $this->n($data['project_id']            ?? null),
             ':counterparty_company' => $this->n($data['counterparty_company'] ?? null),
             ':counterparty_contact' => $this->n($data['counterparty_contact'] ?? null),
             ':counterparty_email'   => $this->n($data['counterparty_email']   ?? null),
@@ -69,10 +71,14 @@ class ContractIntakeSubmission
     {
         $stmt = $this->db->prepare("
             SELECT s.*, ct.contract_type,
-                   COALESCE(rp.full_name, rp.display_name) AS responsible_person_name
+                   COALESCE(rp.full_name, rp.display_name) AS responsible_person_name,
+                   pc.contract_number AS parent_contract_number, pc.name AS parent_contract_name,
+                   proj.project_code, proj.project_name
             FROM   contract_intake_submissions s
             LEFT JOIN contract_types ct ON ct.contract_type_id = s.contract_type_id
             LEFT JOIN people rp ON rp.person_id = s.responsible_person_id
+            LEFT JOIN contracts pc ON pc.contract_id = s.parent_contract_id
+            LEFT JOIN projects proj ON proj.project_id = s.project_id
             WHERE  s.status = ?
             ORDER  BY s.created_at DESC
         ");
@@ -84,10 +90,14 @@ class ContractIntakeSubmission
     {
         $stmt = $this->db->prepare("
             SELECT s.*, ct.contract_type,
-                   COALESCE(rp.full_name, rp.display_name) AS responsible_person_name
+                   COALESCE(rp.full_name, rp.display_name) AS responsible_person_name,
+                   pc.contract_number AS parent_contract_number, pc.name AS parent_contract_name,
+                   proj.project_code, proj.project_name
             FROM   contract_intake_submissions s
             LEFT JOIN contract_types ct ON ct.contract_type_id = s.contract_type_id
             LEFT JOIN people rp ON rp.person_id = s.responsible_person_id
+            LEFT JOIN contracts pc ON pc.contract_id = s.parent_contract_id
+            LEFT JOIN projects proj ON proj.project_id = s.project_id
             WHERE  s.submission_id = ?
         ");
         $stmt->execute([$id]);

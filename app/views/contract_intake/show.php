@@ -60,7 +60,16 @@ function row(string $label, mixed $value, bool $money = false): void {
         <?php row('PO Number',       $sub['po_number']); ?>
         <?php row('Account Number',  $sub['account_number']); ?>
         <?php row('Responsible Person', $sub['responsible_person_name'] ?? null); ?>
+        <?php row('Project', !empty($sub['project_id']) ? (($sub['project_code'] ?? '') . ' — ' . ($sub['project_name'] ?? '')) : null); ?>
       </div>
+      <?php if (!empty($sub['parent_contract_id'])): ?>
+        <div class="alert alert-info py-2 px-3 mt-2 mb-0">
+          <strong>Change Order request</strong> — linked to
+          <a href="?page=contracts_show&contract_id=<?= (int)$sub['parent_contract_id'] ?>">
+            <?= h($sub['parent_contract_number'] ?? ('#' . $sub['parent_contract_id'])) ?> — <?= h($sub['parent_contract_name'] ?? '') ?>
+          </a>
+        </div>
+      <?php endif; ?>
       <?php if (!empty($sub['contract_description'])): ?>
         <div class="mt-2">
           <div class="small text-muted">Description / Scope of Work</div>
