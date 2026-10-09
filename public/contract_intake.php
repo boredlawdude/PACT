@@ -660,18 +660,21 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
           <input class="form-control" type="file" name="exhibit_sow" id="exhibit_sow"
                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
           <div class="form-text">1 file</div>
+          <div id="exhibit_sow_preview" class="mt-2"></div>
         </div>
         <div class="col-md-6">
           <label class="form-label">Certificate of Insurance</label>
           <input class="form-control" type="file" name="exhibit_coi" id="exhibit_coi"
                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
           <div class="form-text">1 file</div>
+          <div id="exhibit_coi_preview" class="mt-2"></div>
         </div>
         <div class="col-12">
           <label class="form-label">Other Documents</label>
           <input class="form-control" type="file" name="exhibit_other[]" id="exhibit_other"
                  multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt">
           <div class="form-text mt-1">Up to 2 additional files. Hold <kbd>Ctrl</kbd> (Windows) or <kbd>&#8984;</kbd> (Mac) to select multiple files at once.</div>
+          <div id="exhibit_other_preview" class="mt-2"></div>
         </div>
       </div>
     </div>
@@ -704,6 +707,68 @@ $old = (!$success && $_SERVER['REQUEST_METHOD'] === 'POST') ? $_POST : [];
       if (spinner) spinner.classList.remove('d-none');
       if (text) text.textContent = 'Submitting\u2026';
     });
+  })();
+</script>
+<script>
+  // Client-side preview of selected exhibit files (PDF/image) before upload.
+  (function () {
+    function humanSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      var units = ['KB', 'MB', 'GB'];
+      var i = -1;
+      do { bytes /= 1024; i++; } while (bytes >= 1024 && i < units.length - 1);
+      return bytes.toFixed(1) + ' ' + units[i];
+    }
+
+    function renderPreview(container, file) {
+      var url = URL.createObjectURL(file);
+      var isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+      var isImage = file.type.indexOf('image/') === 0;
+
+      var wrap = document.createElement('div');
+      wrap.className = 'border rounded p-2 mb-2';
+
+      var label = document.createElement('div');
+      label.className = 'small text-muted mb-1';
+      label.textContent = file.name + ' (' + humanSize(file.size) + ')';
+      wrap.appendChild(label);
+
+      if (isPdf) {
+        var iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.width = '100%';
+        iframe.style.height = '320px';
+        iframe.style.border = '1px solid #dee2e6';
+        wrap.appendChild(iframe);
+      } else if (isImage) {
+        var img = document.createElement('img');
+        img.src = url;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '320px';
+        wrap.appendChild(img);
+      }
+      // Revoke the object URL once the preview element is removed/replaced.
+      container.appendChild(wrap);
+    }
+
+    function wire(inputId, previewId) {
+      var input = document.getElementById(inputId);
+      var preview = document.getElementById(previewId);
+      if (!input || !preview) return;
+      input.addEventListener('change', function () {
+        preview.querySelectorAll('iframe, img').forEach(function (el) {
+          if (el.src && el.src.indexOf('blob:') === 0) URL.revokeObjectURL(el.src);
+        });
+        preview.innerHTML = '';
+        Array.prototype.forEach.call(input.files || [], function (file) {
+          renderPreview(preview, file);
+        });
+      });
+    }
+
+    wire('exhibit_sow', 'exhibit_sow_preview');
+    wire('exhibit_coi', 'exhibit_coi_preview');
+    wire('exhibit_other', 'exhibit_other_preview');
   })();
 </script>
 <script>

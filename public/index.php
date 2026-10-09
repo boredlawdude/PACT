@@ -936,8 +936,17 @@ case 'departments_store':
         if (!file_exists($filePath)) { http_response_code(404); exit('File not found on disk.'); }
 
         $safeOriginal = preg_replace('/[^\w.\-]/', '_', $exhibit['original_filename']);
+
+        // Only let browser-renderable, non-executable types be shown inline (?inline=1);
+        // everything else is always forced to download regardless of the request.
+        $previewableMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'];
+        $asInline = !empty($_GET['inline']) && in_array($exhibit['mime_type'], $previewableMimes, true);
+
+        // Discard any buffered HTML output so it doesn't get prepended to the file bytes.
+        while (ob_get_level() > 0) { ob_end_clean(); }
+
         header('Content-Type: ' . $exhibit['mime_type']);
-        header('Content-Disposition: attachment; filename="' . $safeOriginal . '"');
+        header('Content-Disposition: ' . ($asInline ? 'inline' : 'attachment') . '; filename="' . $safeOriginal . '"');
         header('Content-Length: ' . filesize($filePath));
         header('X-Content-Type-Options: nosniff');
         readfile($filePath);

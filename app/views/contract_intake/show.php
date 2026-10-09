@@ -191,6 +191,11 @@ function row(string $label, mixed $value, bool $money = false): void {
               };
               $canDownload = $ex['scan_status'] !== 'infected';
               $kb = number_format($ex['file_size'] / 1024, 1);
+              $previewableMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'];
+              $isPreviewable = $canDownload && in_array($ex['mime_type'], $previewableMimes, true);
+              $previewUrl = '/index.php?page=intake_exhibit_download&id=' . (int)$ex['exhibit_id'] . '&inline=1';
+              $downloadUrl = '/index.php?page=intake_exhibit_download&id=' . (int)$ex['exhibit_id'];
+              $previewPanelId = 'exhibit-preview-' . (int)$ex['exhibit_id'];
             ?>
             <tr>
               <td class="align-middle"><?= h($ex['original_filename']) ?></td>
@@ -201,18 +206,35 @@ function row(string $label, mixed $value, bool $money = false): void {
                 <span class="badge <?= $scanBadge[0] ?>"><?= $scanBadge[1] ?></span>
               </td>
               <td class="align-middle text-muted small"><?= date('m/d/Y g:i a', strtotime($ex['uploaded_at'])) ?></td>
-              <td class="align-middle">
+              <td class="align-middle text-end">
                 <?php if ($canDownload): ?>
-                  <a href="/index.php?page=intake_exhibit_download&id=<?= (int)$ex['exhibit_id'] ?>"
-                     class="btn btn-outline-secondary btn-sm">Download</a>
+                  <?php if ($isPreviewable): ?>
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                            data-bs-toggle="collapse" data-bs-target="#<?= $previewPanelId ?>">
+                      Preview
+                    </button>
+                  <?php endif; ?>
+                  <a href="<?= h($downloadUrl) ?>" class="btn btn-outline-secondary btn-sm">Download</a>
                 <?php else: ?>
                   <span class="text-danger small">Quarantined</span>
                 <?php endif; ?>
               </td>
             </tr>
+            <?php if ($isPreviewable): ?>
+            <tr class="collapse" id="<?= $previewPanelId ?>">
+              <td colspan="7" class="bg-light">
+                <?php if ($ex['mime_type'] === 'application/pdf'): ?>
+                  <iframe src="<?= h($previewUrl) ?>" style="width:100%; height:500px; border:1px solid #dee2e6;"></iframe>
+                <?php else: ?>
+                  <img src="<?= h($previewUrl) ?>" style="max-width:100%; max-height:500px;" alt="<?= h($ex['original_filename']) ?>">
+                <?php endif; ?>
+              </td>
+            </tr>
+            <?php endif; ?>
             <?php endforeach; ?>
           </tbody>
         </table>
+
         <?php
           $pendingCount = count(array_filter($exhibits, fn($e) => $e['scan_status'] === 'pending'));
           if ($pendingCount > 0):
