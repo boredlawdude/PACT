@@ -236,6 +236,33 @@ class DashboardController
             }
         }
 
+        // ── Legal-approved, awaiting Town Attorney stamp ────────────────────
+        // Dedicated tile for Town Attorney (and admins/superusers): contracts
+        // that Legal Admin has already approved (legal_approval_date set) but
+        // that do NOT yet have a town_attorney stamp. This is narrower than the
+        // generic "Town Attorney Approval" tile above, which counts every
+        // contract missing a town_attorney stamp regardless of Legal Admin status.
+        if (!empty(array_intersect($normalizedRoles, ['TOWN_ATTORNEY', 'ADMIN', 'SUPERUSER']))) {
+            $ltaStmt = $this->db->prepare(
+                "SELECT c.contract_id FROM contracts c
+                  WHERE c.legal_approval_date IS NOT NULL
+                    AND NOT EXISTS (
+                        SELECT 1 FROM contract_approval_stamps cas
+                         WHERE cas.contract_id = c.contract_id AND cas.approval_key = 'town_attorney'
+                    )" . $departmentSql
+            );
+            $ltaStmt->execute($departmentParams);
+            $legalApprovedAwaitingTownAttorneyCount = count($ltaStmt->fetchAll(PDO::FETCH_COLUMN));
+
+            if ($legalApprovedAwaitingTownAttorneyCount > 0) {
+                $myPendingApprovals[] = [
+                    'key'   => 'town_attorney_legal_approved',
+                    'label' => 'Legal-Approved, Awaiting Town Attorney',
+                    'count' => $legalApprovedAwaitingTownAttorneyCount,
+                ];
+            }
+        }
+
         // Status/type filtering remains client-side after applying dashboard access scope.
         // "Show only my submitted contracts" is a separate, explicit opt-in toggle.
         $onlyMine = !empty($_GET['only_mine']);

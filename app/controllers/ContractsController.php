@@ -711,6 +711,22 @@ class ContractsController
             $contracts = array_filter($contracts, fn($c) => !isset($stampedIds[(int)$c['contract_id']]));
             $pendingApprovalFilter = $pa;
             $pendingApprovalLabel  = 'Town Attorney';
+        } elseif ($pa === 'town_attorney_legal_approved') {
+            // Dashboard tile: contracts Legal Admin has already approved
+            // (legal_approval_date set) that do NOT yet have a town_attorney stamp.
+            $ltaStmt = $this->db->query(
+                "SELECT c.contract_id FROM contracts c
+                  WHERE c.legal_approval_date IS NOT NULL
+                    AND NOT EXISTS (
+                        SELECT 1 FROM contract_approval_stamps cas
+                         WHERE cas.contract_id = c.contract_id AND cas.approval_key = 'town_attorney'
+                    )"
+            );
+            $ltaIds = array_flip($ltaStmt->fetchAll(PDO::FETCH_COLUMN));
+
+            $contracts = array_filter($contracts, fn($c) => isset($ltaIds[(int)$c['contract_id']]));
+            $pendingApprovalFilter = $pa;
+            $pendingApprovalLabel  = 'Legal-Approved, Awaiting Town Attorney';
         } elseif ($pa !== '' && isset($pendingApprovalColMap[$pa])) {
             require_once APP_ROOT . '/app/controllers/ApprovalRulesController.php';
             $col = $pendingApprovalColMap[$pa];
