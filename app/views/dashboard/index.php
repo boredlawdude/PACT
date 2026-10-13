@@ -259,10 +259,13 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
                         <td data-sort-value="<?= h($c['created_at'] ?? '') ?>"><?= h(format_date($c['created_at'] ?? null)) ?></td>
                         <td style="max-width:120px;">
                             <?php if ($canChangeStatus): ?>
-                                <select class="form-select form-select-sm dash-status-select"
-                                        data-contract-id="<?= (int)$c['contract_id'] ?>">
+                                <span class="badge text-bg-<?= dashboard_status_badge($c['status_name'] ?? '') ?> dash-status-badge" style="cursor:pointer;" title="Click to change status"><?= h($c['status_name'] ?? '') ?></span>
+                                <select class="form-select form-select-sm dash-status-select d-none"
+                                        data-contract-id="<?= (int)$c['contract_id'] ?>"
+                                        style="min-width:150px;">
                                     <?php foreach (($statuses ?? []) as $st): ?>
                                         <option value="<?= (int)$st['contract_status_id'] ?>"
+                                            data-badge-class="<?= dashboard_status_badge($st['contract_status_name'] ?? '') ?>"
                                             <?= ((int)$st['contract_status_id'] === (int)($c['contract_status_id'] ?? 0)) ? 'selected' : '' ?>>
                                             <?= h($st['contract_status_name']) ?>
                                         </option>
@@ -436,9 +439,33 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
 })();
 
 // ── Inline Status change (Legal Admin / Town Attorney / Superuser only) ─────
+// Shows the compact badge until clicked, then reveals a dropdown to pick a new status.
 (function () {
-    const selects = document.querySelectorAll('.dash-status-select');
-    selects.forEach(function (select) {
+    function activate(badge) {
+        const select = badge.nextElementSibling;
+        if (!select || !select.classList.contains('dash-status-select')) return;
+        select.dataset.originalValue = select.value;
+        badge.classList.add('d-none');
+        select.classList.remove('d-none');
+        select.focus();
+        if (typeof select.showPicker === 'function') {
+            try { select.showPicker(); } catch (e) {}
+        }
+    }
+
+    function deactivate(select) {
+        const badge = select.previousElementSibling;
+        select.classList.add('d-none');
+        if (badge) badge.classList.remove('d-none');
+    }
+
+    document.querySelectorAll('.dash-status-badge').forEach(function (badge) {
+        badge.addEventListener('click', function () {
+            activate(badge);
+        });
+    });
+
+    document.querySelectorAll('.dash-status-select').forEach(function (select) {
         select.addEventListener('change', async function () {
             const originalValue = select.dataset.originalValue || select.value;
             select.disabled = true;
@@ -461,11 +488,26 @@ $defaultDashboardStatusIds = array_values(array_unique($defaultDashboardStatusId
                 select.dataset.originalValue = select.value;
                 const row = select.closest('tr');
                 if (row) row.dataset.statusId = String(payload.contract_status_id);
+                const badge = select.previousElementSibling;
+                const opt = select.options[select.selectedIndex];
+                if (badge && opt) {
+                    badge.textContent = payload.status_name || opt.textContent.trim();
+                    badge.className = 'badge dash-status-badge text-bg-' + opt.dataset.badgeClass;
+                    badge.setAttribute('style', 'cursor:pointer;');
+                }
             } catch (error) {
                 select.value = originalValue;
                 alert(error.message || 'Unable to update status.');
             } finally {
                 select.disabled = false;
+                deactivate(select);
+            }
+        });
+
+        select.addEventListener('blur', function () {
+            if (!select.classList.contains('d-none')) {
+                select.value = select.dataset.originalValue || select.value;
+                deactivate(select);
             }
         });
     });
