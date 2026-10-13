@@ -472,6 +472,20 @@ class Contract
         ]);
     }
 
+    public function updateStatus(int $contractId, int $contractStatusId): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE contracts
+             SET contract_status_id = :contract_status_id
+             WHERE contract_id = :contract_id"
+        );
+
+        return $stmt->execute([
+            'contract_status_id' => $contractStatusId,
+            'contract_id' => $contractId,
+        ]);
+    }
+
     /**
      * Delete contract
      */

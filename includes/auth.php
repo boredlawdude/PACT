@@ -267,6 +267,13 @@ function require_system_admin(): void {
   }
 }
 
+/** Only these roles may change a contract's status directly from the Dashboard/Contracts list. */
+function can_change_contract_status_inline(): bool {
+  return person_has_role_key('LEGAL_ADMIN')
+      || person_has_role_key('TOWN_ATTORNEY')
+      || person_has_role_key('SUPERUSER');
+}
+
 /** Any logged-in Town employee (people.is_town_employee = 1), regardless of role/department. */
 function is_town_user(): bool {
   require_login();

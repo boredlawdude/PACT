@@ -97,14 +97,6 @@ function status_badge(string $status): string {
                 <a href="/index.php?page=contracts" class="btn btn-outline-secondary">Reset</a>
             </div>
 
-            <div class="col-12">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="only_mine" value="1" id="onlyMineCheck"
-                        <?= !empty($_GET['only_mine']) ? 'checked' : '' ?>>
-                    <label class="form-check-label" for="onlyMineCheck">Show only contracts I submitted</label>
-                </div>
-            </div>
-
         </div>
     </div>
 </form>
@@ -179,13 +171,13 @@ function status_badge(string $status): string {
                         <th style="width:420px; cursor:pointer; user-select:none;" data-sort="text">Name <span class="sort-icon"></span></th>
                         <th style="width:55px; cursor:pointer; user-select:none;" data-sort="text">Dept <span class="sort-icon"></span></th>
                         <th style="width:130px; cursor:pointer; user-select:none; white-space:nowrap;" data-sort="text">Responsible <span class="sort-icon"></span></th>
-                        <th style="width:130px; cursor:pointer; user-select:none; white-space:nowrap;" data-sort="text">Submitted By <span class="sort-icon"></span></th>
                         <th style="width:75px; cursor:pointer; user-select:none;" data-sort="num">Value <span class="sort-icon"></span></th>
                         <th data-sort="text" style="cursor:pointer; user-select:none;">Comment <span class="sort-icon"></span></th>
                         <th style="width:0;"></th>
                     </tr>
                 </thead>
                 <tbody>
+                <?php $canChangeStatus = can_change_contract_status_inline(); ?>
                 <?php foreach ($contracts as $c): ?>
                     <?php $canEditComment = can_manage_contract_department((int)($c['department_id'] ?? 0)); ?>
                     <tr data-status-id="<?= (int)($c['contract_status_id'] ?? 0) ?>"
@@ -198,7 +190,20 @@ function status_badge(string $status): string {
                         <td><a href="/index.php?page=contracts_show&contract_id=<?= (int)$c['contract_id'] ?>" class="text-decoration-underline fw-semibold"><?= h($c['contract_number'] !== null && $c['contract_number'] !== '' ? $c['contract_number'] : ('#' . $c['contract_id'])) ?></a></td>
                         <td data-sort-value="<?= h($c['created_at'] ?? '') ?>"><?= h(format_date($c['created_at'] ?? null)) ?></td>
                         <td style="max-width:120px;">
-                            <span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>" style="white-space:normal; word-break:break-word; display:inline-block; text-align:left;"><?= h($c['status_name'] ?? '') ?></span>
+                            <?php if ($canChangeStatus): ?>
+                                <select class="form-select form-select-sm contract-status-select"
+                                        data-contract-id="<?= (int)$c['contract_id'] ?>"
+                                        style="white-space:normal;">
+                                    <?php foreach (($contractStatuses ?? []) as $st): ?>
+                                        <option value="<?= (int)$st['contract_status_id'] ?>"
+                                            <?= ((int)$st['contract_status_id'] === (int)($c['contract_status_id'] ?? 0)) ? 'selected' : '' ?>>
+                                            <?= h($st['contract_status_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php else: ?>
+                                <span class="badge text-bg-<?= status_badge($c['status_name'] ?? '') ?>" style="white-space:normal; word-break:break-word; display:inline-block; text-align:left;"><?= h($c['status_name'] ?? '') ?></span>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <?php if (!empty($c['counterparty_company_name'])): ?>
@@ -208,7 +213,6 @@ function status_badge(string $status): string {
                         </td>
                         <td><span title="<?= h($c['department_name'] ?? '') ?>"><?= h($c['department_code'] ?? $c['department_name'] ?? '') ?></span></td>
                         <td><?= h($c['owner_primary_contact_name'] ?? '') ?></td>
-                        <td><?= h($c['submitted_by_name'] ?? '') ?></td>
                         <td>
                             <?php if (!empty($c['total_contract_value'])): ?>
                                 $<?= number_format((float)$c['total_contract_value'], 2) ?>
@@ -362,6 +366,42 @@ function status_badge(string $status): string {
                 const statusEl = input.parentElement.querySelector('.contract-comment-status');
                 if (statusEl) statusEl.textContent = 'Reverted';
                 input.blur();
+            }
+        });
+    });
+})();
+
+// ── Inline Status change (Legal Admin / Town Attorney / Superuser only) ─────
+(function () {
+    const selects = document.querySelectorAll('.contract-status-select');
+    selects.forEach(function (select) {
+        select.addEventListener('change', async function () {
+            const originalValue = select.dataset.originalValue || select.value;
+            select.disabled = true;
+            try {
+                const response = await fetch('/index.php?page=contracts_update_status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: new URLSearchParams({
+                        contract_id: select.dataset.contractId,
+                        contract_status_id: select.value
+                    })
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) {
+                    throw new Error(payload.message || 'Unable to update status.');
+                }
+                select.dataset.originalValue = select.value;
+                const row = select.closest('tr');
+                if (row) row.dataset.statusId = String(payload.contract_status_id);
+            } catch (error) {
+                select.value = originalValue;
+                alert(error.message || 'Unable to update status.');
+            } finally {
+                select.disabled = false;
             }
         });
     });
