@@ -66,6 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="container">
     <div class="card shadow-sm mx-auto" style="max-width:480px;">
       <div class="card-body p-4">
+        <div class="text-center mb-3">
+          <img src="/favicon.jpeg" alt="PACT" style="width:64px; height:64px; object-fit:cover; border-radius:12px;">
+        </div>
         <h1 class="h4 fw-bold mb-1">Sign in</h1>
         <p class="text-muted small mb-4">PACT for <?= htmlspecialchars($orgName, ENT_QUOTES, 'UTF-8') ?></p>
 
